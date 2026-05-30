@@ -94,11 +94,13 @@ def test_extract_tables_uses_camelot_first() -> None:
             {
                 "page_number": 20,
                 "table_type": "balance_sheet",
+                "table_index": 0,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
             },
             {
                 "page_number": 20,
                 "table_type": "debt_schedule",
+                "table_index": 1,
                 "rows": [["Debt", "450"]],
             },
         ]
@@ -133,6 +135,7 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
             {
                 "page_number": 1,
                 "table_type": "balance_sheet",
+                "table_index": 0,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
             }
         ]
@@ -185,6 +188,7 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
             {
                 "page_number": 25,
                 "table_type": "income_statement",
+                "table_index": 0,
                 "rows": [["Revenue", "1000"]],
             }
         ]

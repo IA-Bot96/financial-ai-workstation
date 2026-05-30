@@ -17,6 +17,7 @@ def test_extracted_table_accepts_valid_payload() -> None:
     table = ExtractedTable(
         page_number=20,
         table_type="balance_sheet",
+        table_index=0,
         rows=[
             ["Cash", "1000"],
             ["Inventory", "500"],
@@ -25,6 +26,7 @@ def test_extracted_table_accepts_valid_payload() -> None:
 
     assert table.page_number == 20
     assert table.table_type == "balance_sheet"
+    assert table.table_index == 0
     assert table.rows[0] == ["Cash", "1000"]
 
 
@@ -32,6 +34,7 @@ def test_extracted_table_allows_empty_rows() -> None:
     table = ExtractedTable(
         page_number=72,
         table_type="property_plant_equipment_note",
+        table_index=0,
         rows=[],
     )
 
@@ -43,10 +46,23 @@ def test_extracted_table_requires_positive_page() -> None:
         ExtractedTable(
             page_number=0,
             table_type="income_statement",
+            table_index=0,
             rows=[],
         )
 
     assert exc_info.value.errors()[0]["type"] == "greater_than"
+
+
+def test_extracted_table_requires_non_negative_table_index() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        ExtractedTable(
+            page_number=20,
+            table_type="balance_sheet",
+            table_index=-1,
+            rows=[],
+        )
+
+    assert exc_info.value.errors()[0]["type"] == "greater_than_equal"
 
 
 def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
@@ -54,6 +70,7 @@ def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
         ExtractedTable(
             page_number=20,
             table_type="balance_sheet",
+            table_index=0,
             rows=[["Revenue", 1200000]],
         )
 
@@ -65,6 +82,7 @@ def test_extracted_table_forbids_extra_fields() -> None:
         ExtractedTable(
             page_number=20,
             table_type="balance_sheet",
+            table_index=0,
             rows=[],
             headers=["year", "revenue", "debt"],
         )
@@ -78,6 +96,7 @@ def test_table_extraction_result_serializes_expected_output() -> None:
             ExtractedTable(
                 page_number=20,
                 table_type="balance_sheet",
+                table_index=0,
                 rows=[
                     ["Cash", "1000"],
                     ["Inventory", "500"],
@@ -91,6 +110,7 @@ def test_table_extraction_result_serializes_expected_output() -> None:
             {
                 "page_number": 20,
                 "table_type": "balance_sheet",
+                "table_index": 0,
                 "rows": [
                     ["Cash", "1000"],
                     ["Inventory", "500"],

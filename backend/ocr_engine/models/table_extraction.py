@@ -18,6 +18,7 @@ class ExtractedTable(BaseModel):
                 {
                     "page_number": 20,
                     "table_type": "balance_sheet",
+                    "table_index": 0,
                     "rows": [
                         ["Cash", "1000"],
                         ["Inventory", "500"],
@@ -37,6 +38,12 @@ class ExtractedTable(BaseModel):
         ...,
         description="Financial table category assigned by the classification layer.",
         examples=["balance_sheet"],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source PDF page.",
+        examples=[0],
     )
     rows: list[list[str]] = Field(
         ...,
@@ -62,6 +69,7 @@ class TableExtractionResult(BaseModel):
                         {
                             "page_number": 20,
                             "table_type": "balance_sheet",
+                            "table_index": 0,
                             "rows": [
                                 ["Cash", "1000"],
                                 ["Inventory", "500"],

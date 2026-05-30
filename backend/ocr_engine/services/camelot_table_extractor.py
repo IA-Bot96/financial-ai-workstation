@@ -143,6 +143,7 @@ class CamelotTableExtractor(ITableExtractor):
                 ExtractedTable(
                     page_number=page_table_type.page_number,
                     table_type=page_table_type.table_types[table_type_index],
+                    table_index=index,
                     rows=rows,
                 )
             )

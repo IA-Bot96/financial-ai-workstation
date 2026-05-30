@@ -36,11 +36,11 @@ class WorkbookResult(BaseModel):
         description="Workbook generation mode: template, user_decision, or dynamic.",
         examples=["template"],
     )
-    workbook_match_score: float | None = Field(
+    workbook_match_score: float = Field(
         ...,
         ge=0,
         le=100,
-        description="Aggregate workbook compatibility score when a template was evaluated.",
+        description="Aggregate workbook compatibility score computed from sheet scores.",
         examples=[97.5],
     )
     sheets_reused: list[str] = Field(

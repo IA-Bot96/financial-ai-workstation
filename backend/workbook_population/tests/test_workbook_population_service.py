@@ -95,7 +95,7 @@ def test_workbook_population_generates_dynamic_without_template(tmp_path: Path) 
     )
 
     assert result.workbook_mode == "dynamic"
-    assert result.workbook_match_score is None
+    assert result.workbook_match_score == 0
     assert result.metrics_written == 1
     assert Path(result.output_file_path).exists()
 

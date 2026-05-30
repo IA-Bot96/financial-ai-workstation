@@ -69,7 +69,7 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
         self._validate_inputs(metric_values)
         output_file_path = str(self._output_dir / self._output_file_name)
         warnings: list[str] = []
-        workbook_match_score: float | None = None
+        workbook_match_score = 0.0
 
         self._logger.info(
             "Starting workbook population",
@@ -161,7 +161,7 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
         *,
         output_file_path: str,
         workbook_mode: str,
-        workbook_match_score: float | None,
+        workbook_match_score: float,
         sheets_reused: list[str],
         sheets_replaced: list[str],
         sheets_created: list[str],

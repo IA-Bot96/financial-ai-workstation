@@ -12,6 +12,7 @@ if str(BACKEND_DIR) not in sys.path:
 from shared.models.metric_value import MetricValue
 from workbook_population.services.template_structure_validator import (
     TemplateStructureValidator,
+    _average,
 )
 
 
@@ -96,3 +97,7 @@ def test_template_validator_marks_missing_sheet_for_creation(tmp_path: Path) -> 
     assert result.sheet_results[0].match_score == 0
     assert result.sheet_results[0].missing_metrics == ["cash"]
     assert any("missing and will be created" in warning for warning in result.warnings)
+
+
+def test_workbook_match_score_is_average_of_sheet_scores() -> None:
+    assert _average([98, 95, 71]) == 88

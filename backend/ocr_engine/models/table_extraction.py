@@ -16,19 +16,18 @@ class ExtractedTable(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "page": 20,
+                    "page_number": 20,
                     "table_type": "balance_sheet",
                     "rows": [
-                        ["Revenue", "1200000", "1100000"],
-                        ["Debt", "450000", "500000"],
-                        ["Cash", "250000", "200000"],
+                        ["Cash", "1000"],
+                        ["Inventory", "500"],
                     ],
                 }
             ]
         },
     )
 
-    page: int = Field(
+    page_number: int = Field(
         ...,
         gt=0,
         description="One-based PDF page number where the table was extracted.",
@@ -44,8 +43,8 @@ class ExtractedTable(BaseModel):
         description="Raw extracted table rows, where each cell is preserved as text.",
         examples=[
             [
-                ["Revenue", "1200000", "1100000"],
-                ["Debt", "450000", "500000"],
+                ["Cash", "1000"],
+                ["Inventory", "500"],
             ]
         ],
     )
@@ -61,12 +60,11 @@ class TableExtractionResult(BaseModel):
                 {
                     "tables": [
                         {
-                            "page": 20,
+                            "page_number": 20,
                             "table_type": "balance_sheet",
                             "rows": [
-                                ["Revenue", "1200000", "1100000"],
-                                ["Debt", "450000", "500000"],
-                                ["Cash", "250000", "200000"],
+                                ["Cash", "1000"],
+                                ["Inventory", "500"],
                             ],
                         }
                     ]

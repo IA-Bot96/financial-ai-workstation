@@ -15,23 +15,22 @@ from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionRe
 
 def test_extracted_table_accepts_valid_payload() -> None:
     table = ExtractedTable(
-        page=20,
+        page_number=20,
         table_type="balance_sheet",
         rows=[
-            ["Revenue", "1200000", "1100000"],
-            ["Debt", "450000", "500000"],
-            ["Cash", "250000", "200000"],
+            ["Cash", "1000"],
+            ["Inventory", "500"],
         ],
     )
 
-    assert table.page == 20
+    assert table.page_number == 20
     assert table.table_type == "balance_sheet"
-    assert table.rows[0] == ["Revenue", "1200000", "1100000"]
+    assert table.rows[0] == ["Cash", "1000"]
 
 
 def test_extracted_table_allows_empty_rows() -> None:
     table = ExtractedTable(
-        page=72,
+        page_number=72,
         table_type="property_plant_equipment_note",
         rows=[],
     )
@@ -42,7 +41,7 @@ def test_extracted_table_allows_empty_rows() -> None:
 def test_extracted_table_requires_positive_page() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
-            page=0,
+            page_number=0,
             table_type="income_statement",
             rows=[],
         )
@@ -53,7 +52,7 @@ def test_extracted_table_requires_positive_page() -> None:
 def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
-            page=20,
+            page_number=20,
             table_type="balance_sheet",
             rows=[["Revenue", 1200000]],
         )
@@ -64,7 +63,7 @@ def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
 def test_extracted_table_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
-            page=20,
+            page_number=20,
             table_type="balance_sheet",
             rows=[],
             headers=["year", "revenue", "debt"],
@@ -77,12 +76,11 @@ def test_table_extraction_result_serializes_expected_output() -> None:
     result = TableExtractionResult(
         tables=[
             ExtractedTable(
-                page=20,
+                page_number=20,
                 table_type="balance_sheet",
                 rows=[
-                    ["Revenue", "1200000", "1100000"],
-                    ["Debt", "450000", "500000"],
-                    ["Cash", "250000", "200000"],
+                    ["Cash", "1000"],
+                    ["Inventory", "500"],
                 ],
             )
         ]
@@ -91,12 +89,11 @@ def test_table_extraction_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "tables": [
             {
-                "page": 20,
+                "page_number": 20,
                 "table_type": "balance_sheet",
                 "rows": [
-                    ["Revenue", "1200000", "1100000"],
-                    ["Debt", "450000", "500000"],
-                    ["Cash", "250000", "200000"],
+                    ["Cash", "1000"],
+                    ["Inventory", "500"],
                 ],
             }
         ]

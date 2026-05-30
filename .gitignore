@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+
+# Angular
+.angular/
+dist/
+
+# Electron
+release/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OCR temp files
+workspace/temp/
+workspace/uploads/
+workspace/generated/

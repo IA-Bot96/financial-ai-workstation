@@ -88,6 +88,11 @@ class CamelotTableExtractor(ITableExtractor):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run table extraction as a pipeline layer."""
+
+        return self.extract_tables_for_context(context)
+
     def extract_tables(
         self,
         pdf_path: str,

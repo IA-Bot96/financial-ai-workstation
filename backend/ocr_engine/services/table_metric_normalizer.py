@@ -86,6 +86,11 @@ class TableMetricNormalizer(ITableMetricNormalizer):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run metric normalization as a pipeline layer."""
+
+        return self.normalize_for_context(context)
+
     def normalize_tables(
         self,
         table_extraction_result: TableExtractionResult,

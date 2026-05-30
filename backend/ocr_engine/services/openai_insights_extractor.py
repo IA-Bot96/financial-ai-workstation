@@ -128,6 +128,11 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run insights extraction as a pipeline layer."""
+
+        return self.extract_insights_for_context(context)
+
     def extract_insights(
         self,
         pdf_path: str,

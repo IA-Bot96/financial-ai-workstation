@@ -11,6 +11,10 @@ class ITableMetricNormalizer(ABC):
     """Contract for normalizing metric labels inside extracted OCR tables."""
 
     @abstractmethod
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Normalize extracted tables for every report in a company context."""
+
+    @abstractmethod
     def normalize_for_context(self, context: CompanyContext) -> CompanyContext:
         """Normalize extracted tables for every report in a company context."""
 

@@ -13,6 +13,10 @@ class ITableClassifier(ABC):
     """Contract for services that classify detected financial table pages."""
 
     @abstractmethod
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Classify detected financial tables for every report in a company context."""
+
+    @abstractmethod
     def classify_tables_for_context(self, context: CompanyContext) -> CompanyContext:
         """Classify detected financial tables for every report in a company context."""
 

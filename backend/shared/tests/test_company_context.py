@@ -41,6 +41,7 @@ def test_company_context_accepts_multi_year_results() -> None:
 
     assert sorted(report.year for report in context.reports) == [2023, 2024]
     assert list(context.table_detection_results) == [2024]
+    assert context.generated_workbook is None
 
 
 def test_company_context_rejects_result_year_without_report() -> None:

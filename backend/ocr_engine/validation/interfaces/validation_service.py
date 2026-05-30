@@ -14,6 +14,10 @@ class IValidationService(ABC):
     """Contract for validating extracted financial statement tables."""
 
     @abstractmethod
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Validate extracted tables for every report in a company context."""
+
+    @abstractmethod
     def validate_for_context(self, context: CompanyContext) -> CompanyContext:
         """Validate extracted tables for every report in a company context."""
 

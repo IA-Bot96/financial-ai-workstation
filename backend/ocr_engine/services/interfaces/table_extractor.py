@@ -13,6 +13,10 @@ class ITableExtractor(ABC):
     """Contract for services that extract raw table rows from classified pages."""
 
     @abstractmethod
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Extract tables for every classified report in a company context."""
+
+    @abstractmethod
     def extract_tables_for_context(self, context: CompanyContext) -> CompanyContext:
         """Extract tables for every classified report in a company context."""
 

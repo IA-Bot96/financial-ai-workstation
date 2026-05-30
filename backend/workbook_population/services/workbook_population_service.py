@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ocr_engine.models.insights_extraction import Insight
 from shared.models.metric_value import MetricValue
@@ -30,6 +31,9 @@ from workbook_population.services.template_structure_validator import (
 )
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from shared.models.company_context import CompanyContext
 
 
 class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
@@ -136,6 +140,23 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
             metrics_written=metrics_written,
             warnings=warnings,
         )
+
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Generate the workbook from consolidated context data."""
+
+        insights = [
+            insight
+            for insights_result in context.insights_results.values()
+            for insight in insights_result.insights
+        ]
+        workbook_result = self.generate_workbook(
+            metric_values=context.metric_values,
+            insights=insights,
+            template_path=context.workbook_template_path,
+        )
+        context.workbook_result = workbook_result
+        context.generated_workbook = workbook_result
+        return context
 
     @staticmethod
     def _validate_inputs(metric_values: list[MetricValue]) -> None:

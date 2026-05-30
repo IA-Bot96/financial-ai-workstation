@@ -11,7 +11,10 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ocr_engine.models.insights_extraction import Insight
+from ocr_engine.models.table_normalization import NormalizationResult
+from shared.models.company_context import CompanyContext
 from shared.models.metric_value import MetricValue
+from shared.models.report import Report
 from workbook_population.services.workbook_population_service import (
     OpenPyXLWorkbookPopulationService,
 )
@@ -37,6 +40,16 @@ def _insight() -> Insight:
         source_section="Business Review",
         page_number=84,
         confidence=0.9,
+    )
+
+
+def _report(year: int) -> Report:
+    return Report(
+        id=f"rpt_{year}",
+        company_name="Maple Leaf Cement Factory Limited",
+        year=year,
+        file_name=f"MLCF_{year}_Annual_Report.pdf",
+        file_path=f"/reports/MLCF_{year}_Annual_Report.pdf",
     )
 
 
@@ -112,3 +125,23 @@ def test_workbook_population_rejects_duplicate_metric_years(tmp_path: Path) -> N
             insights=[],
             template_path=None,
         )
+
+
+def test_workbook_population_process_sets_generated_workbook(tmp_path: Path) -> None:
+    service = OpenPyXLWorkbookPopulationService(
+        output_dir=tmp_path,
+        output_file_name="context_model.xlsx",
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[_report(2025)],
+        normalization_results={2025: NormalizationResult(tables=[])},
+        metric_values=[_metric_value("revenue", 2025, 1000)],
+    )
+
+    result = service.process(context)
+
+    assert result is context
+    assert context.generated_workbook is not None
+    assert context.workbook_result == context.generated_workbook
+    assert context.generated_workbook.output_file_path.endswith("context_model.xlsx")

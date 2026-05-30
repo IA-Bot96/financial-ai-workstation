@@ -100,6 +100,11 @@ class TableTransformerDetector(ITableDetector):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run table detection as a pipeline layer."""
+
+        return self.detect_tables_for_context(context)
+
     def detect_tables(self, pdf_path: str, year: int) -> TableDetectionResult:
         """Return page-level table detection metadata for a PDF."""
 

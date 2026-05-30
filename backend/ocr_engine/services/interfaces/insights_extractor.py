@@ -11,6 +11,10 @@ class IInsightsExtractor(ABC):
     """Contract for extracting business insights from annual-report narratives."""
 
     @abstractmethod
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Extract insights for every report in a company context."""
+
+    @abstractmethod
     def extract_insights_for_context(self, context: CompanyContext) -> CompanyContext:
         """Extract insights for every report in a company context."""
 

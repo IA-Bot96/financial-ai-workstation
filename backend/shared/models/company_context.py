@@ -10,8 +10,12 @@ from ocr_engine.models.table_detection_result import TableDetectionResult
 from ocr_engine.models.table_extraction import TableExtractionResult
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.models.validation_result import ValidationResult
+from ocr_engine.pipeline.models.layer_execution_result import LayerExecutionResult
+from ocr_engine.pipeline.models.pipeline_error import PipelineError
+from ocr_engine.pipeline.models.pipeline_status import PipelineStatus
 from shared.models.metric_value import MetricValue
 from shared.models.report import Report
+from workbook_population.models.workbook_result import WorkbookResult
 
 
 class CompanyContext(BaseModel):
@@ -39,6 +43,12 @@ class CompanyContext(BaseModel):
                     "normalization_results": {},
                     "insights_results": {},
                     "metric_values": [],
+                    "workbook_template_path": None,
+                    "workbook_result": None,
+                    "generated_workbook": None,
+                    "pipeline_status": "pending",
+                    "pipeline_errors": [],
+                    "execution_results": [],
                 }
             ]
         },
@@ -84,6 +94,35 @@ class CompanyContext(BaseModel):
             "Consolidated financial metric values used by Excel population, "
             "trend analysis, querying, forecasting, charting, and copilots."
         ),
+    )
+    workbook_template_path: str | None = Field(
+        default=None,
+        description="Optional accountant-built Excel template path for workbook population.",
+        examples=["/templates/MLCF_Template.xlsx"],
+    )
+    workbook_result: WorkbookResult | None = Field(
+        default=None,
+        description="Workbook population layer output retained for backward compatibility.",
+    )
+    generated_workbook: WorkbookResult | None = Field(
+        default=None,
+        description=(
+            "Final generated Excel workbook metadata exposed to Electron, "
+            "FastAPI, Query Engine, and future services."
+        ),
+    )
+    pipeline_status: PipelineStatus = Field(
+        default=PipelineStatus.PENDING,
+        description="Current lifecycle status of the OCR pipeline.",
+        examples=[PipelineStatus.PENDING],
+    )
+    pipeline_errors: list[PipelineError] = Field(
+        default_factory=list,
+        description="Errors captured from failed OCR pipeline layers.",
+    )
+    execution_results: list[LayerExecutionResult] = Field(
+        default_factory=list,
+        description="Execution timing and success telemetry for OCR pipeline layers.",
     )
 
     @model_validator(mode="after")

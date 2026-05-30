@@ -146,6 +146,11 @@ class OpenAITableClassifier(ITableClassifier):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run financial table classification as a pipeline layer."""
+
+        return self.classify_tables_for_context(context)
+
     def classify_tables(
         self,
         pdf_path: str,

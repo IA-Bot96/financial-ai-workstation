@@ -49,3 +49,8 @@ class FinancialYearConsolidator:
         ]
         context.metric_values = self.consolidate(metric_values)
         return context
+
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run financial year consolidation as a pipeline layer."""
+
+        return self.consolidate_context(context)

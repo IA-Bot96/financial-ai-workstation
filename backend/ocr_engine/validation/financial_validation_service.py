@@ -113,6 +113,11 @@ class FinancialValidationService(IValidationService):
         )
         return context
 
+    def process(self, context: CompanyContext) -> CompanyContext:
+        """Run financial validation as a pipeline layer."""
+
+        return self.validate_for_context(context)
+
     def validate(
         self,
         classification_result: FinancialTableClassificationResult,

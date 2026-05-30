@@ -16,6 +16,8 @@ from ocr_engine.constants.detection_constants import (
 )
 from ocr_engine.services.interfaces.table_detector import ITableDetector
 from ocr_engine.services.table_transformer_detector import TableTransformerDetector
+from shared.models.company_context import CompanyContext
+from shared.models.report import Report
 
 
 class FakeImage:
@@ -139,15 +141,17 @@ def test_detect_tables_returns_pages_with_detections_without_duplicates() -> Non
         torch_module=FakeTorch(),
     )
 
-    result = detector.detect_tables("annual_report.pdf")
+    result = detector.detect_tables("annual_report.pdf", year=2024)
 
     assert result.model_dump() == {
         "detected_pages": [
             {
+                "year": 2024,
                 "page_number": 1,
                 "tables_detected": 1,
             },
             {
+                "year": 2024,
                 "page_number": 3,
                 "tables_detected": 2,
             },
@@ -156,6 +160,78 @@ def test_detect_tables_returns_pages_with_detections_without_duplicates() -> Non
     }
     assert processor.thresholds == [0.93, 0.93, 0.93]
     assert document.closed is True
+
+
+def test_detect_tables_for_context_stores_results_by_report_year() -> None:
+    documents = {
+        "reports/MLCF_2023.pdf": FakeDocument(2),
+        "reports/MLCF_2024.pdf": FakeDocument(1),
+    }
+    processor = FakeProcessor(
+        [
+            {"scores": [0.96]},
+            {"scores": []},
+            {"scores": [0.91, 0.92]},
+        ]
+    )
+
+    detector = TableTransformerDetector(
+        processor=processor,
+        model=FakeModel(),
+        pdf_loader=lambda pdf_path: documents[pdf_path],
+        page_renderer=lambda document, page_index: FakeImage(),
+        torch_module=FakeTorch(),
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[
+            Report(
+                id="rpt_2023_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2023,
+                file_name="MLCF_2023_Annual_Report.pdf",
+                file_path="reports/MLCF_2023.pdf",
+            ),
+            Report(
+                id="rpt_2024_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="reports/MLCF_2024.pdf",
+            ),
+        ],
+    )
+
+    updated_context = detector.detect_tables_for_context(context)
+
+    assert updated_context is context
+    assert set(context.table_detection_results) == {2023, 2024}
+    assert context.table_detection_results[2023].model_dump() == {
+        "detected_pages": [
+            {
+                "year": 2023,
+                "page_number": 1,
+                "tables_detected": 1,
+            }
+        ],
+        "total_pages_processed": 2,
+    }
+    assert context.table_detection_results[2024].model_dump() == {
+        "detected_pages": [
+            {
+                "year": 2024,
+                "page_number": 1,
+                "tables_detected": 2,
+            }
+        ],
+        "total_pages_processed": 1,
+    }
+    assert (
+        context.table_detection_results[2023]
+        is not context.table_detection_results[2024]
+    )
+    assert documents["reports/MLCF_2023.pdf"].closed is True
+    assert documents["reports/MLCF_2024.pdf"].closed is True
 
 
 def test_detect_tables_skips_corrupted_pages_and_continues(
@@ -182,14 +258,16 @@ def test_detect_tables_skips_corrupted_pages_and_continues(
     )
 
     with caplog.at_level(logging.INFO):
-        result = detector.detect_tables("annual_report.pdf")
+        result = detector.detect_tables("annual_report.pdf", year=2024)
 
     assert result.model_dump()["detected_pages"] == [
         {
+            "year": 2024,
             "page_number": 1,
             "tables_detected": 1,
         },
         {
+            "year": 2024,
             "page_number": 3,
             "tables_detected": 1,
         },
@@ -211,4 +289,4 @@ def test_detect_tables_raises_when_pdf_cannot_be_opened() -> None:
     )
 
     with pytest.raises(FileNotFoundError):
-        detector.detect_tables("missing.pdf")
+        detector.detect_tables("missing.pdf", year=2024)

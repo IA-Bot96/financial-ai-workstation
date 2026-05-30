@@ -15,21 +15,24 @@ from ocr_engine.models.source_reference import SourceReference
 
 def test_source_reference_accepts_valid_payload() -> None:
     source = SourceReference(
+        year=2024,
         section="Management Discussion & Analysis",
-        page=84,
+        page_number=84,
     )
 
     assert source.model_dump() == {
+        "year": 2024,
         "section": "Management Discussion & Analysis",
-        "page": 84,
+        "page_number": 84,
     }
 
 
 def test_source_reference_requires_positive_page() -> None:
     with pytest.raises(ValidationError) as exc_info:
         SourceReference(
+            year=2024,
             section="Management Discussion & Analysis",
-            page=0,
+            page_number=0,
         )
 
     assert exc_info.value.errors()[0]["type"] == "greater_than"
@@ -38,8 +41,9 @@ def test_source_reference_requires_positive_page() -> None:
 def test_source_reference_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         SourceReference(
+            year=2024,
             section="Management Discussion & Analysis",
-            page=84,
+            page_number=84,
             paragraph=3,
         )
 

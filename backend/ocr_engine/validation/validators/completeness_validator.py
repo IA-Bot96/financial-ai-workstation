@@ -96,6 +96,7 @@ class CompletenessValidator(RuleValidator):
 
             issues.append(
                 make_issue(
+                    year=context.primary_year,
                     rule_name=rule_name,
                     expected="section present",
                     actual="section missing",

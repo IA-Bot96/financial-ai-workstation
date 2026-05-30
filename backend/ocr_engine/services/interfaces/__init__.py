@@ -3,6 +3,7 @@
 from .table_classifier import ITableClassifier
 from .table_detector import ITableDetector
 from .table_extractor import ITableExtractor
+from .table_metric_normalizer import ITableMetricNormalizer
 from .insights_extractor import IInsightsExtractor
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "ITableClassifier",
     "ITableDetector",
     "ITableExtractor",
+    "ITableMetricNormalizer",
 ]

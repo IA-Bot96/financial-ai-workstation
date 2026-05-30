@@ -54,6 +54,7 @@ class ChunkRanker:
                 page_number=chunk.page_number,
                 source_section=chunk.source_section,
                 text=chunk.text,
+                year=chunk.year,
                 score=self._score_chunk(chunk, metric_context),
             )
             for chunk in chunks

@@ -16,6 +16,7 @@ class ExtractedTable(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "year": 2024,
                     "page_number": 20,
                     "table_type": "balance_sheet",
                     "table_index": 0,
@@ -28,6 +29,12 @@ class ExtractedTable(BaseModel):
         },
     )
 
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year for the source annual report.",
+        examples=[2024],
+    )
     page_number: int = Field(
         ...,
         gt=0,
@@ -67,6 +74,7 @@ class TableExtractionResult(BaseModel):
                 {
                     "tables": [
                         {
+                            "year": 2024,
                             "page_number": 20,
                             "table_type": "balance_sheet",
                             "table_index": 0,

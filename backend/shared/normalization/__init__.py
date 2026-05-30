@@ -1,6 +1,6 @@
 """Shared deterministic metric normalization module."""
 
-from .models.normalized_metric import NormalizedMetric
+from .models.normalized_metric import MetricMapping, NormalizedMetric
 from .services.metric_normalizer import EmbeddingMetricNormalizer
 
-__all__ = ["EmbeddingMetricNormalizer", "NormalizedMetric"]
+__all__ = ["EmbeddingMetricNormalizer", "MetricMapping", "NormalizedMetric"]

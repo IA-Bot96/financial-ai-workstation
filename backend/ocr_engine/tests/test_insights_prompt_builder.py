@@ -24,9 +24,11 @@ def test_insights_prompt_builder_includes_source_and_metric_context() -> None:
             )
         ],
         metric_context=("revenue", "finance_cost"),
+        report_year=2024,
     )
 
     assert messages[0]["role"] == "system"
     assert "JSON only" in messages[0]["content"]
     assert "page_number: 84" in messages[1]["content"]
+    assert "year: 2024" in messages[1]["content"]
     assert "finance_cost" in messages[1]["content"]

@@ -394,6 +394,7 @@ class MetricObservation:
     """A normalized metric value parsed from one extracted table row."""
 
     metric_name: str
+    year: int
     label: str
     value: float
     values: tuple[float, ...]
@@ -406,7 +407,7 @@ class MetricObservation:
     def source_id(self) -> str:
         """Return a stable source identifier for logging and debugging."""
 
-        return f"p{self.page_number}:t{self.table_index}:r{self.row_index}"
+        return f"y{self.year}:p{self.page_number}:t{self.table_index}:r{self.row_index}"
 
 
 @dataclass(frozen=True)
@@ -424,10 +425,20 @@ class ValidationContext:
     classification_result: FinancialTableClassificationResult
     table_extraction_result: TableExtractionResult
     observations: tuple[MetricObservation, ...]
-    table_dataframes: Mapping[tuple[int, int], pd.DataFrame]
-    labels_by_table: Mapping[tuple[int, int], tuple[str, ...]]
-    year_sequences_by_table: Mapping[tuple[int, int], tuple[tuple[int, ...], ...]]
-    tables_by_key: Mapping[tuple[int, int], ExtractedTable]
+    table_dataframes: Mapping[tuple[int, int, int], pd.DataFrame]
+    labels_by_table: Mapping[tuple[int, int, int], tuple[str, ...]]
+    year_sequences_by_table: Mapping[tuple[int, int, int], tuple[tuple[int, ...], ...]]
+    tables_by_key: Mapping[tuple[int, int, int], ExtractedTable]
+
+    @property
+    def primary_year(self) -> int:
+        """Return the report year represented by this validation context."""
+
+        if self.table_extraction_result.tables:
+            return self.table_extraction_result.tables[0].year
+        if self.classification_result.page_table_types:
+            return self.classification_result.page_table_types[0].year
+        return 1900
 
     def observations_for(
         self,
@@ -500,13 +511,13 @@ def build_validation_context(
     """Parse extracted table rows into canonical metric observations."""
 
     observations: list[MetricObservation] = []
-    table_dataframes: dict[tuple[int, int], pd.DataFrame] = {}
-    labels_by_table: dict[tuple[int, int], tuple[str, ...]] = {}
-    year_sequences_by_table: dict[tuple[int, int], tuple[tuple[int, ...], ...]] = {}
-    tables_by_key: dict[tuple[int, int], ExtractedTable] = {}
+    table_dataframes: dict[tuple[int, int, int], pd.DataFrame] = {}
+    labels_by_table: dict[tuple[int, int, int], tuple[str, ...]] = {}
+    year_sequences_by_table: dict[tuple[int, int, int], tuple[tuple[int, ...], ...]] = {}
+    tables_by_key: dict[tuple[int, int, int], ExtractedTable] = {}
 
     for table in table_extraction_result.tables:
-        key = (table.page_number, table.table_index)
+        key = (table.year, table.page_number, table.table_index)
         table_dataframes[key] = pd.DataFrame(table.rows)
         tables_by_key[key] = table
 
@@ -535,6 +546,7 @@ def build_validation_context(
             observations.append(
                 MetricObservation(
                     metric_name=metric_name,
+                    year=table.year,
                     label=label,
                     value=values[0],
                     values=tuple(values),
@@ -594,6 +606,7 @@ def validate_arithmetic_rule(
         return None
 
     return make_issue(
+        year=context.primary_year,
         rule_name=rule_name,
         expected=round_number(expected),
         actual=round_number(actual),
@@ -622,6 +635,7 @@ def validate_ratio_rule(
 
     if denominator == 0:
         return make_issue(
+            year=context.primary_year,
             rule_name=rule_name,
             expected="non-zero denominator",
             actual=0.0,
@@ -640,6 +654,7 @@ def validate_ratio_rule(
         return None
 
     return make_issue(
+        year=context.primary_year,
         rule_name=rule_name,
         expected=round_number(expected),
         actual=round_number(actual),
@@ -655,6 +670,7 @@ def metric_value(context: ValidationContext, metric_ref: MetricRef) -> float | N
 
 
 def make_issue(
+    year: int,
     rule_name: str,
     expected: float | str | None,
     actual: float | str | None,
@@ -664,6 +680,7 @@ def make_issue(
     """Create a validation issue with normalized severity."""
 
     return ValidationIssue(
+        year=year,
         rule_name=rule_name,
         expected=expected,
         actual=actual,

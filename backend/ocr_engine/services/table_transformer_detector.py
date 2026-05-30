@@ -12,6 +12,7 @@ from ocr_engine.constants.detection_constants import (
 )
 from ocr_engine.models.table_detection_result import DetectedPage, TableDetectionResult
 from ocr_engine.services.interfaces.table_detector import ITableDetector
+from shared.models.company_context import CompanyContext
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,47 @@ class TableTransformerDetector(ITableDetector):
         self._model = model
         self._prepare_model()
 
-    def detect_tables(self, pdf_path: str) -> TableDetectionResult:
+    def detect_tables_for_context(self, context: CompanyContext) -> CompanyContext:
+        """Detect table pages for every report and store results by report year.
+
+        Each annual report is processed independently and written to
+        ``context.table_detection_results[report.year]``. Results from different
+        years are never combined.
+        """
+
+        self._logger.info(
+            "Starting table detection for company context",
+            extra={
+                "company_name": context.company_name,
+                "report_years": [report.year for report in context.reports],
+            },
+        )
+
+        for report in context.reports:
+            self._logger.info(
+                "Detecting tables for report year %s",
+                report.year,
+                extra={
+                    "company_name": context.company_name,
+                    "year": report.year,
+                    "file_path": report.file_path,
+                },
+            )
+            context.table_detection_results[report.year] = self.detect_tables(
+                report.file_path,
+                year=report.year,
+            )
+
+        self._logger.info(
+            "Company context table detection complete",
+            extra={
+                "company_name": context.company_name,
+                "result_years": sorted(context.table_detection_results),
+            },
+        )
+        return context
+
+    def detect_tables(self, pdf_path: str, year: int) -> TableDetectionResult:
         """Return page-level table detection metadata for a PDF."""
 
         detected_pages: dict[int, int] = {}
@@ -116,6 +157,7 @@ class TableTransformerDetector(ITableDetector):
         result = TableDetectionResult(
             detected_pages=[
                 DetectedPage(
+                    year=year,
                     page_number=page_number,
                     tables_detected=tables_detected,
                 )

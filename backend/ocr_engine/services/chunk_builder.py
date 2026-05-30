@@ -19,6 +19,7 @@ class NarrativeChunk:
     page_number: int
     source_section: str
     text: str
+    year: int | None = None
     score: float = 0.0
 
 

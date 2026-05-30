@@ -15,6 +15,7 @@ from ocr_engine.validation.scoring.validation_score_calculator import (
 
 def _issue(severity: str) -> ValidationIssue:
     return ValidationIssue(
+        year=2024,
         rule_name=f"{severity}_rule",
         expected="ok",
         actual="bad",

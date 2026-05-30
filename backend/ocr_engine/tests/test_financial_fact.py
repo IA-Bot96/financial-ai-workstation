@@ -15,37 +15,41 @@ from ocr_engine.models.financial_fact_extraction import FinancialFact
 
 def test_financial_fact_accepts_numeric_value() -> None:
     fact = FinancialFact(
-        name="Revenue",
+        year=2024,
+        metric="revenue",
         value=1200000,
-        page=20,
+        page_number=20,
         table_type="income_statement",
     )
 
     assert fact.model_dump() == {
-        "name": "Revenue",
+        "year": 2024,
+        "metric": "revenue",
         "value": 1200000,
-        "page": 20,
+        "page_number": 20,
         "table_type": "income_statement",
     }
 
 
 def test_financial_fact_accepts_text_value() -> None:
     fact = FinancialFact(
-        name="Net profit margin",
+        year=2024,
+        metric="net_profit_margin",
         value="12.5%",
-        page=21,
+        page_number=21,
         table_type="income_statement",
     )
 
     assert fact.value == "12.5%"
 
 
-@pytest.mark.parametrize("field_name", ["name", "table_type"])
+@pytest.mark.parametrize("field_name", ["metric", "table_type"])
 def test_financial_fact_requires_non_empty_text_fields(field_name: str) -> None:
     payload = {
-        "name": "Revenue",
+        "year": 2024,
+        "metric": "revenue",
         "value": 1200000,
-        "page": 20,
+        "page_number": 20,
         "table_type": "income_statement",
     }
     payload[field_name] = ""
@@ -59,9 +63,10 @@ def test_financial_fact_requires_non_empty_text_fields(field_name: str) -> None:
 def test_financial_fact_requires_positive_page() -> None:
     with pytest.raises(ValidationError) as exc_info:
         FinancialFact(
-            name="Revenue",
+            year=2024,
+            metric="revenue",
             value=1200000,
-            page=0,
+            page_number=0,
             table_type="income_statement",
         )
 
@@ -71,9 +76,10 @@ def test_financial_fact_requires_positive_page() -> None:
 def test_financial_fact_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         FinancialFact(
-            name="Revenue",
+            year=2024,
+            metric="revenue",
             value=1200000,
-            page=20,
+            page_number=20,
             table_type="income_statement",
             normalized_name="revenue",
         )

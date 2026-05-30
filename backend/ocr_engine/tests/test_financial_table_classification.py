@@ -18,6 +18,7 @@ from ocr_engine.models.financial_table_classification import (
 
 def test_page_table_type_accepts_valid_payload() -> None:
     page_table_type = PageTableType(
+        year=2024,
         page_number=20,
         table_types=["balance_sheet", "debt_schedule"],
     )
@@ -28,6 +29,7 @@ def test_page_table_type_accepts_valid_payload() -> None:
 
 def test_page_table_type_accepts_unknown_table_types() -> None:
     page_table_type = PageTableType(
+        year=2024,
         page_number=72,
         table_types=["regulatory_capital_adequacy_note"],
     )
@@ -38,6 +40,7 @@ def test_page_table_type_accepts_unknown_table_types() -> None:
 def test_page_table_type_requires_positive_page_number() -> None:
     with pytest.raises(ValidationError) as exc_info:
         PageTableType(
+            year=2024,
             page_number=0,
             table_types=["income_statement"],
         )
@@ -48,6 +51,7 @@ def test_page_table_type_requires_positive_page_number() -> None:
 def test_page_table_type_rejects_empty_table_type() -> None:
     with pytest.raises(ValidationError) as exc_info:
         PageTableType(
+            year=2024,
             page_number=25,
             table_types=[""],
         )
@@ -58,6 +62,7 @@ def test_page_table_type_rejects_empty_table_type() -> None:
 def test_page_table_type_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         PageTableType(
+            year=2024,
             page_number=20,
             table_types=["balance_sheet"],
             extraction_status="pending",
@@ -70,10 +75,12 @@ def test_financial_table_classification_result_serializes_expected_output() -> N
     result = FinancialTableClassificationResult(
         page_table_types=[
             PageTableType(
+                year=2024,
                 page_number=20,
                 table_types=["balance_sheet", "debt_schedule"],
             ),
             PageTableType(
+                year=2024,
                 page_number=25,
                 table_types=["income_statement"],
             ),
@@ -83,10 +90,12 @@ def test_financial_table_classification_result_serializes_expected_output() -> N
     assert result.model_dump() == {
         "page_table_types": [
             {
+                "year": 2024,
                 "page_number": 20,
                 "table_types": ["balance_sheet", "debt_schedule"],
             },
             {
+                "year": 2024,
                 "page_number": 25,
                 "table_types": ["income_statement"],
             },

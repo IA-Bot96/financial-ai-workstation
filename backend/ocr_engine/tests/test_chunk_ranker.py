@@ -16,6 +16,7 @@ def _normalization_result() -> NormalizationResult:
     return NormalizationResult(
         tables=[
             NormalizedTable(
+                year=2024,
                 page_number=20,
                 table_type="income_statement",
                 table_index=0,

@@ -15,6 +15,7 @@ from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionRe
 
 def test_extracted_table_accepts_valid_payload() -> None:
     table = ExtractedTable(
+        year=2024,
         page_number=20,
         table_type="balance_sheet",
         table_index=0,
@@ -32,6 +33,7 @@ def test_extracted_table_accepts_valid_payload() -> None:
 
 def test_extracted_table_allows_empty_rows() -> None:
     table = ExtractedTable(
+        year=2024,
         page_number=72,
         table_type="property_plant_equipment_note",
         table_index=0,
@@ -44,6 +46,7 @@ def test_extracted_table_allows_empty_rows() -> None:
 def test_extracted_table_requires_positive_page() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
+            year=2024,
             page_number=0,
             table_type="income_statement",
             table_index=0,
@@ -56,6 +59,7 @@ def test_extracted_table_requires_positive_page() -> None:
 def test_extracted_table_requires_non_negative_table_index() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
+            year=2024,
             page_number=20,
             table_type="balance_sheet",
             table_index=-1,
@@ -68,6 +72,7 @@ def test_extracted_table_requires_non_negative_table_index() -> None:
 def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
+            year=2024,
             page_number=20,
             table_type="balance_sheet",
             table_index=0,
@@ -80,6 +85,7 @@ def test_extracted_table_requires_rows_as_lists_of_strings() -> None:
 def test_extracted_table_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ExtractedTable(
+            year=2024,
             page_number=20,
             table_type="balance_sheet",
             table_index=0,
@@ -94,6 +100,7 @@ def test_table_extraction_result_serializes_expected_output() -> None:
     result = TableExtractionResult(
         tables=[
             ExtractedTable(
+                year=2024,
                 page_number=20,
                 table_type="balance_sheet",
                 table_index=0,
@@ -108,6 +115,7 @@ def test_table_extraction_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "tables": [
             {
+                "year": 2024,
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,

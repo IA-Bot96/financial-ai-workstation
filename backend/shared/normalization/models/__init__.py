@@ -1,5 +1,5 @@
 """Models for shared metric normalization."""
 
-from .normalized_metric import NormalizedMetric
+from .normalized_metric import MetricMapping, NormalizedMetric
 
-__all__ = ["NormalizedMetric"]
+__all__ = ["MetricMapping", "NormalizedMetric"]

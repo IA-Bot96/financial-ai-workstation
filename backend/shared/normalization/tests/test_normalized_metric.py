@@ -10,7 +10,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[3]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from shared.normalization.models.normalized_metric import NormalizedMetric
+from shared.normalization.models.normalized_metric import MetricMapping, NormalizedMetric
 
 
 def test_normalized_metric_accepts_valid_payload() -> None:
@@ -64,3 +64,21 @@ def test_normalized_metric_forbids_extra_fields() -> None:
         )
 
     assert exc_info.value.errors()[0]["type"] == "extra_forbidden"
+
+
+def test_metric_mapping_preserves_report_year() -> None:
+    mapping = MetricMapping(
+        year=2024,
+        original_metric="Net Sales",
+        normalized_metric="revenue",
+        confidence=0.96,
+        requires_review=False,
+    )
+
+    assert mapping.model_dump() == {
+        "year": 2024,
+        "original_metric": "Net Sales",
+        "normalized_metric": "revenue",
+        "confidence": 0.96,
+        "requires_review": False,
+    }

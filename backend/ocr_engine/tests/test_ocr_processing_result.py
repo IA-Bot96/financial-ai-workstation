@@ -23,16 +23,18 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
     result = OCRProcessingResult(
         report=Report(
             id="rpt_001",
-            file_name="MLCF_2024_Annual_Report.pdf",
-            company="Maple Leaf Cement Factory Limited",
+            company_name="Maple Leaf Cement Factory Limited",
             year=2024,
+            file_name="MLCF_2024_Annual_Report.pdf",
+            file_path="/reports/MLCF_2024_Annual_Report.pdf",
         ),
         financial_facts=FinancialFactExtractionResult(
             facts=[
                 FinancialFact(
-                    name="Revenue",
+                    year=2024,
+                    metric="revenue",
                     value=1200000,
-                    page=20,
+                    page_number=20,
                     table_type="income_statement",
                 )
             ]
@@ -40,6 +42,7 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
         insights=InsightsExtractionResult(
             insights=[
                 Insight(
+                    year=2024,
                     area="Debt",
                     takeaway=(
                         "Debt increased due to Southeast Asia expansion "
@@ -56,16 +59,18 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "report": {
             "id": "rpt_001",
-            "file_name": "MLCF_2024_Annual_Report.pdf",
-            "company": "Maple Leaf Cement Factory Limited",
+            "company_name": "Maple Leaf Cement Factory Limited",
             "year": 2024,
+            "file_name": "MLCF_2024_Annual_Report.pdf",
+            "file_path": "/reports/MLCF_2024_Annual_Report.pdf",
         },
         "financial_facts": {
             "facts": [
                 {
-                    "name": "Revenue",
+                    "year": 2024,
+                    "metric": "revenue",
                     "value": 1200000,
-                    "page": 20,
+                    "page_number": 20,
                     "table_type": "income_statement",
                 }
             ]
@@ -73,6 +78,7 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
         "insights": {
             "insights": [
                 {
+                    "year": 2024,
                     "area": "Debt",
                     "takeaway": (
                         "Debt increased due to Southeast Asia expansion "
@@ -92,9 +98,10 @@ def test_ocr_processing_result_forbids_extra_fields() -> None:
         OCRProcessingResult(
             report=Report(
                 id="rpt_001",
-                file_name="MLCF_2024_Annual_Report.pdf",
-                company="Maple Leaf Cement Factory Limited",
+                company_name="Maple Leaf Cement Factory Limited",
                 year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="/reports/MLCF_2024_Annual_Report.pdf",
             ),
             financial_facts=FinancialFactExtractionResult(facts=[]),
             insights=InsightsExtractionResult(insights=[]),

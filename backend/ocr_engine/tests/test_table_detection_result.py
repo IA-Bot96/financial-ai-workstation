@@ -15,10 +15,12 @@ from ocr_engine.models.table_detection_result import DetectedPage, TableDetectio
 
 def test_detected_page_accepts_valid_payload() -> None:
     detected_page = DetectedPage(
+        year=2024,
         page_number=20,
         tables_detected=3,
     )
 
+    assert detected_page.year == 2024
     assert detected_page.page_number == 20
     assert detected_page.tables_detected == 3
 
@@ -37,6 +39,7 @@ def test_detected_page_requires_positive_values(
 ) -> None:
     payload = {
         "page_number": 20,
+        "year": 2024,
         "tables_detected": 3,
     }
     payload[field_name] = value
@@ -51,6 +54,7 @@ def test_detected_page_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         DetectedPage(
             page_number=20,
+            year=2024,
             tables_detected=3,
             confidence=0.97,
         )
@@ -61,14 +65,15 @@ def test_detected_page_forbids_extra_fields() -> None:
 def test_table_detection_result_accepts_valid_payload() -> None:
     result = TableDetectionResult(
         detected_pages=[
-            DetectedPage(page_number=20, tables_detected=3),
-            DetectedPage(page_number=25, tables_detected=1),
-            DetectedPage(page_number=42, tables_detected=2),
+            DetectedPage(year=2024, page_number=20, tables_detected=3),
+            DetectedPage(year=2024, page_number=25, tables_detected=1),
+            DetectedPage(year=2024, page_number=42, tables_detected=2),
         ],
         total_pages_processed=132,
     )
 
     assert [page.page_number for page in result.detected_pages] == [20, 25, 42]
+    assert [page.year for page in result.detected_pages] == [2024, 2024, 2024]
     assert [page.tables_detected for page in result.detected_pages] == [3, 1, 2]
     assert result.total_pages_processed == 132
 
@@ -77,7 +82,7 @@ def test_table_detection_result_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         TableDetectionResult(
             detected_pages=[
-                DetectedPage(page_number=20, tables_detected=3),
+                DetectedPage(year=2024, page_number=20, tables_detected=3),
             ],
             total_pages_processed=132,
             extraction_status="pending",
@@ -90,7 +95,7 @@ def test_table_detection_result_requires_non_negative_pages_processed() -> None:
     with pytest.raises(ValidationError) as exc_info:
         TableDetectionResult(
             detected_pages=[
-                DetectedPage(page_number=20, tables_detected=3),
+                DetectedPage(year=2024, page_number=20, tables_detected=3),
             ],
             total_pages_processed=-1,
         )
@@ -101,9 +106,9 @@ def test_table_detection_result_requires_non_negative_pages_processed() -> None:
 def test_table_detection_result_serializes_to_expected_output() -> None:
     result = TableDetectionResult(
         detected_pages=[
-            DetectedPage(page_number=20, tables_detected=3),
-            DetectedPage(page_number=25, tables_detected=1),
-            DetectedPage(page_number=42, tables_detected=2),
+            DetectedPage(year=2024, page_number=20, tables_detected=3),
+            DetectedPage(year=2024, page_number=25, tables_detected=1),
+            DetectedPage(year=2024, page_number=42, tables_detected=2),
         ],
         total_pages_processed=132,
     )
@@ -111,14 +116,17 @@ def test_table_detection_result_serializes_to_expected_output() -> None:
     assert result.model_dump() == {
         "detected_pages": [
             {
+                "year": 2024,
                 "page_number": 20,
                 "tables_detected": 3,
             },
             {
+                "year": 2024,
                 "page_number": 25,
                 "tables_detected": 1,
             },
             {
+                "year": 2024,
                 "page_number": 42,
                 "tables_detected": 2,
             },

@@ -39,6 +39,7 @@ class OCRValidator(RuleValidator):
             table = context.tables_by_key[key]
             issues.append(
                 make_issue(
+                    year=table.year,
                     rule_name="duplicate_rows",
                     expected="unique row labels",
                     actual=", ".join(duplicates),
@@ -70,6 +71,7 @@ class OCRValidator(RuleValidator):
 
             issues.append(
                 make_issue(
+                    year=context.primary_year,
                     rule_name="missing_critical_metric",
                     expected=metric_name,
                     actual=None,
@@ -102,6 +104,7 @@ class OCRValidator(RuleValidator):
 
                 issues.append(
                     make_issue(
+                        year=observation.year,
                         rule_name="invalid_negative_value",
                         expected=f"{metric_name} >= 0",
                         actual=round_number(observation.value),
@@ -127,6 +130,7 @@ class OCRValidator(RuleValidator):
 
                 issues.append(
                     make_issue(
+                        year=table.year,
                         rule_name="year_ordering",
                         expected="descending years",
                         actual=", ".join(str(year) for year in years),

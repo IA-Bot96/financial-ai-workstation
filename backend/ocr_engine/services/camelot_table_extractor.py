@@ -11,6 +11,7 @@ from ocr_engine.models.financial_table_classification import (
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
+from shared.models.company_context import CompanyContext
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,53 @@ class CamelotTableExtractor(ITableExtractor):
         self._camelot_reader = camelot_reader or self._load_camelot_reader()
         self._pdfplumber_open = pdfplumber_open or self._load_pdfplumber_open()
         self._logger = log or logger
+
+    def extract_tables_for_context(self, context: CompanyContext) -> CompanyContext:
+        """Extract tables for each report and store results by report year.
+
+        The method reads ``context.classification_results[report.year]`` and
+        writes extracted tables to ``context.extraction_results[report.year]``.
+        Each annual report is processed independently.
+        """
+
+        self._logger.info(
+            "Starting table extraction for company context",
+            extra={
+                "company_name": context.company_name,
+                "report_years": [report.year for report in context.reports],
+            },
+        )
+
+        for report in context.reports:
+            classification_result = context.classification_results.get(report.year)
+            if classification_result is None:
+                raise ValueError(
+                    "Missing financial table classification result for report year "
+                    f"{report.year}."
+                )
+
+            self._logger.info(
+                "Extracting tables for report year %s",
+                report.year,
+                extra={
+                    "company_name": context.company_name,
+                    "year": report.year,
+                    "file_path": report.file_path,
+                },
+            )
+            context.extraction_results[report.year] = self.extract_tables(
+                pdf_path=report.file_path,
+                classification_result=classification_result,
+            )
+
+        self._logger.info(
+            "Company context table extraction complete",
+            extra={
+                "company_name": context.company_name,
+                "result_years": sorted(context.extraction_results),
+            },
+        )
+        return context
 
     def extract_tables(
         self,
@@ -141,6 +189,7 @@ class CamelotTableExtractor(ITableExtractor):
             table_type_index = min(index, len(page_table_type.table_types) - 1)
             extracted_tables.append(
                 ExtractedTable(
+                    year=page_table_type.year,
                     page_number=page_table_type.page_number,
                     table_type=page_table_type.table_types[table_type_index],
                     table_index=index,

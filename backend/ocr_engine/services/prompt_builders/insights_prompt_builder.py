@@ -10,6 +10,7 @@ class InsightsPromptBuilder:
         self,
         chunks: list[NarrativeChunk],
         metric_context: tuple[str, ...],
+        report_year: int,
     ) -> list[dict[str, str]]:
         """Build OpenAI messages from ranked chunks and financial context."""
 
@@ -19,6 +20,7 @@ class InsightsPromptBuilder:
                 f"Chunk {index}\n"
                 f"source_section: {chunk.source_section}\n"
                 f"page_number: {chunk.page_number}\n"
+                f"year: {chunk.year or report_year}\n"
                 f"text:\n{chunk.text}"
             )
             for index, chunk in enumerate(chunks, start=1)
@@ -51,6 +53,7 @@ class InsightsPromptBuilder:
                     '      "area": "...",\n'
                     '      "takeaway": "...",\n'
                     '      "source_section": "...",\n'
+                    f'      "year": {report_year},\n'
                     '      "page_number": 1,\n'
                     '      "confidence": 0.0\n'
                     "    }\n"

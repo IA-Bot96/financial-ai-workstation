@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class Insight(BaseModel):
     """Business insight extracted from narrative annual-report text.
 
-    This model preserves the extracted insight and its source location. It does
-    not perform forecasting, choose variables to track, generate analyst
-    recommendations, or validate the business claim.
+    The insight keeps report year and source location attached so multi-year
+    trend analysis, qualitative analysis, and Excel model population do not
+    need to infer year from external report lookup state.
     """
 
     model_config = ConfigDict(
@@ -16,16 +16,23 @@ class Insight(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "year": 2025,
                     "area": "Debt",
-                    "takeaway": "Debt increased due to Southeast Asia expansion financing.",
+                    "takeaway": "Borrowings increased to finance expansion.",
                     "source_section": "Management Discussion & Analysis",
                     "page_number": 84,
-                    "confidence": 0.91,
+                    "confidence": 0.93,
                 }
             ]
         },
     )
 
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year from which the insight originated.",
+        examples=[2025],
+    )
     area: str = Field(
         ...,
         min_length=1,
@@ -36,7 +43,7 @@ class Insight(BaseModel):
         ...,
         min_length=1,
         description="Concise extracted business insight from the report text.",
-        examples=["Debt increased due to Southeast Asia expansion financing."],
+        examples=["Borrowings increased to finance expansion."],
     )
     source_section: str = Field(
         ...,
@@ -55,7 +62,7 @@ class Insight(BaseModel):
         ge=0,
         le=1,
         description="Confidence score for the extracted insight.",
-        examples=[0.91],
+        examples=[0.93],
     )
 
 
@@ -69,24 +76,23 @@ class InsightsExtractionResult(BaseModel):
                 {
                     "insights": [
                         {
+                            "year": 2025,
                             "area": "Debt",
-                            "takeaway": (
-                                "Debt increased due to Southeast Asia expansion "
-                                "financing."
-                            ),
+                            "takeaway": "Borrowings increased to finance expansion.",
                             "source_section": "Management Discussion & Analysis",
                             "page_number": 84,
-                            "confidence": 0.91,
+                            "confidence": 0.93,
                         },
                         {
-                            "area": "Geographic Expansion",
+                            "year": 2025,
+                            "area": "Exports",
                             "takeaway": (
-                                "The company plans to expand into Africa and the "
-                                "Middle East."
+                                "Export sales increased due to Middle East "
+                                "expansion."
                             ),
-                            "source_section": "Risks & Opportunities",
+                            "source_section": "Business Review",
                             "page_number": 92,
-                            "confidence": 0.88,
+                            "confidence": 0.9,
                         },
                     ]
                 }

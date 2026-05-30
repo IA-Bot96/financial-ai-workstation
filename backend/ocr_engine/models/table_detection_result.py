@@ -11,6 +11,7 @@ class DetectedPage(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "year": 2024,
                     "page_number": 20,
                     "tables_detected": 3,
                 }
@@ -18,6 +19,12 @@ class DetectedPage(BaseModel):
         },
     )
 
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year for the source annual report.",
+        examples=[2024],
+    )
     page_number: int = Field(
         ...,
         gt=0,
@@ -47,14 +54,17 @@ class TableDetectionResult(BaseModel):
                 {
                     "detected_pages": [
                         {
+                            "year": 2024,
                             "page_number": 20,
                             "tables_detected": 3,
                         },
                         {
+                            "year": 2024,
                             "page_number": 25,
                             "tables_detected": 1,
                         },
                         {
+                            "year": 2024,
                             "page_number": 42,
                             "tables_detected": 2,
                         },
@@ -71,10 +81,12 @@ class TableDetectionResult(BaseModel):
         examples=[
             [
                 {
+                    "year": 2024,
                     "page_number": 20,
                     "tables_detected": 3,
                 },
                 {
+                    "year": 2024,
                     "page_number": 25,
                     "tables_detected": 1,
                 },

@@ -15,6 +15,7 @@ from ocr_engine.models.insights_extraction import Insight, InsightsExtractionRes
 
 def test_insight_accepts_valid_payload() -> None:
     insight = Insight(
+        year=2024,
         area="Debt",
         takeaway="Debt increased due to Southeast Asia expansion financing.",
         source_section="Management Discussion & Analysis",
@@ -23,6 +24,7 @@ def test_insight_accepts_valid_payload() -> None:
     )
 
     assert insight.area == "Debt"
+    assert insight.year == 2024
     assert insight.takeaway == "Debt increased due to Southeast Asia expansion financing."
     assert insight.source_section == "Management Discussion & Analysis"
     assert insight.page_number == 84
@@ -31,6 +33,7 @@ def test_insight_accepts_valid_payload() -> None:
 
 def test_insight_accepts_generic_business_area() -> None:
     insight = Insight(
+        year=2024,
         area="ESG Initiatives",
         takeaway="The company expanded its renewable energy sourcing program.",
         source_section="Sustainability",
@@ -44,6 +47,7 @@ def test_insight_accepts_generic_business_area() -> None:
 def test_insight_requires_positive_page() -> None:
     with pytest.raises(ValidationError) as exc_info:
         Insight(
+            year=2024,
             area="Debt",
             takeaway="Debt increased during the reporting period.",
             source_section="Management Discussion & Analysis",
@@ -57,6 +61,7 @@ def test_insight_requires_positive_page() -> None:
 def test_insight_requires_confidence_between_zero_and_one() -> None:
     with pytest.raises(ValidationError) as exc_info:
         Insight(
+            year=2024,
             area="Debt",
             takeaway="Debt increased during the reporting period.",
             source_section="Management Discussion & Analysis",
@@ -71,6 +76,7 @@ def test_insight_requires_confidence_between_zero_and_one() -> None:
 def test_insight_requires_non_empty_text_fields(field_name: str) -> None:
     payload = {
         "area": "Debt",
+        "year": 2024,
         "takeaway": "Debt increased during the reporting period.",
         "source_section": "Management Discussion & Analysis",
         "page_number": 84,
@@ -87,6 +93,7 @@ def test_insight_requires_non_empty_text_fields(field_name: str) -> None:
 def test_insight_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         Insight(
+            year=2024,
             area="Cost Pressures",
             takeaway="Input costs increased due to higher freight rates.",
             source_section="Operating Review",
@@ -102,6 +109,7 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
     result = InsightsExtractionResult(
         insights=[
             Insight(
+                year=2024,
                 area="Debt",
                 takeaway="Debt increased due to Southeast Asia expansion financing.",
                 source_section="Management Discussion & Analysis",
@@ -109,6 +117,7 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 confidence=0.91,
             ),
             Insight(
+                year=2024,
                 area="Geographic Expansion",
                 takeaway="The company plans to expand into Africa and the Middle East.",
                 source_section="Risks & Opportunities",
@@ -121,6 +130,7 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "insights": [
             {
+                "year": 2024,
                 "area": "Debt",
                 "takeaway": "Debt increased due to Southeast Asia expansion financing.",
                 "source_section": "Management Discussion & Analysis",
@@ -128,6 +138,7 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 "confidence": 0.91,
             },
             {
+                "year": 2024,
                 "area": "Geographic Expansion",
                 "takeaway": "The company plans to expand into Africa and the Middle East.",
                 "source_section": "Risks & Opportunities",

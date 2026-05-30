@@ -15,6 +15,7 @@ from ocr_engine.models.validation_result import ValidationIssue, ValidationResul
 
 def test_validation_result_accepts_valid_payload() -> None:
     issue = ValidationIssue(
+        year=2024,
         rule_name="accounting_equation",
         expected=1250.0,
         actual=1240.0,
@@ -33,6 +34,7 @@ def test_validation_result_accepts_valid_payload() -> None:
         "validation_score": 80.0,
         "issues": [
             {
+                "year": 2024,
                 "rule_name": "accounting_equation",
                 "expected": 1250.0,
                 "actual": 1240.0,
@@ -46,6 +48,7 @@ def test_validation_result_accepts_valid_payload() -> None:
 def test_validation_issue_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         ValidationIssue(
+            year=2024,
             rule_name="accounting_equation",
             expected=1250.0,
             actual=1240.0,

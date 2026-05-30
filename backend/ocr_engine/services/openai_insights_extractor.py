@@ -12,7 +12,7 @@ from ocr_engine.constants.ai_constants import (
     OPENAI_MODEL,
 )
 from ocr_engine.exceptions.openai_exceptions import MissingOpenAIConfigurationError
-from ocr_engine.models.insights_extraction import InsightsExtractionResult
+from ocr_engine.models.insights_extraction import Insight, InsightsExtractionResult
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.services.chunk_builder import ChunkBuilder
 from ocr_engine.services.chunk_ranker import ChunkRanker
@@ -23,6 +23,7 @@ from ocr_engine.services.prompt_builders.insights_prompt_builder import (
     InsightsPromptBuilder,
 )
 from ocr_engine.services.section_identifier import SectionIdentifier
+from shared.models.company_context import CompanyContext
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,59 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
                 log=self._logger,
             )
 
+    def extract_insights_for_context(self, context: CompanyContext) -> CompanyContext:
+        """Extract insights for each report and store results by report year.
+
+        The method reads ``context.normalization_results[report.year]`` and
+        writes to ``context.insights_results[report.year]``. Each annual report
+        is processed independently, so repeated insight areas across years do
+        not overwrite one another.
+        """
+
+        self._logger.info(
+            "Starting insights extraction for company context",
+            extra={
+                "company_name": context.company_name,
+                "report_years": [report.year for report in context.reports],
+            },
+        )
+
+        for report in context.reports:
+            normalization_result = context.normalization_results.get(report.year)
+            if normalization_result is None:
+                raise ValueError(
+                    "Missing normalization result for report year "
+                    f"{report.year}."
+                )
+
+            self._ensure_normalization_matches_year(
+                report.year,
+                normalization_result,
+            )
+            self._logger.info(
+                "Extracting insights for report year %s",
+                report.year,
+                extra={
+                    "company_name": context.company_name,
+                    "year": report.year,
+                    "file_path": report.file_path,
+                },
+            )
+            context.insights_results[report.year] = self._extract_insights_for_year(
+                pdf_path=report.file_path,
+                normalization_result=normalization_result,
+                report_year=report.year,
+            )
+
+        self._logger.info(
+            "Company context insights extraction complete",
+            extra={
+                "company_name": context.company_name,
+                "result_years": sorted(context.insights_results),
+            },
+        )
+        return context
+
     def extract_insights(
         self,
         pdf_path: str,
@@ -81,6 +135,23 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
     ) -> InsightsExtractionResult:
         """Extract concise, source-traceable business insights."""
 
+        report_year = self._extract_year(normalization_result)
+        return self._extract_insights_for_year(
+            pdf_path=pdf_path,
+            normalization_result=normalization_result,
+            report_year=report_year,
+        )
+
+    def _extract_insights_for_year(
+        self,
+        *,
+        pdf_path: str,
+        normalization_result: NormalizationResult,
+        report_year: int,
+    ) -> InsightsExtractionResult:
+        """Extract insights for one report year."""
+
+        self._ensure_normalization_matches_year(report_year, normalization_result)
         self._logger.info("Starting insights extraction", extra={"pdf_path": pdf_path})
 
         pages = self._narrative_text_extractor.extract(pdf_path)
@@ -96,17 +167,94 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             )
             return InsightsExtractionResult(insights=[])
 
+        ranked_chunks = [
+            type(chunk)(
+                page_number=chunk.page_number,
+                source_section=chunk.source_section,
+                text=chunk.text,
+                year=chunk.year or report_year,
+                score=chunk.score,
+            )
+            for chunk in ranked_chunks
+        ]
+
         messages = self._prompt_builder.build_messages(
             chunks=ranked_chunks,
             metric_context=metric_context,
+            report_year=report_year,
         )
         result = self._insights_extractor.extract(messages)
+        result = self._ensure_insights_use_report_year(result, report_year)
 
         self._logger.info(
             "Insights extraction complete",
             extra={"insight_count": len(result.insights)},
         )
         return result
+
+    @classmethod
+    def _extract_year(cls, normalization_result: NormalizationResult) -> int:
+        """Return the reporting year from OCR normalization output."""
+
+        years = cls._normalization_years(normalization_result)
+        if not years:
+            raise ValueError(
+                "normalization_result must include at least one table or mapping "
+                "with year."
+            )
+        if len(years) > 1:
+            raise ValueError(
+                "Insights extraction input must contain a single report year. "
+                f"Received years: {sorted(years)}."
+            )
+        return next(iter(years))
+
+    @classmethod
+    def _ensure_normalization_matches_year(
+        cls,
+        year: int,
+        normalization_result: NormalizationResult,
+    ) -> None:
+        """Ensure a context year bucket contains only normalization data for that year."""
+
+        result_years = cls._normalization_years(normalization_result)
+        mismatched_years = result_years - {year}
+        if mismatched_years:
+            raise ValueError(
+                "Insights normalization input for report year "
+                f"{year} contains data from other years: "
+                f"{sorted(mismatched_years)}."
+            )
+
+    @staticmethod
+    def _normalization_years(normalization_result: NormalizationResult) -> set[int]:
+        """Return all years represented by normalized tables and mappings."""
+
+        return {table.year for table in normalization_result.tables} | {
+            mapping.year for mapping in normalization_result.mappings
+        }
+
+    def _ensure_insights_use_report_year(
+        self,
+        result: InsightsExtractionResult,
+        report_year: int,
+    ) -> InsightsExtractionResult:
+        """Attach the authoritative report year to every extracted insight."""
+
+        insights: list[Insight] = []
+        for insight in result.insights:
+            if insight.year != report_year:
+                self._logger.warning(
+                    "Insight year corrected to report year",
+                    extra={
+                        "reported_year": insight.year,
+                        "report_year": report_year,
+                        "area": insight.area,
+                    },
+                )
+            insights.append(insight.model_copy(update={"year": report_year}))
+
+        return InsightsExtractionResult(insights=insights)
 
     @staticmethod
     def _create_openai_client(api_key: str) -> Any:

@@ -22,6 +22,8 @@ from ocr_engine.models.financial_table_classification import (
 from ocr_engine.models.table_detection_result import DetectedPage, TableDetectionResult
 from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.openai_table_classifier import OpenAITableClassifier
+from shared.models.company_context import CompanyContext
+from shared.models.report import Report
 
 
 class FakePage:
@@ -74,8 +76,8 @@ class FakeOpenAIClient:
 def _detection_result() -> TableDetectionResult:
     return TableDetectionResult(
         detected_pages=[
-            DetectedPage(page_number=20, tables_detected=2),
-            DetectedPage(page_number=25, tables_detected=1),
+            DetectedPage(year=2024, page_number=20, tables_detected=2),
+            DetectedPage(year=2024, page_number=25, tables_detected=1),
         ],
         total_pages_processed=132,
     )
@@ -128,10 +130,12 @@ def test_classify_tables_uses_structured_outputs_and_returns_page_types() -> Non
     assert result.model_dump() == {
         "page_table_types": [
             {
+                "year": 2024,
                 "page_number": 20,
                 "table_types": ["balance_sheet", "debt_schedule"],
             },
             {
+                "year": 2024,
                 "page_number": 25,
                 "table_types": ["income_statement"],
             },
@@ -145,6 +149,121 @@ def test_classify_tables_uses_structured_outputs_and_returns_page_types() -> Non
     assert "Statement of Profit or Loss" in client.responses.calls[1]["input"][1][
         "content"
     ]
+
+
+def test_classify_tables_for_context_stores_results_by_report_year() -> None:
+    client = FakeOpenAIClient(
+        [
+            FakeResponse({"table_types": ["balance_sheet"]}),
+            FakeResponse({"table_types": ["income_statement"]}),
+            FakeResponse({"table_types": ["cash_flow_statement"]}),
+        ]
+    )
+    documents = {
+        "reports/MLCF_2023.pdf": FakeDocument({10: "Balance Sheet"}),
+        "reports/MLCF_2024.pdf": FakeDocument(
+            {
+                20: "Statement of Profit or Loss",
+                25: "Statement of Cash Flows",
+            }
+        ),
+    }
+    classifier = OpenAITableClassifier(
+        client=client,
+        api_key="test_key",
+        pdf_loader=lambda pdf_path: documents[pdf_path],
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[
+            Report(
+                id="rpt_2023_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2023,
+                file_name="MLCF_2023_Annual_Report.pdf",
+                file_path="reports/MLCF_2023.pdf",
+            ),
+            Report(
+                id="rpt_2024_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="reports/MLCF_2024.pdf",
+            ),
+        ],
+        table_detection_results={
+            2023: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2023, page_number=10, tables_detected=1),
+                ],
+                total_pages_processed=100,
+            ),
+            2024: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2024, page_number=20, tables_detected=1),
+                    DetectedPage(year=2024, page_number=25, tables_detected=1),
+                ],
+                total_pages_processed=132,
+            ),
+        },
+    )
+
+    updated_context = classifier.classify_tables_for_context(context)
+
+    assert updated_context is context
+    assert set(context.classification_results) == {2023, 2024}
+    assert context.classification_results[2023].model_dump() == {
+        "page_table_types": [
+            {
+                "year": 2023,
+                "page_number": 10,
+                "table_types": ["balance_sheet"],
+            }
+        ]
+    }
+    assert context.classification_results[2024].model_dump() == {
+        "page_table_types": [
+            {
+                "year": 2024,
+                "page_number": 20,
+                "table_types": ["income_statement"],
+            },
+            {
+                "year": 2024,
+                "page_number": 25,
+                "table_types": ["cash_flow_statement"],
+            },
+        ]
+    }
+    assert (
+        context.classification_results[2023]
+        is not context.classification_results[2024]
+    )
+    assert documents["reports/MLCF_2023.pdf"].closed is True
+    assert documents["reports/MLCF_2024.pdf"].closed is True
+
+
+def test_classify_tables_for_context_requires_detection_result_per_year() -> None:
+    classifier = OpenAITableClassifier(
+        client=FakeOpenAIClient([]),
+        api_key="test_key",
+        pdf_loader=lambda _: FakeDocument({}),
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[
+            Report(
+                id="rpt_2024_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="reports/MLCF_2024.pdf",
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="Missing table detection result"):
+        classifier.classify_tables_for_context(context)
 
 
 def test_classify_tables_retries_openai_request() -> None:
@@ -166,7 +285,7 @@ def test_classify_tables_retries_openai_request() -> None:
     result = classifier.classify_tables(
         pdf_path="annual_report.pdf",
         table_detection_result=TableDetectionResult(
-            detected_pages=[DetectedPage(page_number=20, tables_detected=1)],
+            detected_pages=[DetectedPage(year=2024, page_number=20, tables_detected=1)],
             total_pages_processed=30,
         ),
     )
@@ -187,7 +306,7 @@ def test_classify_tables_raises_after_retry_exhaustion() -> None:
         classifier.classify_tables(
             pdf_path="annual_report.pdf",
             table_detection_result=TableDetectionResult(
-                detected_pages=[DetectedPage(page_number=20, tables_detected=1)],
+                detected_pages=[DetectedPage(year=2024, page_number=20, tables_detected=1)],
                 total_pages_processed=30,
             ),
         )
@@ -204,7 +323,7 @@ def test_classify_tables_rejects_invalid_openai_response() -> None:
         classifier.classify_tables(
             pdf_path="annual_report.pdf",
             table_detection_result=TableDetectionResult(
-                detected_pages=[DetectedPage(page_number=20, tables_detected=1)],
+                detected_pages=[DetectedPage(year=2024, page_number=20, tables_detected=1)],
                 total_pages_processed=30,
             ),
         )
@@ -230,6 +349,7 @@ def test_classify_tables_skips_unreadable_pages_and_continues(
     assert result.model_dump() == {
         "page_table_types": [
             {
+                "year": 2024,
                 "page_number": 25,
                 "table_types": ["income_statement"],
             }

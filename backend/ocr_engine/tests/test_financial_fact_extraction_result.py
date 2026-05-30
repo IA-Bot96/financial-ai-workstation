@@ -20,9 +20,10 @@ def test_financial_fact_extraction_result_serializes_expected_output() -> None:
     result = FinancialFactExtractionResult(
         facts=[
             FinancialFact(
-                name="Revenue",
+                year=2024,
+                metric="revenue",
                 value=1200000,
-                page=20,
+                page_number=20,
                 table_type="income_statement",
             )
         ]
@@ -31,9 +32,10 @@ def test_financial_fact_extraction_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "facts": [
             {
-                "name": "Revenue",
+                "year": 2024,
+                "metric": "revenue",
                 "value": 1200000,
-                "page": 20,
+                "page_number": 20,
                 "table_type": "income_statement",
             }
         ]

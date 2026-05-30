@@ -11,6 +11,7 @@ class ValidationIssue(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "year": 2024,
                     "rule_name": "accounting_equation",
                     "expected": 1250000.0,
                     "actual": 1240000.0,
@@ -24,6 +25,12 @@ class ValidationIssue(BaseModel):
         },
     )
 
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year where the validation issue occurred.",
+        examples=[2024],
+    )
     rule_name: str = Field(
         ...,
         min_length=1,
@@ -68,6 +75,7 @@ class ValidationResult(BaseModel):
                     "validation_score": 70.0,
                     "issues": [
                         {
+                            "year": 2024,
                             "rule_name": "accounting_equation",
                             "expected": 1250000.0,
                             "actual": 1240000.0,

@@ -18,10 +18,12 @@ from ocr_engine.validation.validators.base import ValidationContext, build_valid
 def extracted_table(
     rows: list[list[str]],
     table_type: str,
+    year: int = 2024,
     page_number: int = 1,
     table_index: int = 0,
 ) -> ExtractedTable:
     return ExtractedTable(
+        year=year,
         page_number=page_number,
         table_type=table_type,
         table_index=table_index,
@@ -30,12 +32,14 @@ def extracted_table(
 
 
 def classification_result(
+    year: int = 2024,
     page_number: int = 1,
     table_types: list[str] | None = None,
 ) -> FinancialTableClassificationResult:
     return FinancialTableClassificationResult(
         page_table_types=[
             PageTableType(
+                year=year,
                 page_number=page_number,
                 table_types=table_types or ["balance_sheet"],
             )
@@ -46,6 +50,7 @@ def classification_result(
 def context_for(tables: list[ExtractedTable]) -> ValidationContext:
     return build_validation_context(
         classification_result=classification_result(
+            year=tables[0].year if tables else 2024,
             table_types=list({table.table_type for table in tables})
         ),
         table_extraction_result=TableExtractionResult(tables=tables),

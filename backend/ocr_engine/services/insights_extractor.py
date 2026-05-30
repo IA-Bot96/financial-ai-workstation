@@ -47,6 +47,7 @@ class InsightsExtractor:
                             "area": {"type": "string"},
                             "takeaway": {"type": "string"},
                             "source_section": {"type": "string"},
+                            "year": {"type": "integer", "minimum": 1900},
                             "page_number": {"type": "integer", "minimum": 1},
                             "confidence": {
                                 "type": "number",
@@ -58,6 +59,7 @@ class InsightsExtractor:
                             "area",
                             "takeaway",
                             "source_section",
+                            "year",
                             "page_number",
                             "confidence",
                         ],

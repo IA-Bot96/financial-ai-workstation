@@ -50,6 +50,7 @@ def test_insights_extractor_uses_structured_output_schema() -> None:
                       "area": "Debt",
                       "takeaway": "Borrowings increased to finance expansion.",
                       "source_section": "Management Discussion & Analysis",
+                      "year": 2024,
                       "page_number": 84,
                       "confidence": 0.91
                     }
@@ -74,6 +75,7 @@ def test_insights_extractor_uses_structured_output_schema() -> None:
                 "area": "Debt",
                 "takeaway": "Borrowings increased to finance expansion.",
                 "source_section": "Management Discussion & Analysis",
+                "year": 2024,
                 "page_number": 84,
                 "confidence": 0.91,
             }

@@ -20,6 +20,7 @@ class PageTableType(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "year": 2024,
                     "page_number": 20,
                     "table_types": [
                         "balance_sheet",
@@ -30,6 +31,12 @@ class PageTableType(BaseModel):
         },
     )
 
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year for the source annual report.",
+        examples=[2024],
+    )
     page_number: int = Field(
         ...,
         gt=0,
@@ -56,6 +63,7 @@ class FinancialTableClassificationResult(BaseModel):
                 {
                     "page_table_types": [
                         {
+                            "year": 2024,
                             "page_number": 20,
                             "table_types": [
                                 "balance_sheet",
@@ -63,6 +71,7 @@ class FinancialTableClassificationResult(BaseModel):
                             ],
                         },
                         {
+                            "year": 2024,
                             "page_number": 25,
                             "table_types": [
                                 "income_statement",

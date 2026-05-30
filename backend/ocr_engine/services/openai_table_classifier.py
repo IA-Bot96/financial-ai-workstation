@@ -30,6 +30,7 @@ from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.prompt_builders.table_classification_prompt_builder import (
     TableClassificationPromptBuilder,
 )
+from shared.models.company_context import CompanyContext
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,54 @@ class OpenAITableClassifier(ITableClassifier):
         self._logger = log or logger
         self._client = client or self._create_openai_client(api_key)
 
+    def classify_tables_for_context(self, context: CompanyContext) -> CompanyContext:
+        """Classify detected tables for each report and store results by year.
+
+        The method reads ``context.table_detection_results[report.year]`` and
+        writes the resulting classification to
+        ``context.classification_results[report.year]``. Each report year is
+        processed independently.
+        """
+
+        self._logger.info(
+            "Starting financial table classification for company context",
+            extra={
+                "company_name": context.company_name,
+                "report_years": [report.year for report in context.reports],
+            },
+        )
+
+        for report in context.reports:
+            table_detection_result = context.table_detection_results.get(report.year)
+            if table_detection_result is None:
+                raise ValueError(
+                    "Missing table detection result for report year "
+                    f"{report.year}."
+                )
+
+            self._logger.info(
+                "Classifying detected tables for report year %s",
+                report.year,
+                extra={
+                    "company_name": context.company_name,
+                    "year": report.year,
+                    "file_path": report.file_path,
+                },
+            )
+            context.classification_results[report.year] = self.classify_tables(
+                pdf_path=report.file_path,
+                table_detection_result=table_detection_result,
+            )
+
+        self._logger.info(
+            "Company context financial table classification complete",
+            extra={
+                "company_name": context.company_name,
+                "result_years": sorted(context.classification_results),
+            },
+        )
+        return context
+
     def classify_tables(
         self,
         pdf_path: str,
@@ -137,6 +186,7 @@ class OpenAITableClassifier(ITableClassifier):
                     )
                     page_table_types.append(
                         PageTableType(
+                            year=detected_page.year,
                             page_number=page_number,
                             table_types=table_types,
                         )

@@ -1,0 +1,155 @@
+"""Tests for populating compatible workbook templates."""
+
+import sys
+from pathlib import Path
+
+from openpyxl import Workbook, load_workbook
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from ocr_engine.models.insights_extraction import Insight
+from shared.models.metric_value import MetricValue
+from workbook_population.models.sheet_validation_result import SheetValidationResult
+from workbook_population.services.template_population_service import (
+    TemplatePopulationService,
+)
+
+
+def _metric_value(
+    metric: str,
+    year: int,
+    value: int,
+    table_type: str = "income_statement",
+) -> MetricValue:
+    return MetricValue(
+        metric=metric,
+        value_year=year,
+        value=value,
+        source_report_year=2025,
+        page_number=120,
+        table_type=table_type,
+    )
+
+
+def test_template_population_preserves_formulas_and_writes_values(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    output_path = tmp_path / "output.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Income Statement"
+    worksheet.append(["Metric", 2024, 2025])
+    worksheet.append(["revenue", None, None])
+    worksheet.append(["gross_profit", None, "=C2*0.3"])
+    workbook.save(template_path)
+    workbook.close()
+
+    sheets_reused, sheets_replaced, sheets_created, metrics_written, warnings = (
+        TemplatePopulationService().populate(
+            template_path=str(template_path),
+            output_file_path=str(output_path),
+            metric_values=[
+                _metric_value("revenue", 2024, 1000),
+                _metric_value("gross_profit", 2025, 300),
+            ],
+            insights=[
+                Insight(
+                    value_year=2025,
+                    source_report_year=2025,
+                    area="Debt",
+                    takeaway="Borrowings increased.",
+                    source_section="Business Review",
+                    page_number=84,
+                    confidence=0.9,
+                )
+            ],
+            sheet_results=[
+                SheetValidationResult(
+                    sheet_name="Income Statement",
+                    match_score=100,
+                    is_compatible=True,
+                    missing_metrics=[],
+                    extra_metrics=[],
+                    warnings=[],
+                )
+            ],
+        )
+    )
+
+    populated = load_workbook(output_path, data_only=False)
+    assert populated["Income Statement"]["B2"].value == 1000
+    assert populated["Income Statement"]["C3"].value == "=C2*0.3"
+    assert populated["Insights"]["A2"].value == 2025
+    assert metrics_written == 1
+    assert any("Skipped formula cell" in warning for warning in warnings)
+    assert sheets_reused == ["Income Statement"]
+    assert sheets_replaced == []
+    assert "Insights" in sheets_created
+    populated.close()
+
+
+def test_template_population_replaces_incompatible_and_creates_missing_sheets(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    output_path = tmp_path / "output.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Cash Flow"
+    worksheet.append(["Legacy", 2025])
+    worksheet.append(["old_metric", 1])
+    workbook.save(template_path)
+    workbook.close()
+
+    sheets_reused, sheets_replaced, sheets_created, metrics_written, warnings = (
+        TemplatePopulationService().populate(
+            template_path=str(template_path),
+            output_file_path=str(output_path),
+            metric_values=[
+                _metric_value(
+                    "operating_cash_flow",
+                    2025,
+                    100,
+                    table_type="cash_flow_statement",
+                ),
+                _metric_value(
+                    "long_term_debt",
+                    2025,
+                    200,
+                    table_type="debt_schedule",
+                ),
+            ],
+            insights=[],
+            sheet_results=[
+                SheetValidationResult(
+                    sheet_name="Cash Flow",
+                    match_score=40,
+                    is_compatible=False,
+                    missing_metrics=["operating_cash_flow"],
+                    extra_metrics=["old_metric"],
+                    warnings=[],
+                ),
+                SheetValidationResult(
+                    sheet_name="Debt Schedule",
+                    match_score=0,
+                    is_compatible=False,
+                    missing_metrics=["long_term_debt"],
+                    extra_metrics=[],
+                    warnings=[],
+                ),
+            ],
+        )
+    )
+
+    populated = load_workbook(output_path, data_only=False)
+    assert populated["Cash Flow"]["A2"].value == "operating_cash_flow"
+    assert populated["Debt Schedule"]["A2"].value == "long_term_debt"
+    assert sheets_reused == []
+    assert sheets_replaced == ["Cash Flow"]
+    assert sheets_created == ["Debt Schedule", "Insights"]
+    assert metrics_written == 2
+    assert warnings == []
+    populated.close()

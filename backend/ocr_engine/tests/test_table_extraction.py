@@ -115,7 +115,7 @@ def test_table_extraction_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
@@ -123,8 +123,10 @@ def test_table_extraction_result_serializes_expected_output() -> None:
                     ["Cash", "1000"],
                     ["Inventory", "500"],
                 ],
+                "metric_values": [],
             }
-        ]
+        ],
+        "metric_values": [],
     }
 
 

@@ -97,7 +97,8 @@ class FakeInsightsExtractor:
         return InsightsExtractionResult(
             insights=[
                 Insight(
-                    year=year,
+                    value_year=year,
+                    source_report_year=year,
                     area="Debt",
                     takeaway="Borrowings increased to finance expansion.",
                     source_section="Business Review",
@@ -147,7 +148,8 @@ def test_openai_insights_extractor_orchestrates_preprocessing(
         )
 
     assert result.insights[0].area == "Debt"
-    assert result.insights[0].year == 2024
+    assert result.insights[0].value_year == 2024
+    assert result.insights[0].source_report_year == 2024
     assert fake_insights_extractor.messages_by_call == [
         [
             {
@@ -204,7 +206,8 @@ def test_extract_insights_for_context_stores_results_by_report_year() -> None:
     assert context.insights_results[2023].model_dump() == {
         "insights": [
             {
-                "year": 2023,
+                "value_year": 2023,
+                "source_report_year": 2023,
                 "area": "Debt",
                 "takeaway": "Borrowings increased to finance expansion.",
                 "source_section": "Business Review",
@@ -216,7 +219,8 @@ def test_extract_insights_for_context_stores_results_by_report_year() -> None:
     assert context.insights_results[2024].model_dump() == {
         "insights": [
             {
-                "year": 2024,
+                "value_year": 2024,
+                "source_report_year": 2024,
                 "area": "Debt",
                 "takeaway": "Borrowings increased to finance expansion.",
                 "source_section": "Business Review",
@@ -325,7 +329,8 @@ def test_extract_insights_preserves_year_from_mapping_when_tables_are_empty() ->
             tables=[],
             mappings=[
                 MetricMapping(
-                    year=2024,
+                    value_year=2024,
+                    source_report_year=2024,
                     original_metric="Net Sales",
                     normalized_metric="revenue",
                     confidence=0.96,
@@ -335,7 +340,7 @@ def test_extract_insights_preserves_year_from_mapping_when_tables_are_empty() ->
         ),
     )
 
-    assert result.insights[0].year == 2024
+    assert result.insights[0].source_report_year == 2024
     assert fake_insights_extractor.messages_by_call == [
         [
             {
@@ -355,7 +360,8 @@ def test_extract_insights_corrects_llm_year_to_report_year() -> None:
             return InsightsExtractionResult(
                 insights=[
                     Insight(
-                        year=2022,
+                        value_year=2024,
+                        source_report_year=2022,
                         area="Debt",
                         takeaway="Borrowings increased to finance expansion.",
                         source_section="Business Review",
@@ -379,7 +385,7 @@ def test_extract_insights_corrects_llm_year_to_report_year() -> None:
         normalization_result=_normalization_result(year=2024),
     )
 
-    assert result.insights[0].year == 2024
+    assert result.insights[0].source_report_year == 2024
 
 
 def test_extract_insights_returns_empty_when_no_relevant_chunks() -> None:

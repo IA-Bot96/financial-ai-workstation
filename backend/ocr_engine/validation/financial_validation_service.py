@@ -25,6 +25,7 @@ from ocr_engine.validation.validators import (
 )
 from ocr_engine.validation.validators.base import (
     RuleValidator,
+    ValidationContext,
     build_validation_context,
     make_issue,
 )
@@ -132,12 +133,47 @@ class FinancialValidationService(IValidationService):
             },
         )
 
-        context = build_validation_context(
-            classification_result=classification_result,
-            table_extraction_result=table_extraction_result,
-        )
         issues: list[ValidationIssue] = []
 
+        value_years = sorted(
+            {metric_value.value_year for metric_value in table_extraction_result.metric_values}
+        )
+        if value_years:
+            for value_year in value_years:
+                context = build_validation_context(
+                    classification_result=classification_result,
+                    table_extraction_result=table_extraction_result,
+                    value_year=value_year,
+                )
+                issues.extend(self._run_validators(context))
+        else:
+            context = build_validation_context(
+                classification_result=classification_result,
+                table_extraction_result=table_extraction_result,
+            )
+            issues.extend(self._run_validators(context))
+
+        score = self._score_calculator.calculate_score(issues)
+        result = ValidationResult(
+            is_valid=self._score_calculator.is_valid(score),
+            validation_score=score,
+            issues=issues,
+        )
+
+        logger.info(
+            "Financial validation completed",
+            extra={
+                "validation_score": result.validation_score,
+                "is_valid": result.is_valid,
+                "issue_count": len(result.issues),
+            },
+        )
+        return result
+
+    def _run_validators(self, context: ValidationContext) -> list[ValidationIssue]:
+        """Run all validators for one value-year validation context."""
+
+        issues: list[ValidationIssue] = []
         for validator in self._validators:
             try:
                 validator_issues = validator.validate(context)
@@ -163,22 +199,7 @@ class FinancialValidationService(IValidationService):
 
             issues.extend(validator_issues)
 
-        score = self._score_calculator.calculate_score(issues)
-        result = ValidationResult(
-            is_valid=self._score_calculator.is_valid(score),
-            validation_score=score,
-            issues=issues,
-        )
-
-        logger.info(
-            "Financial validation completed",
-            extra={
-                "validation_score": result.validation_score,
-                "is_valid": result.is_valid,
-                "issue_count": len(result.issues),
-            },
-        )
-        return result
+        return issues
 
     @classmethod
     def _ensure_results_match_year(
@@ -223,4 +244,9 @@ class FinancialValidationService(IValidationService):
         return {
             page_table_type.year
             for page_table_type in classification_result.page_table_types
-        } | {table.year for table in table_extraction_result.tables}
+        } | {
+            table.source_report_year for table in table_extraction_result.tables
+        } | {
+            metric_value.source_report_year
+            for metric_value in table_extraction_result.metric_values
+        }

@@ -15,6 +15,7 @@ from ocr_engine.services.interfaces.table_metric_normalizer import (
 )
 from ocr_engine.services.table_metric_normalizer import TableMetricNormalizer
 from shared.models.company_context import CompanyContext
+from shared.models.metric_value import MetricValue
 from shared.models.report import Report
 from shared.normalization.interfaces.metric_normalizer import IMetricNormalizer
 from shared.normalization.models.normalized_metric import NormalizedMetric
@@ -54,14 +55,40 @@ def _extraction_result(year: int, page_number: int) -> TableExtractionResult:
     return TableExtractionResult(
         tables=[
             ExtractedTable(
-                year=year,
+                source_report_year=year,
                 page_number=page_number,
                 table_type="income_statement",
                 table_index=0,
                 rows=[
-                    ["Net Sales", "1200000"],
-                    ["Gross Profit", "450000"],
-                    ["2024", "2023"],
+                    ["Metric", str(year), str(year - 1)],
+                    ["Net Sales", "1200000", "1100000"],
+                    ["Gross Profit", "450000", "400000"],
+                ],
+                metric_values=[
+                    MetricValue(
+                        metric="Net Sales",
+                        value_year=year,
+                        value=1200000,
+                        source_report_year=year,
+                        page_number=page_number,
+                        table_type="income_statement",
+                    ),
+                    MetricValue(
+                        metric="Net Sales",
+                        value_year=year - 1,
+                        value=1100000,
+                        source_report_year=year,
+                        page_number=page_number,
+                        table_type="income_statement",
+                    ),
+                    MetricValue(
+                        metric="Gross Profit",
+                        value_year=year,
+                        value=450000,
+                        source_report_year=year,
+                        page_number=page_number,
+                        table_type="income_statement",
+                    ),
                 ],
             )
         ]
@@ -80,38 +107,28 @@ def test_normalize_tables_preserves_year_on_tables_and_mappings() -> None:
 
     result = service.normalize_tables(_extraction_result(year=2024, page_number=20))
 
-    assert result.model_dump() == {
-        "tables": [
-            {
-                "year": 2024,
-                "page_number": 20,
-                "table_type": "income_statement",
-                "table_index": 0,
-                "rows": [
-                    ["revenue", "1200000"],
-                    ["gross_profit", "450000"],
-                    ["2024", "2023"],
-                ],
-            }
-        ],
-        "mappings": [
-            {
-                "year": 2024,
-                "original_metric": "Net Sales",
-                "normalized_metric": "revenue",
-                "confidence": 0.96,
-                "requires_review": False,
-            },
-            {
-                "year": 2024,
-                "original_metric": "Gross Profit",
-                "normalized_metric": "gross_profit",
-                "confidence": 0.96,
-                "requires_review": False,
-            },
-        ],
-    }
-    assert metric_normalizer.calls == ["Net Sales", "Gross Profit"]
+    assert result.tables[0].source_report_year == 2024
+    assert result.tables[0].rows == [
+        ["Metric", "2024", "2023"],
+        ["revenue", "1200000", "1100000"],
+        ["gross_profit", "450000", "400000"],
+    ]
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.source_report_year)
+        for metric_value in result.metric_values
+    ] == [
+        ("revenue", 2024, 2024),
+        ("revenue", 2023, 2024),
+        ("gross_profit", 2024, 2024),
+    ]
+    assert [
+        (mapping.normalized_metric, mapping.value_year, mapping.source_report_year)
+        for mapping in result.mappings
+    ] == [
+        ("revenue", 2024, 2024),
+        ("revenue", 2023, 2024),
+        ("gross_profit", 2024, 2024),
+    ]
 
 
 def test_normalize_for_context_stores_results_by_report_year() -> None:
@@ -126,11 +143,21 @@ def test_normalize_for_context_stores_results_by_report_year() -> None:
             2023: TableExtractionResult(
                 tables=[
                     ExtractedTable(
-                        year=2023,
+                        source_report_year=2023,
                         page_number=10,
                         table_type="balance_sheet",
                         table_index=0,
                         rows=[["Debt", "500000"]],
+                        metric_values=[
+                            MetricValue(
+                                metric="Debt",
+                                value_year=2023,
+                                value=500000,
+                                source_report_year=2023,
+                                page_number=10,
+                                table_type="balance_sheet",
+                            )
+                        ],
                     )
                 ]
             ),
@@ -142,29 +169,18 @@ def test_normalize_for_context_stores_results_by_report_year() -> None:
 
     assert updated_context is context
     assert set(context.normalization_results) == {2023, 2024}
-    assert context.normalization_results[2023].model_dump() == {
-        "tables": [
-            {
-                "year": 2023,
-                "page_number": 10,
-                "table_type": "balance_sheet",
-                "table_index": 0,
-                "rows": [["debt", "500000"]],
-            }
-        ],
-        "mappings": [
-            {
-                "year": 2023,
-                "original_metric": "Debt",
-                "normalized_metric": "debt",
-                "confidence": 0.96,
-                "requires_review": False,
-            }
-        ],
+    assert context.normalization_results[2023].metric_values[0].model_dump() == {
+        "metric": "debt",
+        "value_year": 2023,
+        "value": 500000,
+        "source_report_year": 2023,
+        "page_number": 10,
+        "table_type": "balance_sheet",
     }
     assert context.normalization_results[2024].tables[0].year == 2024
     assert {
-        mapping.year for mapping in context.normalization_results[2024].mappings
+        mapping.source_report_year
+        for mapping in context.normalization_results[2024].mappings
     } == {2024}
     assert (
         context.normalization_results[2023]

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+import re
+from typing import Any, Callable, Sequence
 
 from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
@@ -12,6 +13,7 @@ from ocr_engine.models.financial_table_classification import (
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
 from shared.models.company_context import CompanyContext
+from shared.models.metric_value import MetricValue
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +110,20 @@ class CamelotTableExtractor(ITableExtractor):
                 self._build_extracted_tables(page_table_type, raw_tables)
             )
 
-        result = TableExtractionResult(tables=extracted_tables)
+        result = TableExtractionResult(
+            tables=extracted_tables,
+            metric_values=[
+                metric_value
+                for table in extracted_tables
+                for metric_value in table.metric_values
+            ],
+        )
         self._logger.info(
             "Extraction completed",
-            extra={"tables_extracted": len(result.tables)},
+            extra={
+                "tables_extracted": len(result.tables),
+                "metric_values_extracted": len(result.metric_values),
+            },
         )
         return result
 
@@ -187,16 +199,131 @@ class CamelotTableExtractor(ITableExtractor):
         extracted_tables: list[ExtractedTable] = []
         for index, rows in enumerate(raw_tables):
             table_type_index = min(index, len(page_table_type.table_types) - 1)
+            table_type = page_table_type.table_types[table_type_index]
             extracted_tables.append(
                 ExtractedTable(
-                    year=page_table_type.year,
+                    source_report_year=page_table_type.year,
                     page_number=page_table_type.page_number,
-                    table_type=page_table_type.table_types[table_type_index],
+                    table_type=table_type,
                     table_index=index,
                     rows=rows,
+                    metric_values=self._extract_metric_values(
+                        rows=rows,
+                        source_report_year=page_table_type.year,
+                        page_number=page_table_type.page_number,
+                        table_type=table_type,
+                    ),
                 )
             )
         return extracted_tables
+
+    def _extract_metric_values(
+        self,
+        *,
+        rows: RawTable,
+        source_report_year: int,
+        page_number: int,
+        table_type: str,
+    ) -> list[MetricValue]:
+        """Extract metric/value-year pairs from normalized raw table rows."""
+
+        header_row_index, year_columns = self._find_year_columns(rows)
+        if not year_columns:
+            return []
+
+        metric_values: list[MetricValue] = []
+        for row_index, row in enumerate(rows):
+            if row_index == header_row_index:
+                continue
+
+            label_index = self._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            metric = row[label_index].strip()
+            for column_index, value_year in year_columns.items():
+                if column_index >= len(row) or column_index == label_index:
+                    continue
+
+                value = self._parse_metric_value(row[column_index])
+                if value is None:
+                    continue
+
+                metric_values.append(
+                    MetricValue(
+                        metric=metric,
+                        value_year=value_year,
+                        value=value,
+                        source_report_year=source_report_year,
+                        page_number=page_number,
+                        table_type=table_type,
+                    )
+                )
+
+        return metric_values
+
+    @staticmethod
+    def _find_year_columns(rows: RawTable) -> tuple[int | None, dict[int, int]]:
+        """Return the header row index and columns that contain value years."""
+
+        best_row_index: int | None = None
+        best_match: dict[int, int] = {}
+        for row_index, row in enumerate(rows):
+            year_columns: dict[int, int] = {}
+            for column_index, cell in enumerate(row):
+                match = re.fullmatch(r"(?:19|20)\d{2}", str(cell).strip())
+                if match is not None:
+                    year_columns[column_index] = int(match.group(0))
+
+            if len(year_columns) > len(best_match):
+                best_row_index = row_index
+                best_match = year_columns
+
+        return best_row_index, best_match
+
+    @staticmethod
+    def _metric_label_index(row: Sequence[str]) -> int | None:
+        """Return the first cell that looks like a metric label."""
+
+        for index, cell in enumerate(row):
+            text = str(cell).strip()
+            if text and not re.fullmatch(r"(?:19|20)\d{2}", text) and re.search(
+                r"[A-Za-z]",
+                text,
+            ):
+                return index
+        return None
+
+    @staticmethod
+    def _parse_metric_value(value: str) -> float | int | str | None:
+        """Parse a table cell into a typed financial value when possible."""
+
+        text = str(value).strip()
+        if not text or text.lower() in {"-", "na", "n/a", "nil", "none"}:
+            return None
+
+        negative = "(" in text and ")" in text
+        cleaned = (
+            text.replace(",", "")
+            .replace("\u2212", "-")
+            .replace("(", "")
+            .replace(")", "")
+        )
+        cleaned = re.sub(
+            r"(?i)\b(rs|pkr|usd|eur|gbp|rupees|rupee|million|mn|billion|bn)\b\.?",
+            " ",
+            cleaned,
+        )
+        match = re.search(r"[-+]?\d+(?:\.\d+)?", cleaned)
+        if match is None:
+            return text
+
+        parsed = float(match.group(0))
+        if negative:
+            parsed = -abs(parsed)
+        if parsed.is_integer():
+            return int(parsed)
+        return parsed
 
     @classmethod
     def _normalize_rows(cls, rows: Any) -> RawTable:

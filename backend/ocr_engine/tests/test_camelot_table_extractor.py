@@ -95,21 +95,67 @@ def test_extract_tables_uses_camelot_first() -> None:
     assert result.model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
+                "metric_values": [],
             },
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "debt_schedule",
                 "table_index": 1,
                 "rows": [["Debt", "450"]],
+                "metric_values": [],
             },
-        ]
+        ],
+        "metric_values": [],
     }
+
+
+def test_extract_tables_identifies_metric_value_years() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025", "2024"],
+                    ["Revenue", "100", "80"],
+                    ["Debt", "45", "50"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=120,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (
+            metric_value.metric,
+            metric_value.value_year,
+            metric_value.value,
+            metric_value.source_report_year,
+        )
+        for metric_value in result.metric_values
+    ] == [
+        ("Revenue", 2025, 100, 2025),
+        ("Revenue", 2024, 80, 2025),
+        ("Debt", 2025, 45, 2025),
+        ("Debt", 2024, 50, 2025),
+    ]
 
 
 def test_extract_tables_for_context_stores_results_by_report_year() -> None:

@@ -10,6 +10,7 @@ from ocr_engine.models.table_detection_result import TableDetectionResult
 from ocr_engine.models.table_extraction import TableExtractionResult
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.models.validation_result import ValidationResult
+from shared.models.metric_value import MetricValue
 from shared.models.report import Report
 
 
@@ -37,6 +38,7 @@ class CompanyContext(BaseModel):
                     "validation_results": {},
                     "normalization_results": {},
                     "insights_results": {},
+                    "metric_values": [],
                 }
             ]
         },
@@ -75,6 +77,13 @@ class CompanyContext(BaseModel):
     insights_results: dict[int, InsightsExtractionResult] = Field(
         default_factory=dict,
         description="Business insights extraction results keyed by reporting year.",
+    )
+    metric_values: list[MetricValue] = Field(
+        default_factory=list,
+        description=(
+            "Consolidated financial metric values used by Excel population, "
+            "trend analysis, querying, forecasting, charting, and copilots."
+        ),
     )
 
     @model_validator(mode="after")
@@ -115,5 +124,15 @@ class CompanyContext(BaseModel):
                     f"{field_name} contains years not present in reports: "
                     f"{sorted(unknown_years)}"
                 )
+
+        metric_source_years = {
+            metric_value.source_report_year for metric_value in self.metric_values
+        }
+        unknown_metric_source_years = metric_source_years - report_year_set
+        if unknown_metric_source_years:
+            raise ValueError(
+                "metric_values contain source_report_year values not present "
+                f"in reports: {sorted(unknown_metric_source_years)}"
+            )
 
         return self

@@ -1,17 +1,20 @@
 """Models for OCR table metric normalization output."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from shared.models.metric_value import MetricValue
 
 
 class NormalizedTable(BaseModel):
-    """Extracted table rows after OCR metric labels have been normalized."""
+    """Extracted table rows and metric values after metric labels are normalized."""
 
     model_config = ConfigDict(
         extra="forbid",
+        populate_by_name=True,
         json_schema_extra={
             "examples": [
                 {
-                    "year": 2024,
+                    "source_report_year": 2025,
                     "page_number": 20,
                     "table_type": "income_statement",
                     "table_index": 0,
@@ -19,16 +22,27 @@ class NormalizedTable(BaseModel):
                         ["revenue", "1200000", "1100000"],
                         ["cost_of_sales", "800000", "760000"],
                     ],
+                    "metric_values": [
+                        {
+                            "metric": "revenue",
+                            "value_year": 2024,
+                            "value": 1500,
+                            "source_report_year": 2025,
+                            "page_number": 20,
+                            "table_type": "income_statement",
+                        }
+                    ],
                 }
             ]
         },
     )
 
-    year: int = Field(
+    source_report_year: int = Field(
         ...,
         ge=1900,
-        description="Financial reporting year for the source annual report.",
-        examples=[2024],
+        validation_alias=AliasChoices("source_report_year", "year"),
+        description="Annual report year from which this table was extracted.",
+        examples=[2025],
     )
     page_number: int = Field(
         ...,
@@ -49,9 +63,22 @@ class NormalizedTable(BaseModel):
         examples=[0],
     )
     rows: list[list[str]] = Field(
-        ...,
+        default_factory=list,
         description="Normalized table rows with canonical metric labels where available.",
     )
+    metric_values: list[MetricValue] = Field(
+        default_factory=list,
+        description=(
+            "Normalized metric values with value_year and source_report_year "
+            "preserved."
+        ),
+    )
+
+    @property
+    def year(self) -> int:
+        """Backward-compatible alias for source_report_year."""
+
+        return self.source_report_year
 
 
 class NormalizationResult(BaseModel):
@@ -64,16 +91,37 @@ class NormalizationResult(BaseModel):
                 {
                     "tables": [
                         {
-                            "year": 2024,
+                            "source_report_year": 2025,
                             "page_number": 20,
                             "table_type": "income_statement",
                             "table_index": 0,
                             "rows": [["revenue", "1200000", "1100000"]],
+                            "metric_values": [
+                                {
+                                    "metric": "revenue",
+                                    "value_year": 2024,
+                                    "value": 1500,
+                                    "source_report_year": 2025,
+                                    "page_number": 20,
+                                    "table_type": "income_statement",
+                                }
+                            ],
+                        }
+                    ],
+                    "metric_values": [
+                        {
+                            "metric": "revenue",
+                            "value_year": 2024,
+                            "value": 1500,
+                            "source_report_year": 2025,
+                            "page_number": 20,
+                            "table_type": "income_statement",
                         }
                     ],
                     "mappings": [
                         {
-                            "year": 2024,
+                            "value_year": 2024,
+                            "source_report_year": 2025,
                             "original_metric": "Net Sales",
                             "normalized_metric": "revenue",
                             "confidence": 0.96,
@@ -89,6 +137,10 @@ class NormalizationResult(BaseModel):
         ...,
         description="Normalized OCR tables available as financial context.",
     )
+    metric_values: list[MetricValue] = Field(
+        default_factory=list,
+        description="All normalized metric values across tables in this result.",
+    )
     mappings: list["MetricMapping"] = Field(
         default_factory=list,
         description="Metric normalization mappings generated for report-originated rows.",
@@ -96,14 +148,16 @@ class NormalizationResult(BaseModel):
 
 
 class MetricMapping(BaseModel):
-    """Mapping between a raw OCR metric label and a canonical metric for one year."""
+    """Mapping between a raw OCR metric label and a canonical metric."""
 
     model_config = ConfigDict(
         extra="forbid",
+        populate_by_name=True,
         json_schema_extra={
             "examples": [
                 {
-                    "year": 2024,
+                    "value_year": 2024,
+                    "source_report_year": 2025,
                     "original_metric": "Net Sales",
                     "normalized_metric": "revenue",
                     "confidence": 0.96,
@@ -113,11 +167,18 @@ class MetricMapping(BaseModel):
         },
     )
 
-    year: int = Field(
+    value_year: int = Field(
         ...,
         ge=1900,
-        description="Financial reporting year for the mapped metric.",
+        validation_alias=AliasChoices("value_year", "year"),
+        description="Financial year represented by the mapped metric value.",
         examples=[2024],
+    )
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which this mapping originated.",
+        examples=[2025],
     )
     original_metric: str = Field(
         ...,
@@ -142,3 +203,9 @@ class MetricMapping(BaseModel):
         description="Whether this metric mapping should be reviewed manually.",
         examples=[False],
     )
+
+    @property
+    def year(self) -> int:
+        """Backward-compatible alias for value_year."""
+
+        return self.value_year

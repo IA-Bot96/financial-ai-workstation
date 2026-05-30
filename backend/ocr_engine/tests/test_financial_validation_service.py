@@ -19,6 +19,7 @@ from ocr_engine.models.validation_result import ValidationIssue
 from ocr_engine.validation.financial_validation_service import FinancialValidationService
 from ocr_engine.validation.validators.base import RuleValidator, ValidationContext
 from shared.models.company_context import CompanyContext
+from shared.models.metric_value import MetricValue
 from shared.models.report import Report
 
 
@@ -282,3 +283,52 @@ def test_validate_rejects_merged_multi_year_inputs() -> None:
             ),
             table_extraction_result=TableExtractionResult(tables=[]),
         )
+
+
+def test_validate_executes_rules_independently_by_value_year() -> None:
+    validator = RecordingValidator()
+    service = FinancialValidationService(validators=[validator])
+
+    result = service.validate(
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=120,
+                    table_types=["balance_sheet"],
+                )
+            ]
+        ),
+        table_extraction_result=TableExtractionResult(
+            tables=[
+                ExtractedTable(
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                    table_index=0,
+                    rows=[],
+                )
+            ],
+            metric_values=[
+                MetricValue(
+                    metric="total_assets",
+                    value_year=2025,
+                    value=100,
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                ),
+                MetricValue(
+                    metric="total_assets",
+                    value_year=2024,
+                    value=80,
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                ),
+            ],
+        ),
+    )
+
+    assert [context[0] for context in validator.seen_contexts] == [2024, 2025]
+    assert [issue.year for issue in result.issues] == [2024, 2025]

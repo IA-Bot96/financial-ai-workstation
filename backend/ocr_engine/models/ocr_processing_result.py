@@ -36,7 +36,8 @@ class OCRProcessingResult(BaseModel):
                     "insights": {
                         "insights": [
                             {
-                                "year": 2024,
+                                "value_year": 2024,
+                                "source_report_year": 2024,
                                 "area": "Debt",
                                 "takeaway": (
                                     "Debt increased due to Southeast Asia "

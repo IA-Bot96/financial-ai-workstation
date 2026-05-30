@@ -47,7 +47,11 @@ class InsightsExtractor:
                             "area": {"type": "string"},
                             "takeaway": {"type": "string"},
                             "source_section": {"type": "string"},
-                            "year": {"type": "integer", "minimum": 1900},
+                            "value_year": {"type": "integer", "minimum": 1900},
+                            "source_report_year": {
+                                "type": "integer",
+                                "minimum": 1900,
+                            },
                             "page_number": {"type": "integer", "minimum": 1},
                             "confidence": {
                                 "type": "number",
@@ -59,7 +63,8 @@ class InsightsExtractor:
                             "area",
                             "takeaway",
                             "source_section",
-                            "year",
+                            "value_year",
+                            "source_report_year",
                             "page_number",
                             "confidence",
                         ],
@@ -179,6 +184,8 @@ class InsightsExtractor:
             key = (
                 insight.area.strip().lower(),
                 insight.takeaway.strip().lower(),
+                insight.value_year,
+                insight.source_report_year,
                 insight.page_number,
             )
             if key in seen:

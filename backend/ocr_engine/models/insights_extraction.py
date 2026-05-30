@@ -6,9 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class Insight(BaseModel):
     """Business insight extracted from narrative annual-report text.
 
-    The insight keeps report year and source location attached so multi-year
-    trend analysis, qualitative analysis, and Excel model population do not
-    need to infer year from external report lookup state.
+    ``value_year`` is the year the insight discusses. ``source_report_year`` is
+    the annual report where the narrative was found.
     """
 
     model_config = ConfigDict(
@@ -16,7 +15,8 @@ class Insight(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "year": 2025,
+                    "value_year": 2024,
+                    "source_report_year": 2025,
                     "area": "Debt",
                     "takeaway": "Borrowings increased to finance expansion.",
                     "source_section": "Management Discussion & Analysis",
@@ -27,10 +27,16 @@ class Insight(BaseModel):
         },
     )
 
-    year: int = Field(
+    value_year: int = Field(
         ...,
         ge=1900,
-        description="Financial reporting year from which the insight originated.",
+        description="Financial year discussed by the insight.",
+        examples=[2024],
+    )
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the insight originated.",
         examples=[2025],
     )
     area: str = Field(
@@ -76,7 +82,8 @@ class InsightsExtractionResult(BaseModel):
                 {
                     "insights": [
                         {
-                            "year": 2025,
+                            "value_year": 2024,
+                            "source_report_year": 2025,
                             "area": "Debt",
                             "takeaway": "Borrowings increased to finance expansion.",
                             "source_section": "Management Discussion & Analysis",
@@ -84,7 +91,8 @@ class InsightsExtractionResult(BaseModel):
                             "confidence": 0.93,
                         },
                         {
-                            "year": 2025,
+                            "value_year": 2025,
+                            "source_report_year": 2025,
                             "area": "Exports",
                             "takeaway": (
                                 "Export sales increased due to Middle East "

@@ -1,22 +1,25 @@
 """Models for OCR table extraction results."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from shared.models.metric_value import MetricValue
 
 
 class ExtractedTable(BaseModel):
-    """Raw table data extracted from a financial table on a PDF page.
+    """Table data extracted from a financial table on a PDF page.
 
-    This model preserves OCR/PDF extraction output as rows and cells. It does
-    not infer headers, normalize financial terminology, extract financial facts,
-    or map the table to a reporting template.
+    Raw rows are retained for OCR traceability. ``metric_values`` is the
+    structured extraction contract: each value records the value year and the
+    source report year separately.
     """
 
     model_config = ConfigDict(
         extra="forbid",
+        populate_by_name=True,
         json_schema_extra={
             "examples": [
                 {
-                    "year": 2024,
+                    "source_report_year": 2025,
                     "page_number": 20,
                     "table_type": "balance_sheet",
                     "table_index": 0,
@@ -24,16 +27,27 @@ class ExtractedTable(BaseModel):
                         ["Cash", "1000"],
                         ["Inventory", "500"],
                     ],
+                    "metric_values": [
+                        {
+                            "metric": "Cash",
+                            "value_year": 2024,
+                            "value": 1000,
+                            "source_report_year": 2025,
+                            "page_number": 20,
+                            "table_type": "balance_sheet",
+                        }
+                    ],
                 }
             ]
         },
     )
 
-    year: int = Field(
+    source_report_year: int = Field(
         ...,
         ge=1900,
-        description="Financial reporting year for the source annual report.",
-        examples=[2024],
+        validation_alias=AliasChoices("source_report_year", "year"),
+        description="Annual report year from which this table was extracted.",
+        examples=[2025],
     )
     page_number: int = Field(
         ...,
@@ -53,8 +67,8 @@ class ExtractedTable(BaseModel):
         examples=[0],
     )
     rows: list[list[str]] = Field(
-        ...,
-        description="Raw extracted table rows, where each cell is preserved as text.",
+        default_factory=list,
+        description="Raw extracted table rows retained for OCR traceability.",
         examples=[
             [
                 ["Cash", "1000"],
@@ -62,6 +76,19 @@ class ExtractedTable(BaseModel):
             ]
         ],
     )
+    metric_values: list[MetricValue] = Field(
+        default_factory=list,
+        description=(
+            "Metric/value pairs extracted from the table with value year and "
+            "source report year separated."
+        ),
+    )
+
+    @property
+    def year(self) -> int:
+        """Backward-compatible alias for source_report_year."""
+
+        return self.source_report_year
 
 
 class TableExtractionResult(BaseModel):
@@ -74,7 +101,7 @@ class TableExtractionResult(BaseModel):
                 {
                     "tables": [
                         {
-                            "year": 2024,
+                            "source_report_year": 2025,
                             "page_number": 20,
                             "table_type": "balance_sheet",
                             "table_index": 0,
@@ -82,8 +109,28 @@ class TableExtractionResult(BaseModel):
                                 ["Cash", "1000"],
                                 ["Inventory", "500"],
                             ],
+                            "metric_values": [
+                                {
+                                    "metric": "Cash",
+                                    "value_year": 2024,
+                                    "value": 1000,
+                                    "source_report_year": 2025,
+                                    "page_number": 20,
+                                    "table_type": "balance_sheet",
+                                }
+                            ],
                         }
-                    ]
+                    ],
+                    "metric_values": [
+                        {
+                            "metric": "Cash",
+                            "value_year": 2024,
+                            "value": 1000,
+                            "source_report_year": 2025,
+                            "page_number": 20,
+                            "table_type": "balance_sheet",
+                        }
+                    ],
                 }
             ]
         },
@@ -92,4 +139,8 @@ class TableExtractionResult(BaseModel):
     tables: list[ExtractedTable] = Field(
         ...,
         description="Raw financial table data returned by the extraction layer.",
+    )
+    metric_values: list[MetricValue] = Field(
+        default_factory=list,
+        description="All extracted metric values across tables in this result.",
     )

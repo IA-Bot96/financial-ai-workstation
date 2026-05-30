@@ -59,20 +59,23 @@ def test_normalization_result_serializes_expected_output() -> None:
     assert result.model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "income_statement",
                 "table_index": 0,
                 "rows": [["revenue", "1200000"]],
+                "metric_values": [],
             }
         ],
+        "metric_values": [],
         "mappings": [],
     }
 
 
 def test_metric_mapping_preserves_year_and_review_state() -> None:
     mapping = MetricMapping(
-        year=2024,
+        value_year=2024,
+        source_report_year=2025,
         original_metric="Net Sales",
         normalized_metric="revenue",
         confidence=0.96,
@@ -80,7 +83,8 @@ def test_metric_mapping_preserves_year_and_review_state() -> None:
     )
 
     assert mapping.model_dump() == {
-        "year": 2024,
+        "value_year": 2024,
+        "source_report_year": 2025,
         "original_metric": "Net Sales",
         "normalized_metric": "revenue",
         "confidence": 0.96,

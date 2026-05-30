@@ -16,6 +16,7 @@ from ocr_engine.models.financial_table_classification import (
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
 from ocr_engine.models.validation_result import ValidationIssue
+from shared.models.metric_value import MetricValue
 
 logger = logging.getLogger(__name__)
 
@@ -432,7 +433,10 @@ class ValidationContext:
 
     @property
     def primary_year(self) -> int:
-        """Return the report year represented by this validation context."""
+        """Return the value year represented by this validation context."""
+
+        if self.observations:
+            return self.observations[0].year
 
         if self.table_extraction_result.tables:
             return self.table_extraction_result.tables[0].year
@@ -507,6 +511,7 @@ class RuleValidator(ABC):
 def build_validation_context(
     classification_result: FinancialTableClassificationResult,
     table_extraction_result: TableExtractionResult,
+    value_year: int | None = None,
 ) -> ValidationContext:
     """Parse extracted table rows into canonical metric observations."""
 
@@ -516,10 +521,27 @@ def build_validation_context(
     year_sequences_by_table: dict[tuple[int, int, int], tuple[tuple[int, ...], ...]] = {}
     tables_by_key: dict[tuple[int, int, int], ExtractedTable] = {}
 
+    if table_extraction_result.metric_values:
+        for metric_value in table_extraction_result.metric_values:
+            if value_year is not None and metric_value.value_year != value_year:
+                continue
+            observation = _observation_from_metric_value(metric_value)
+            if observation is not None:
+                observations.append(observation)
+
     for table in table_extraction_result.tables:
         key = (table.year, table.page_number, table.table_index)
         table_dataframes[key] = pd.DataFrame(table.rows)
         tables_by_key[key] = table
+
+        if table_extraction_result.metric_values:
+            labels_by_table[key] = tuple(
+                normalize_text(metric_value.metric)
+                for metric_value in table.metric_values
+                if value_year is None or metric_value.value_year == value_year
+            )
+            year_sequences_by_table[key] = tuple()
+            continue
 
         labels: list[str] = []
         year_sequences: list[tuple[int, ...]] = []
@@ -576,6 +598,35 @@ def build_validation_context(
         labels_by_table=labels_by_table,
         year_sequences_by_table=year_sequences_by_table,
         tables_by_key=tables_by_key,
+    )
+
+
+def _observation_from_metric_value(
+    metric_value: MetricValue,
+) -> MetricObservation | None:
+    """Convert a structured MetricValue into a validation observation."""
+
+    parsed_value = (
+        float(metric_value.value)
+        if isinstance(metric_value.value, int | float)
+        else parse_number(metric_value.value)
+    )
+    if parsed_value is None:
+        return None
+
+    metric_name = canonical_metric_name(metric_value.metric) or normalize_identifier(
+        metric_value.metric
+    )
+    return MetricObservation(
+        metric_name=metric_name,
+        year=metric_value.value_year,
+        label=metric_value.metric,
+        value=parsed_value,
+        values=(parsed_value,),
+        page_number=metric_value.page_number,
+        table_type=metric_value.table_type,
+        table_index=0,
+        row_index=0,
     )
 
 

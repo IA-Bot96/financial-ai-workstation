@@ -1,10 +1,15 @@
-"""Shared canonical numeric metric value model."""
+"""Shared canonical financial metric value model."""
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetricValue(BaseModel):
-    """Canonical numeric value for one financial metric in one reporting year."""
+    """Financial metric value with analytical year and source-report provenance.
+
+    ``value_year`` is the year the number represents. ``source_report_year`` is
+    the annual report where the number was found. These are intentionally
+    separate because later reports can restate or reclassify comparative years.
+    """
 
     model_config = ConfigDict(
         extra="forbid",
@@ -12,8 +17,11 @@ class MetricValue(BaseModel):
             "examples": [
                 {
                     "metric": "revenue",
-                    "year": 2024,
-                    "value": 1500000.0,
+                    "value_year": 2024,
+                    "value": 1500,
+                    "source_report_year": 2025,
+                    "page_number": 120,
+                    "table_type": "income_statement",
                 }
             ]
         },
@@ -25,14 +33,32 @@ class MetricValue(BaseModel):
         description="Canonical financial metric key.",
         examples=["revenue"],
     )
-    year: int = Field(
+    value_year: int = Field(
         ...,
         ge=1900,
-        description="Financial reporting year for this metric value.",
+        description="Financial year represented by the metric value.",
         examples=[2024],
     )
-    value: float = Field(
+    value: float | int | str = Field(
         ...,
-        description="Numeric financial metric value for the reporting year.",
-        examples=[1500000.0],
+        description="Extracted metric value for value_year.",
+        examples=[1500],
+    )
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which this value was sourced.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the value originated.",
+        examples=[120],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the value originated.",
+        examples=["income_statement"],
     )

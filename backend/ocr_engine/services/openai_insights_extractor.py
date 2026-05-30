@@ -184,7 +184,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             report_year=report_year,
         )
         result = self._insights_extractor.extract(messages)
-        result = self._ensure_insights_use_report_year(result, report_year)
+        result = self._ensure_insights_use_source_report_year(result, report_year)
 
         self._logger.info(
             "Insights extraction complete",
@@ -228,31 +228,38 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
 
     @staticmethod
     def _normalization_years(normalization_result: NormalizationResult) -> set[int]:
-        """Return all years represented by normalized tables and mappings."""
+        """Return all source report years represented by normalization output."""
 
-        return {table.year for table in normalization_result.tables} | {
-            mapping.year for mapping in normalization_result.mappings
+        return {
+            table.source_report_year for table in normalization_result.tables
+        } | {
+            mapping.source_report_year for mapping in normalization_result.mappings
+        } | {
+            metric_value.source_report_year
+            for metric_value in normalization_result.metric_values
         }
 
-    def _ensure_insights_use_report_year(
+    def _ensure_insights_use_source_report_year(
         self,
         result: InsightsExtractionResult,
         report_year: int,
     ) -> InsightsExtractionResult:
-        """Attach the authoritative report year to every extracted insight."""
+        """Attach the authoritative source report year to every insight."""
 
         insights: list[Insight] = []
         for insight in result.insights:
-            if insight.year != report_year:
+            if insight.source_report_year != report_year:
                 self._logger.warning(
-                    "Insight year corrected to report year",
+                    "Insight source report year corrected",
                     extra={
-                        "reported_year": insight.year,
-                        "report_year": report_year,
+                        "reported_source_report_year": insight.source_report_year,
+                        "source_report_year": report_year,
                         "area": insight.area,
                     },
                 )
-            insights.append(insight.model_copy(update={"year": report_year}))
+            insights.append(
+                insight.model_copy(update={"source_report_year": report_year})
+            )
 
         return InsightsExtractionResult(insights=insights)
 

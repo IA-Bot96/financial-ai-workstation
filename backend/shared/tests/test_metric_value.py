@@ -16,27 +16,61 @@ from shared.models.metric_value import MetricValue
 def test_metric_value_accepts_valid_payload() -> None:
     metric_value = MetricValue(
         metric="revenue",
-        year=2024,
-        value=1500000.0,
+        value_year=2024,
+        value=1500,
+        source_report_year=2025,
+        page_number=120,
+        table_type="income_statement",
     )
 
     assert metric_value.model_dump() == {
         "metric": "revenue",
-        "year": 2024,
-        "value": 1500000.0,
+        "value_year": 2024,
+        "value": 1500,
+        "source_report_year": 2025,
+        "page_number": 120,
+        "table_type": "income_statement",
     }
 
 
 def test_metric_value_requires_non_empty_metric() -> None:
     with pytest.raises(ValidationError) as exc_info:
-        MetricValue(metric="", year=2024, value=1500000.0)
+        MetricValue(
+            metric="",
+            value_year=2024,
+            value=1500,
+            source_report_year=2025,
+            page_number=120,
+            table_type="income_statement",
+        )
 
     assert exc_info.value.errors()[0]["type"] == "string_too_short"
 
 
-def test_metric_value_requires_year_at_or_after_1900() -> None:
+def test_metric_value_requires_value_year_at_or_after_1900() -> None:
     with pytest.raises(ValidationError) as exc_info:
-        MetricValue(metric="revenue", year=1899, value=1500000.0)
+        MetricValue(
+            metric="revenue",
+            value_year=1899,
+            value=1500,
+            source_report_year=2025,
+            page_number=120,
+            table_type="income_statement",
+        )
+
+    assert exc_info.value.errors()[0]["type"] == "greater_than_equal"
+
+
+def test_metric_value_requires_source_report_year_at_or_after_1900() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        MetricValue(
+            metric="revenue",
+            value_year=2024,
+            value=1500,
+            source_report_year=1899,
+            page_number=120,
+            table_type="income_statement",
+        )
 
     assert exc_info.value.errors()[0]["type"] == "greater_than_equal"
 
@@ -45,8 +79,11 @@ def test_metric_value_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         MetricValue(
             metric="revenue",
-            year=2024,
-            value=1500000.0,
+            value_year=2024,
+            value=1500,
+            source_report_year=2025,
+            page_number=120,
+            table_type="income_statement",
             company_name="Maple Leaf Cement Factory Limited",
         )
 

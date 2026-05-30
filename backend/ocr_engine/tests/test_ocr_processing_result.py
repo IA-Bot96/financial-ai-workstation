@@ -42,7 +42,8 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
         insights=InsightsExtractionResult(
             insights=[
                 Insight(
-                    year=2024,
+                    value_year=2024,
+                    source_report_year=2024,
                     area="Debt",
                     takeaway=(
                         "Debt increased due to Southeast Asia expansion "
@@ -78,7 +79,8 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
         "insights": {
             "insights": [
                 {
-                    "year": 2024,
+                    "value_year": 2024,
+                    "source_report_year": 2024,
                     "area": "Debt",
                     "takeaway": (
                         "Debt increased due to Southeast Asia expansion "

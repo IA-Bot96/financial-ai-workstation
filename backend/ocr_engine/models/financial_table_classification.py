@@ -1,14 +1,18 @@
 """Models for OCR financial table classification results."""
 
+from typing import Annotated
+
 from pydantic import BaseModel, ConfigDict, Field
 
+TableType = Annotated[str, Field(min_length=1)]
 
-class FinancialTableClassification(BaseModel):
-    """Classification for a financial table detected on a single PDF page.
 
-    This model represents only the table category decision. It intentionally
-    does not include extracted rows, columns, headers, values, normalized terms,
-    or template mapping details.
+class PageTableType(BaseModel):
+    """Financial table types identified on a detected PDF page.
+
+    This model supports multiple table types per page and keeps table type
+    values as flexible strings so new annual-report table categories can appear
+    without requiring enum changes.
     """
 
     model_config = ConfigDict(
@@ -16,60 +20,53 @@ class FinancialTableClassification(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "page": 20,
-                    "table_type": "balance_sheet",
-                    "confidence": 0.97,
+                    "page_number": 20,
+                    "table_types": [
+                        "balance_sheet",
+                        "debt_schedule",
+                    ],
                 }
             ]
         },
     )
 
-    page: int = Field(
+    page_number: int = Field(
         ...,
         gt=0,
-        description="One-based PDF page number where the financial table was classified.",
+        description="One-based PDF page number where financial tables were classified.",
         examples=[20],
     )
-    table_type: str = Field(
+    table_types: list[TableType] = Field(
         ...,
         description=(
-            "Detected financial table category as a string, kept flexible for "
-            "new annual-report table types."
+            "Detected financial table categories on the page, kept as flexible "
+            "strings for forward compatibility."
         ),
-        examples=["balance_sheet", "property_plant_equipment_note"],
-    )
-    confidence: float = Field(
-        ...,
-        ge=0,
-        le=1,
-        description="Classifier confidence score from 0 to 1, inclusive.",
-        examples=[0.97],
+        examples=[["balance_sheet", "debt_schedule"]],
     )
 
 
 class FinancialTableClassificationResult(BaseModel):
-    """Collection of financial table classifications for detected table pages."""
+    """Collection of page-level financial table classifications."""
 
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
             "examples": [
                 {
-                    "classifications": [
+                    "page_table_types": [
                         {
-                            "page": 20,
-                            "table_type": "balance_sheet",
-                            "confidence": 0.97,
+                            "page_number": 20,
+                            "table_types": [
+                                "balance_sheet",
+                                "debt_schedule",
+                            ],
                         },
                         {
-                            "page": 25,
-                            "table_type": "income_statement",
-                            "confidence": 0.95,
-                        },
-                        {
-                            "page": 72,
-                            "table_type": "property_plant_equipment_note",
-                            "confidence": 0.89,
+                            "page_number": 25,
+                            "table_types": [
+                                "income_statement",
+                            ],
                         },
                     ]
                 }
@@ -77,7 +74,7 @@ class FinancialTableClassificationResult(BaseModel):
         },
     )
 
-    classifications: list[FinancialTableClassification] = Field(
+    page_table_types: list[PageTableType] = Field(
         ...,
-        description="Financial table classifications produced for detected table pages.",
+        description="Financial table type classifications grouped by detected page.",
     )

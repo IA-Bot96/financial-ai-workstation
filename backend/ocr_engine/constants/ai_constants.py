@@ -1,0 +1,12 @@
+"""Configuration defaults for AI-backed OCR services."""
+
+import os
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "DUMMY_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
+OPENAI_CLASSIFICATION_MAX_RETRIES = int(
+    os.getenv("OPENAI_CLASSIFICATION_MAX_RETRIES", "3")
+)
+OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS = float(
+    os.getenv("OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS", "1.0")
+)

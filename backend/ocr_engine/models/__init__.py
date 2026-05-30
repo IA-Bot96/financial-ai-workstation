@@ -1,8 +1,8 @@
 """Pydantic models for OCR engine layers."""
 
 from .financial_table_classification import (
-    FinancialTableClassification,
     FinancialTableClassificationResult,
+    PageTableType,
 )
 from .financial_fact_extraction import (
     FinancialFact,
@@ -20,11 +20,11 @@ __all__ = [
     "ExtractedTable",
     "FinancialFact",
     "FinancialFactExtractionResult",
-    "FinancialTableClassification",
     "FinancialTableClassificationResult",
     "Insight",
     "InsightsExtractionResult",
     "OCRProcessingResult",
+    "PageTableType",
     "Report",
     "SourceReference",
     "TableExtractionResult",

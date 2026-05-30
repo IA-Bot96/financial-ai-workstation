@@ -1,0 +1,16 @@
+services:
+  ocr-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/backend
+      OUTPUT_DIRECTORY: /app/output
+      OCR_CONTEXT_JSON: /app/data/context.json
+      OCR_OUTPUT_JSON: /app/output/context_result.json
+    volumes:
+      - ./output:/app/output
+      - ./data:/app/data:ro
+    command: ["python", "backend/run_pipeline.py"]

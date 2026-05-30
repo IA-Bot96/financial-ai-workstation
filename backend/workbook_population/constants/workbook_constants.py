@@ -1,6 +1,8 @@
 """Configuration constants for workbook population."""
 
-DEFAULT_OUTPUT_DIR = "output"
+from shared.config.settings import get_settings
+
+DEFAULT_OUTPUT_DIR = str(get_settings().output_directory)
 DEFAULT_OUTPUT_FILE_NAME = "company_model.xlsx"
 
 TEMPLATE_WORKBOOK_MODE = "template"

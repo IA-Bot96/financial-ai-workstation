@@ -79,7 +79,7 @@ class OpenAITableClassifier(ITableClassifier):
     ) -> None:
         """Initialize the OpenAI table classifier with injectable dependencies."""
 
-        if not api_key or api_key == "DUMMY_KEY":
+        if not api_key:
             raise MissingOpenAIConfigurationError(
                 "OPENAI_API_KEY must be configured for table classification."
             )

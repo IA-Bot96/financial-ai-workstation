@@ -125,7 +125,7 @@ def _normalization_result(year: int = 2024) -> NormalizationResult:
 
 def test_openai_insights_extractor_requires_api_key_without_injected_extractor() -> None:
     with pytest.raises(MissingOpenAIConfigurationError):
-        OpenAIInsightsExtractor(api_key="DUMMY_KEY")
+        OpenAIInsightsExtractor(api_key="")
 
 
 def test_openai_insights_extractor_orchestrates_preprocessing(

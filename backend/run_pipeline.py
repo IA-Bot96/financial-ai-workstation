@@ -15,6 +15,7 @@ from ocr_engine.services.openai_table_classifier import OpenAITableClassifier
 from ocr_engine.services.table_metric_normalizer import TableMetricNormalizer
 from ocr_engine.services.table_transformer_detector import TableTransformerDetector
 from ocr_engine.validation.financial_validation_service import FinancialValidationService
+from shared.config.settings import ConfigurationValidator, Settings, get_settings
 from shared.models.company_context import CompanyContext
 from shared.services.financial_year_consolidator import FinancialYearConsolidator
 from workbook_population.services.workbook_population_service import (
@@ -22,16 +23,23 @@ from workbook_population.services.workbook_population_service import (
 )
 
 
-def build_default_pipeline() -> OCRPipeline:
+def build_default_pipeline(settings: Settings | None = None) -> OCRPipeline:
     """Build the production OCR pipeline using the default service implementations."""
 
+    settings = settings or get_settings()
     return OCRPipeline(
         table_detector=TableTransformerDetector(),
-        table_classifier=OpenAITableClassifier(),
+        table_classifier=OpenAITableClassifier(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+        ),
         table_extractor=CamelotTableExtractor(),
         validator=FinancialValidationService(),
         metric_normalizer=TableMetricNormalizer(),
-        insights_extractor=OpenAIInsightsExtractor(),
+        insights_extractor=OpenAIInsightsExtractor(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+        ),
         financial_year_consolidator=FinancialYearConsolidator(),
         workbook_population_service=OpenPyXLWorkbookPopulationService(),
     )
@@ -57,9 +65,11 @@ def main() -> None:
         parser.error("--context-json or OCR_CONTEXT_JSON is required.")
 
     logging.basicConfig(level=logging.INFO)
+    settings = get_settings()
+    ConfigurationValidator(settings).validate_startup()
     input_path = Path(args.context_json)
     context = CompanyContext.model_validate_json(input_path.read_text(encoding="utf-8"))
-    result = build_default_pipeline().process(context)
+    result = build_default_pipeline(settings).process(context)
     output_text = json.dumps(result.model_dump(mode="json"), indent=2)
 
     if args.output_json:

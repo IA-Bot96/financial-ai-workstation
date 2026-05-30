@@ -97,7 +97,7 @@ def test_openai_table_classifier_requires_api_key() -> None:
     with pytest.raises(MissingOpenAIConfigurationError):
         OpenAITableClassifier(
             client=FakeOpenAIClient([]),
-            api_key="DUMMY_KEY",
+            api_key="",
         )
 
 

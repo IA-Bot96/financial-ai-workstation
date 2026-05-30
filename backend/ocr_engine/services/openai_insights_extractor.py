@@ -49,7 +49,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
     ) -> None:
         """Initialize the insights extractor with injectable dependencies."""
 
-        if insights_extractor is None and (not api_key or api_key == "DUMMY_KEY"):
+        if insights_extractor is None and not api_key:
             raise MissingOpenAIConfigurationError(
                 "OPENAI_API_KEY must be configured for insights extraction."
             )

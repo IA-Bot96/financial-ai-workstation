@@ -1,0 +1,16 @@
+camelot-py[cv]>=0.11,<1
+fastapi>=0.111,<1
+numpy>=1.26,<3
+openai>=1.35,<2
+openpyxl>=3.1,<4
+pandas>=2.2,<3
+pdfplumber>=0.11,<1
+pillow>=10.3,<12
+pydantic>=2.7,<3
+pydantic-settings>=2.3,<3
+pymupdf>=1.24,<2
+scikit-learn>=1.5,<2
+sentence-transformers>=3,<6
+torch>=2.3,<3
+transformers>=4.41,<5
+uvicorn[standard]>=0.30,<1

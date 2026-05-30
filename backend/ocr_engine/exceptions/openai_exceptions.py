@@ -2,7 +2,7 @@
 
 
 class MissingOpenAIConfigurationError(RuntimeError):
-    """Raised when OpenAI configuration is missing or still using a dummy key."""
+    """Raised when OpenAI configuration is missing or invalid."""
 
 
 class OpenAITableClassificationError(RuntimeError):

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import torch, transformers, fitz, camelot, pdfplumber, openai, sentence_transformers, sklearn, openpyxl, pydantic, numpy, pandas, fastapi\")"
+    ]
+  }
+}

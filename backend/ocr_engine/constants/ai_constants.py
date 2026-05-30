@@ -1,16 +1,16 @@
-"""Configuration defaults for AI-backed OCR services."""
+"""Configuration values for AI-backed OCR services."""
 
-import os
+from shared.config.settings import get_settings
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "DUMMY_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
-OPENAI_CLASSIFICATION_MAX_RETRIES = int(
-    os.getenv("OPENAI_CLASSIFICATION_MAX_RETRIES", "3")
+_settings = get_settings()
+
+OPENAI_API_KEY = _settings.openai_api_key
+OPENAI_MODEL = _settings.openai_model
+OPENAI_CLASSIFICATION_MAX_RETRIES = _settings.openai_classification_max_retries
+OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS = (
+    _settings.openai_classification_retry_backoff_seconds
 )
-OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS = float(
-    os.getenv("OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS", "1.0")
-)
-OPENAI_INSIGHTS_MAX_RETRIES = int(os.getenv("OPENAI_INSIGHTS_MAX_RETRIES", "3"))
-OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS = float(
-    os.getenv("OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS", "1.0")
+OPENAI_INSIGHTS_MAX_RETRIES = _settings.openai_insights_max_retries
+OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS = (
+    _settings.openai_insights_retry_backoff_seconds
 )

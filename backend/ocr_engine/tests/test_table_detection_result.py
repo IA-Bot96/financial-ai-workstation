@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-PROJECT_DIR = Path(__file__).resolve().parents[1]
-if str(PROJECT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_DIR))
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-from models.table_detection_result import TableDetectionResult
+from ocr_engine.models.table_detection_result import TableDetectionResult
 
 
 def test_table_detection_result_accepts_valid_payload() -> None:

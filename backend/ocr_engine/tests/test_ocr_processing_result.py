@@ -46,7 +46,8 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
                         "financing."
                     ),
                     source_section="Management Discussion & Analysis",
-                    page=84,
+                    page_number=84,
+                    confidence=0.91,
                 )
             ]
         ),
@@ -78,7 +79,8 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
                         "financing."
                     ),
                     "source_section": "Management Discussion & Analysis",
-                    "page": 84,
+                    "page_number": 84,
+                    "confidence": 0.91,
                 }
             ]
         },

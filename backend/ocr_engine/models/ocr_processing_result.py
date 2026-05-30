@@ -42,7 +42,8 @@ class OCRProcessingResult(BaseModel):
                                 "source_section": (
                                     "Management Discussion & Analysis"
                                 ),
-                                "page": 84,
+                                "page_number": 84,
+                                "confidence": 0.91,
                             }
                         ]
                     },

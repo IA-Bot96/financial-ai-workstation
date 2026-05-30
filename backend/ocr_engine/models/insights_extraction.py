@@ -19,7 +19,8 @@ class Insight(BaseModel):
                     "area": "Debt",
                     "takeaway": "Debt increased due to Southeast Asia expansion financing.",
                     "source_section": "Management Discussion & Analysis",
-                    "page": 84,
+                    "page_number": 84,
+                    "confidence": 0.91,
                 }
             ]
         },
@@ -43,11 +44,18 @@ class Insight(BaseModel):
         description="Annual-report section where the insight was found.",
         examples=["Management Discussion & Analysis"],
     )
-    page: int = Field(
+    page_number: int = Field(
         ...,
         gt=0,
         description="One-based PDF page number where the source narrative appears.",
         examples=[84],
+    )
+    confidence: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Confidence score for the extracted insight.",
+        examples=[0.91],
     )
 
 
@@ -67,7 +75,8 @@ class InsightsExtractionResult(BaseModel):
                                 "financing."
                             ),
                             "source_section": "Management Discussion & Analysis",
-                            "page": 84,
+                            "page_number": 84,
+                            "confidence": 0.91,
                         },
                         {
                             "area": "Geographic Expansion",
@@ -76,7 +85,8 @@ class InsightsExtractionResult(BaseModel):
                                 "Middle East."
                             ),
                             "source_section": "Risks & Opportunities",
-                            "page": 92,
+                            "page_number": 92,
+                            "confidence": 0.88,
                         },
                     ]
                 }

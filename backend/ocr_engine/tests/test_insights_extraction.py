@@ -18,13 +18,15 @@ def test_insight_accepts_valid_payload() -> None:
         area="Debt",
         takeaway="Debt increased due to Southeast Asia expansion financing.",
         source_section="Management Discussion & Analysis",
-        page=84,
+        page_number=84,
+        confidence=0.91,
     )
 
     assert insight.area == "Debt"
     assert insight.takeaway == "Debt increased due to Southeast Asia expansion financing."
     assert insight.source_section == "Management Discussion & Analysis"
-    assert insight.page == 84
+    assert insight.page_number == 84
+    assert insight.confidence == 0.91
 
 
 def test_insight_accepts_generic_business_area() -> None:
@@ -32,7 +34,8 @@ def test_insight_accepts_generic_business_area() -> None:
         area="ESG Initiatives",
         takeaway="The company expanded its renewable energy sourcing program.",
         source_section="Sustainability",
-        page=118,
+        page_number=118,
+        confidence=0.87,
     )
 
     assert insight.area == "ESG Initiatives"
@@ -44,10 +47,24 @@ def test_insight_requires_positive_page() -> None:
             area="Debt",
             takeaway="Debt increased during the reporting period.",
             source_section="Management Discussion & Analysis",
-            page=0,
+            page_number=0,
+            confidence=0.9,
         )
 
     assert exc_info.value.errors()[0]["type"] == "greater_than"
+
+
+def test_insight_requires_confidence_between_zero_and_one() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        Insight(
+            area="Debt",
+            takeaway="Debt increased during the reporting period.",
+            source_section="Management Discussion & Analysis",
+            page_number=84,
+            confidence=1.2,
+        )
+
+    assert exc_info.value.errors()[0]["type"] == "less_than_equal"
 
 
 @pytest.mark.parametrize("field_name", ["area", "takeaway", "source_section"])
@@ -56,7 +73,8 @@ def test_insight_requires_non_empty_text_fields(field_name: str) -> None:
         "area": "Debt",
         "takeaway": "Debt increased during the reporting period.",
         "source_section": "Management Discussion & Analysis",
-        "page": 84,
+        "page_number": 84,
+        "confidence": 0.9,
     }
     payload[field_name] = ""
 
@@ -72,7 +90,8 @@ def test_insight_forbids_extra_fields() -> None:
             area="Cost Pressures",
             takeaway="Input costs increased due to higher freight rates.",
             source_section="Operating Review",
-            page=64,
+            page_number=64,
+            confidence=0.85,
             recommendation="Review supplier contracts.",
         )
 
@@ -86,13 +105,15 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 area="Debt",
                 takeaway="Debt increased due to Southeast Asia expansion financing.",
                 source_section="Management Discussion & Analysis",
-                page=84,
+                page_number=84,
+                confidence=0.91,
             ),
             Insight(
                 area="Geographic Expansion",
                 takeaway="The company plans to expand into Africa and the Middle East.",
                 source_section="Risks & Opportunities",
-                page=92,
+                page_number=92,
+                confidence=0.88,
             ),
         ]
     )
@@ -103,13 +124,15 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 "area": "Debt",
                 "takeaway": "Debt increased due to Southeast Asia expansion financing.",
                 "source_section": "Management Discussion & Analysis",
-                "page": 84,
+                "page_number": 84,
+                "confidence": 0.91,
             },
             {
                 "area": "Geographic Expansion",
                 "takeaway": "The company plans to expand into Africa and the Middle East.",
                 "source_section": "Risks & Opportunities",
-                "page": 92,
+                "page_number": 92,
+                "confidence": 0.88,
             },
         ]
     }

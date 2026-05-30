@@ -13,6 +13,7 @@ from .ocr_processing_result import OCRProcessingResult
 from .report import Report
 from .source_reference import SourceReference
 from .table_extraction import ExtractedTable, TableExtractionResult
+from .table_normalization import NormalizationResult, NormalizedTable
 from .table_detection_result import DetectedPage, TableDetectionResult
 from .validation_result import ValidationIssue, ValidationResult
 
@@ -24,6 +25,8 @@ __all__ = [
     "FinancialTableClassificationResult",
     "Insight",
     "InsightsExtractionResult",
+    "NormalizationResult",
+    "NormalizedTable",
     "OCRProcessingResult",
     "PageTableType",
     "Report",

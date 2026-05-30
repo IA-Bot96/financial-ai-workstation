@@ -3,12 +3,41 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class DetectedPage(BaseModel):
+    """Metadata for a PDF page where at least one table was detected."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "page_number": 20,
+                    "tables_detected": 3,
+                }
+            ]
+        },
+    )
+
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where tables were detected.",
+        examples=[20],
+    )
+    tables_detected: int = Field(
+        ...,
+        gt=0,
+        description="Number of tables detected on the page.",
+        examples=[3],
+    )
+
+
 class TableDetectionResult(BaseModel):
     """Result returned by the OCR Table Detection Layer.
 
-    The detection layer identifies which PDF pages contain tables. It does not
-    extract tabular content; that responsibility belongs to the table extraction
-    layer.
+    The detection layer identifies PDF pages containing tables and records the
+    number of detected tables per page. It does not extract tabular content;
+    that responsibility belongs to the table extraction layer.
     """
 
     model_config = ConfigDict(
@@ -16,21 +45,45 @@ class TableDetectionResult(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "table_pages": [24, 25, 42],
-                    "total_detected_tables": 7,
+                    "detected_pages": [
+                        {
+                            "page_number": 20,
+                            "tables_detected": 3,
+                        },
+                        {
+                            "page_number": 25,
+                            "tables_detected": 1,
+                        },
+                        {
+                            "page_number": 42,
+                            "tables_detected": 2,
+                        },
+                    ],
+                    "total_pages_processed": 132,
                 }
             ]
         },
     )
 
-    table_pages: list[int] = Field(
+    detected_pages: list[DetectedPage] = Field(
         ...,
-        description="One-based PDF page numbers where at least one table was detected.",
-        examples=[[24, 25, 42]],
+        description="Pages where tables were detected, including per-page table counts.",
+        examples=[
+            [
+                {
+                    "page_number": 20,
+                    "tables_detected": 3,
+                },
+                {
+                    "page_number": 25,
+                    "tables_detected": 1,
+                },
+            ]
+        ],
     )
-    total_detected_tables: int = Field(
+    total_pages_processed: int = Field(
         ...,
         ge=0,
-        description="Total number of individual tables detected across all detected table pages.",
-        examples=[7],
+        description="Total number of PDF pages processed by the table detection layer.",
+        examples=[132],
     )

@@ -11,8 +11,12 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from ocr_engine.models.insights_extraction import Insight
+from ocr_engine.governance.insight_confidence_governance import (
+    InsightConfidenceGovernance,
+)
 from shared.models.metric_value import MetricValue
 from workbook_population.constants.workbook_constants import (
+    INSIGHTS_REVIEW_SHEET_NAME,
     INSIGHTS_SHEET_NAME,
 )
 from workbook_population.services.workbook_mapper import WorkbookMapper
@@ -25,6 +29,7 @@ class DynamicWorkbookService:
         """Initialize dynamic workbook generation dependencies."""
 
         self._mapper = mapper or WorkbookMapper()
+        self._insight_governance = InsightConfidenceGovernance()
 
     def generate(
         self,
@@ -48,15 +53,26 @@ class DynamicWorkbookService:
             created_sheets.append(sheet_name)
             metrics_written += self._write_metric_sheet(worksheet, values)
 
-        if not sheet_metrics and not insights:
+        governed_insights = self._insight_governance.apply(insights)
+        exported_insights = governed_insights.exported_insights
+        review_insights = governed_insights.review_insights
+
+        if not sheet_metrics and not exported_insights and not review_insights:
             worksheet = workbook.create_sheet("Financial Data")
             worksheet.append(["Metric"])
             _style_header(worksheet[1])
             created_sheets.append("Financial Data")
 
-        if insights:
-            self._write_insights_sheet(workbook, insights)
+        if exported_insights:
+            self._write_insights_sheet(workbook, INSIGHTS_SHEET_NAME, exported_insights)
             created_sheets.append(INSIGHTS_SHEET_NAME)
+        if review_insights:
+            self._write_insights_sheet(
+                workbook,
+                INSIGHTS_REVIEW_SHEET_NAME,
+                review_insights,
+            )
+            created_sheets.append(INSIGHTS_REVIEW_SHEET_NAME)
 
         try:
             output_path = Path(output_file_path)
@@ -119,8 +135,12 @@ class DynamicWorkbookService:
         return written
 
     @staticmethod
-    def _write_insights_sheet(workbook: Workbook, insights: list[Insight]) -> None:
-        worksheet = workbook.create_sheet(INSIGHTS_SHEET_NAME)
+    def _write_insights_sheet(
+        workbook: Workbook,
+        sheet_name: str,
+        insights: list[Insight],
+    ) -> None:
+        worksheet = workbook.create_sheet(sheet_name)
         worksheet.append(
             [
                 "Year",

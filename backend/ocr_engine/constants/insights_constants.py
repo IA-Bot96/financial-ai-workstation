@@ -5,6 +5,8 @@ INSIGHTS_CHUNK_OVERLAP_CHARACTERS = 250
 INSIGHTS_MAX_RANKED_CHUNKS = None
 INSIGHTS_CHUNKS_PER_LLM_CALL = 8
 INSIGHTS_RETRIEVAL_STRATEGY = "section_balanced_score_all_relevant_chunks"
+INSIGHT_CONFIDENCE_REJECT_THRESHOLD = 0.50
+INSIGHT_CONFIDENCE_REVIEW_THRESHOLD = 0.70
 
 INSIGHTS_RELEVANT_SECTIONS = (
     "Chairman Review",
@@ -15,6 +17,7 @@ INSIGHTS_RELEVANT_SECTIONS = (
     "Risks",
     "Opportunities",
     "Outlook",
+    "Strategy",
     "Financial Review",
     "Sustainability",
     "ESG",
@@ -58,4 +61,48 @@ INSIGHTS_FINANCIAL_KEYWORDS = (
     "outlook",
     "esg",
     "sustainability",
+)
+
+GENERIC_INSIGHT_FILTER_PATTERNS = (
+    "adequate internal controls",
+    "internal financial controls",
+    "ifrs have been followed",
+    "ifrs, as applicable in pakistan, have been followed",
+    "going concern",
+    "no significant doubts",
+    "corporate governance",
+    "code of conduct",
+    "zero tolerance for non-compliance",
+    "zero-tolerance policy for non-compliance",
+    "no apparent risk or uncertainty",
+)
+
+QUANTITATIVE_EVIDENCE_TERMS = (
+    "%",
+    "rs",
+    "pkr",
+    "usd",
+    "million",
+    "billion",
+    "kwh",
+    "co2",
+    "ton",
+    "tons",
+    "tractor",
+    "tractors",
+    "units",
+    "export",
+    "exports",
+    "revenue",
+    "sales",
+    "profit",
+    "margin",
+    "eps",
+    "debt",
+    "borrowings",
+    "finance cost",
+    "working capital",
+    "cash",
+    "capacity",
+    "production",
 )

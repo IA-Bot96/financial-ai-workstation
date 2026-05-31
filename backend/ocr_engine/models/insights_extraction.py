@@ -83,6 +83,62 @@ class SectionIdentificationPageDiagnostic(BaseModel):
         description="Number of ignored-page keyword signals in the heading area.",
         examples=[0],
     )
+    ocr_engine_selected: str | None = Field(
+        default=None,
+        description="OCR engine selected for the page when OCR text was used.",
+        examples=["tesseract_ocr"],
+    )
+    pymupdf_ocr_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Section-classifier confidence for PyMuPDF OCR text.",
+        examples=[0.42],
+    )
+    tesseract_ocr_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Section-classifier confidence for direct Tesseract OCR text.",
+        examples=[0.91],
+    )
+    ocr_escalation_reason: str | None = Field(
+        default=None,
+        description="Reason PyMuPDF OCR was escalated to direct Tesseract OCR.",
+        examples=["classifier_confidence_below_threshold,weak_heading_alias_match"],
+    )
+    ocr_escalated: bool = Field(
+        default=False,
+        description="Whether direct Tesseract OCR was attempted after PyMuPDF OCR.",
+        examples=[True],
+    )
+    ocr_recovered: bool = Field(
+        default=False,
+        description=(
+            "Whether escalation selected Tesseract text that passed section "
+            "classification where PyMuPDF OCR did not."
+        ),
+        examples=[True],
+    )
+    ocr_heading_alias_match_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of known section aliases matched in the selected OCR heading.",
+        examples=[1],
+    )
+    ocr_heading_fragmentation_ratio: float = Field(
+        default=0.0,
+        ge=0,
+        le=1,
+        description="Estimated heading fragmentation ratio for selected OCR text.",
+        examples=[0.12],
+    )
+    ocr_single_character_line_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of one-character OCR fragments in selected heading lines.",
+        examples=[0],
+    )
 
 
 class SectionIdentificationReport(BaseModel):
@@ -122,6 +178,28 @@ class SectionIdentificationReport(BaseModel):
     text_source_counts: dict[str, int] = Field(
         default_factory=dict,
         description="Page count by selected text source.",
+    )
+    ocr_engine_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="OCR page count by selected OCR engine.",
+    )
+    ocr_pages_escalated: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages escalated from PyMuPDF OCR to Tesseract OCR.",
+    )
+    ocr_pages_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages recovered by selecting Tesseract OCR output.",
+    )
+    additional_accepted_pages: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Estimated pages accepted because Tesseract OCR beat rejected "
+            "PyMuPDF OCR output."
+        ),
     )
     page_diagnostics: list[SectionIdentificationPageDiagnostic] = Field(
         default_factory=list,
@@ -236,6 +314,17 @@ class InsightsExtractionDiagnostics(BaseModel):
                         "Business Review": 29,
                         "Risks": 8,
                     },
+                    "rejected_low_confidence_count": 4,
+                    "review_bucket_count": 7,
+                    "exported_high_confidence_count": 43,
+                    "generic_filtered_count": 3,
+                    "confidence_distribution": {
+                        "0.0": 1,
+                        "0.1-0.5": 3,
+                        "0.5-0.7": 7,
+                        "0.7-0.9": 37,
+                        "0.9+": 6,
+                    },
                     "section_identification_report": {
                         "total_pages": 400,
                         "pages_with_pymupdf_text": 312,
@@ -244,6 +333,10 @@ class InsightsExtractionDiagnostics(BaseModel):
                         "rejected_pages": 316,
                         "page_type_counts": {"narrative": 84},
                         "text_source_counts": {"pymupdf": 312, "ocr": 34},
+                        "ocr_engine_counts": {"tesseract_ocr": 12},
+                        "ocr_pages_escalated": 18,
+                        "ocr_pages_recovered": 9,
+                        "additional_accepted_pages": 9,
                         "page_diagnostics": [],
                     },
                 }
@@ -328,6 +421,30 @@ class InsightsExtractionDiagnostics(BaseModel):
     insight_count_by_section: dict[str, int] = Field(
         default_factory=dict,
         description="Generated insight count by source section.",
+    )
+    rejected_low_confidence_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of insights rejected from workbook output.",
+    )
+    review_bucket_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of insights routed to the Insights Review worksheet.",
+    )
+    exported_high_confidence_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of insights routed to the main Insights worksheet.",
+    )
+    generic_filtered_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of generic low-confidence insights filtered out.",
+    )
+    confidence_distribution: dict[str, int] = Field(
+        default_factory=dict,
+        description="Insight count by confidence bucket.",
     )
     section_identification_report: SectionIdentificationReport = Field(
         default_factory=SectionIdentificationReport,

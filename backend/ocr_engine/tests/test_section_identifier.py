@@ -63,3 +63,160 @@ def test_section_identifier_reports_page_type_confidence_and_rejections() -> Non
         "page_type_table_heavy",
     }
     assert report.page_diagnostics[3].rejection_reason == "no_text"
+
+
+def test_section_identifier_accepts_strategy_aliases_from_ocr_headings() -> None:
+    pages = [
+        NarrativePage(
+            20,
+            (
+                "PESTLE\n"
+                "Analysis\n"
+                "Political and economical factors affected market demand, "
+                "inflation, exports, and regulatory risk during the year."
+            ),
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+        NarrativePage(
+            25,
+            (
+                "Strategyand\n"
+                "Resource\n"
+                "Allocatior\n"
+                "Long term priorities include market leadership, working capital "
+                "discipline, and export growth."
+            ),
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+    ]
+
+    section_pages = SectionIdentifier().identify_sections(pages)
+
+    assert [(page.page_number, page.section) for page in section_pages] == [
+        (20, "Strategy"),
+        (25, "Strategy"),
+    ]
+
+
+def test_section_identifier_merges_adjacent_short_ocr_heading_lines() -> None:
+    pages = [
+        NarrativePage(
+            52,
+            (
+                "Chairman's\n"
+                "Review\n"
+                "I am pleased to present the Chairman's review on overall "
+                "performance of the board and the business."
+            ),
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+        NarrativePage(
+            72,
+            (
+                "Corporate Social\n"
+                "Responsibility\n"
+                "The company continued community, safety, employee, and "
+                "environment initiatives during the year."
+            ),
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+    ]
+
+    identifier = SectionIdentifier()
+    section_pages = identifier.identify_sections(pages)
+
+    assert [(page.page_number, page.section) for page in section_pages] == [
+        (52, "Chairman Review"),
+        (72, "Sustainability"),
+    ]
+    assert all(
+        diagnostic.heading_match
+        for diagnostic in identifier.last_report.page_diagnostics
+    )
+
+
+def test_section_identifier_accepts_financial_and_business_review_aliases() -> None:
+    pages = [
+        NarrativePage(
+            12,
+            "Financial\nHighlights\nRevenue, profit, and margins improved.",
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+        NarrativePage(
+            28,
+            "Key Performance\nIndicators\nSales volume and exports improved.",
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+        NarrativePage(
+            95,
+            (
+                "Segmental Review of Business\n"
+                "Performance\n"
+                "Tractor sales, revenue, and profit are reviewed by segment."
+            ),
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+        NarrativePage(
+            96,
+            "DUPONT\nAnalysis\nNet profit margin and return metrics changed.",
+            text_source="ocr",
+            pymupdf=False,
+            ocr=True,
+        ),
+    ]
+
+    section_pages = SectionIdentifier().identify_sections(pages)
+
+    assert [(page.page_number, page.section) for page in section_pages] == [
+        (12, "Financial Review"),
+        (28, "Business Review"),
+        (95, "Business Review"),
+        (96, "Financial Review"),
+    ]
+
+
+def test_section_identifier_keeps_terminal_exclusions_after_recall_improvements() -> None:
+    pages = [
+        NarrativePage(
+            101,
+            (
+                "Notes to the Financial Statements\n"
+                "Financial Highlights\n"
+                "2025 2024\n"
+                "Revenue 100 90"
+            ),
+        ),
+        NarrativePage(
+            292,
+            (
+                "Proxy Form\n"
+                "Strategy and Resource Allocation\n"
+                "Member voting instructions."
+            ),
+        ),
+    ]
+
+    identifier = SectionIdentifier()
+    section_pages = identifier.identify_sections(pages)
+
+    assert section_pages == []
+    assert identifier.last_report.page_diagnostics[0].rejection_reason == (
+        "page_type_notes"
+    )
+    assert identifier.last_report.page_diagnostics[1].rejection_reason == (
+        "page_type_proxy"
+    )

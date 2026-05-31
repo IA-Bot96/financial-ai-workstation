@@ -215,3 +215,76 @@ def test_template_population_replaces_cross_sheet_mapping_conflicts(
     assert metrics_written == 1
     assert any("Cross-sheet mapping conflict" in warning for warning in warnings)
     populated.close()
+
+
+def test_template_population_routes_review_insights_without_exporting_rejects(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    output_path = tmp_path / "output.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Income Statement"
+    worksheet.append(["Metric", 2025])
+    worksheet.append(["revenue", None])
+    workbook.save(template_path)
+    workbook.close()
+
+    sheets_reused, sheets_replaced, sheets_created, metrics_written, warnings = (
+        TemplatePopulationService().populate(
+            template_path=str(template_path),
+            output_file_path=str(output_path),
+            metric_values=[_metric_value("revenue", 2025, 1000)],
+            insights=[
+                Insight(
+                    value_year=2025,
+                    source_report_year=2025,
+                    area="Exports",
+                    takeaway="Export sales increased by 20%.",
+                    source_section="Business Review",
+                    page_number=84,
+                    confidence=0.9,
+                ),
+                Insight(
+                    value_year=2025,
+                    source_report_year=2025,
+                    area="Exports",
+                    takeaway="Export earnings are tracked as a growth lever.",
+                    source_section="Business Review",
+                    page_number=85,
+                    confidence=0.6,
+                ),
+                Insight(
+                    value_year=2025,
+                    source_report_year=2025,
+                    area="Internal controls",
+                    takeaway="Adequate internal financial controls are in place.",
+                    source_section="Risks",
+                    page_number=86,
+                    confidence=0.6,
+                ),
+            ],
+            sheet_results=[
+                SheetValidationResult(
+                    sheet_name="Income Statement",
+                    match_score=100,
+                    is_compatible=True,
+                    missing_metrics=[],
+                    extra_metrics=[],
+                    warnings=[],
+                )
+            ],
+        )
+    )
+
+    populated = load_workbook(output_path, data_only=False)
+    assert populated["Insights"]["C2"].value == "Exports"
+    assert populated["Insights"].max_row == 2
+    assert populated["Insights Review"]["C2"].value == "Exports"
+    assert populated["Insights Review"].max_row == 2
+    assert sheets_reused == ["Income Statement"]
+    assert sheets_replaced == []
+    assert sheets_created == ["Insights", "Insights Review"]
+    assert metrics_written == 1
+    assert warnings == []
+    populated.close()

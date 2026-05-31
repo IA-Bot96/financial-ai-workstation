@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 import logging
+from pathlib import Path
 from typing import Any
 
 from ocr_engine.constants.ai_constants import (
@@ -26,6 +27,10 @@ from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.chunk_builder import ChunkBuilder
 from ocr_engine.services.chunk_ranker import ChunkRanker
 from ocr_engine.services.insights_extractor import InsightsExtractor
+from ocr_engine.governance.insight_confidence_governance import (
+    InsightConfidenceGovernance,
+    InsightGovernanceResult,
+)
 from ocr_engine.services.interfaces.insights_extractor import IInsightsExtractor
 from ocr_engine.services.narrative_text_extractor import NarrativeTextExtractor
 from ocr_engine.services.prompt_builders.insights_prompt_builder import (
@@ -33,6 +38,7 @@ from ocr_engine.services.prompt_builders.insights_prompt_builder import (
 )
 from ocr_engine.services.section_identifier import SectionIdentifier
 from shared.models.company_context import CompanyContext
+from shared.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +58,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         chunk_ranker: ChunkRanker | None = None,
         prompt_builder: InsightsPromptBuilder | None = None,
         insights_extractor: InsightsExtractor | None = None,
+        insight_governance: InsightConfidenceGovernance | None = None,
         max_retries: int = OPENAI_INSIGHTS_MAX_RETRIES,
         retry_backoff_seconds: float = OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS,
         request_timeout_seconds: float = OPENAI_INSIGHTS_REQUEST_TIMEOUT_SECONDS,
@@ -75,6 +82,9 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         self._chunk_builder = chunk_builder or ChunkBuilder()
         self._chunk_ranker = chunk_ranker or ChunkRanker()
         self._prompt_builder = prompt_builder or InsightsPromptBuilder()
+        self._insight_governance = (
+            insight_governance or InsightConfidenceGovernance()
+        )
         self._chunks_per_llm_call = chunks_per_llm_call
 
         if insights_extractor is not None:
@@ -209,6 +219,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             ranked_chunks=ranked_chunks,
             insights=[],
             llm_call_count=0,
+            governance_result=self._insight_governance.apply([]),
         )
 
         self._logger.info(
@@ -257,6 +268,8 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         result = self._deduplicate_insights(
             InsightsExtractionResult(insights=collected_insights)
         )
+        governance_result = self._insight_governance.apply(result.insights)
+        self._write_insight_filtering_audit(governance_result)
         diagnostics = self._build_diagnostics(
             pages=pages,
             section_pages=section_pages,
@@ -264,6 +277,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             ranked_chunks=ranked_chunks,
             insights=result.insights,
             llm_call_count=llm_call_count,
+            governance_result=governance_result,
         )
         result = result.model_copy(update={"diagnostics": diagnostics})
 
@@ -409,9 +423,13 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         ranked_chunks: list[Any],
         insights: list[Insight],
         llm_call_count: int,
+        governance_result: InsightGovernanceResult | None = None,
     ) -> InsightsExtractionDiagnostics:
         """Build trace diagnostics for one report's insights extraction flow."""
 
+        governance_result = governance_result or self._insight_governance.apply(
+            insights,
+        )
         total_pages_processed = getattr(
             self._narrative_text_extractor,
             "last_total_pages_processed",
@@ -447,12 +465,39 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
                 "source_section",
             ),
             insight_count_by_section=_count_by_attribute(insights, "source_section"),
+            rejected_low_confidence_count=(
+                governance_result.rejected_low_confidence_count
+            ),
+            review_bucket_count=governance_result.review_bucket_count,
+            exported_high_confidence_count=(
+                governance_result.exported_high_confidence_count
+            ),
+            generic_filtered_count=governance_result.generic_filtered_count,
+            confidence_distribution=governance_result.confidence_distribution,
             section_identification_report=getattr(
                 self._section_identifier,
                 "last_report",
                 SectionIdentificationReport(),
             ),
         )
+
+    def _write_insight_filtering_audit(
+        self,
+        governance_result: InsightGovernanceResult,
+    ) -> None:
+        """Write insight governance diagnostics without failing extraction."""
+
+        output_path = Path(get_settings().output_directory) / (
+            "insight_filtering_audit.json"
+        )
+        try:
+            self._insight_governance.write_audit(governance_result, output_path)
+        except OSError:
+            self._logger.warning(
+                "Insight filtering audit could not be written",
+                extra={"output_file_path": str(output_path)},
+                exc_info=True,
+            )
 
     @staticmethod
     def _create_openai_client(api_key: str) -> Any:

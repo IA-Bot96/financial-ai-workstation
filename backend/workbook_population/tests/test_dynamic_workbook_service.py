@@ -119,6 +119,73 @@ def test_dynamic_workbook_preserves_duplicate_metrics_across_table_types(
     workbook.close()
 
 
+def test_dynamic_workbook_routes_insights_by_confidence_governance(
+    tmp_path: Path,
+) -> None:
+    output_path = tmp_path / "dynamic.xlsx"
+
+    sheets, metrics_written, warnings = DynamicWorkbookService().generate(
+        output_file_path=str(output_path),
+        metric_values=[],
+        insights=[
+            Insight(
+                value_year=2025,
+                source_report_year=2025,
+                area="Exports",
+                takeaway="Export sales increased by 20%.",
+                source_section="Business Review",
+                page_number=84,
+                confidence=0.9,
+            ),
+            Insight(
+                value_year=2025,
+                source_report_year=2025,
+                area="Exports",
+                takeaway="Export earnings are tracked as a growth lever.",
+                source_section="Business Review",
+                page_number=85,
+                confidence=0.6,
+            ),
+            Insight(
+                value_year=2025,
+                source_report_year=2025,
+                area="Internal controls",
+                takeaway="Adequate internal financial controls are in place.",
+                source_section="Risks",
+                page_number=86,
+                confidence=0.6,
+            ),
+            Insight(
+                value_year=2025,
+                source_report_year=2025,
+                area="Sustainability",
+                takeaway="Generated 799,551 kWh renewable electricity.",
+                source_section="Sustainability",
+                page_number=87,
+                confidence=0.0,
+            ),
+        ],
+    )
+
+    workbook = load_workbook(output_path)
+    assert workbook.sheetnames == ["Insights", "Insights Review"]
+    assert workbook["Insights"].max_row == 2
+    assert workbook["Insights"]["C2"].value == "Exports"
+    assert workbook["Insights Review"].max_row == 3
+    assert workbook["Insights Review"]["C2"].value == "Exports"
+    assert workbook["Insights Review"]["C3"].value == "Sustainability"
+    assert "Internal controls" not in [
+        workbook["Insights Review"][f"C{row}"].value
+        for row in range(2, workbook["Insights Review"].max_row + 1)
+    ]
+    assert metrics_written == 0
+    assert sheets == ["Insights", "Insights Review"]
+    assert warnings == [
+        "No metric values were provided; generated an empty model."
+    ]
+    workbook.close()
+
+
 def test_dynamic_workbook_reports_permission_save_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

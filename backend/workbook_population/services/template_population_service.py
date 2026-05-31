@@ -12,8 +12,12 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ocr_engine.models.insights_extraction import Insight
+from ocr_engine.governance.insight_confidence_governance import (
+    InsightConfidenceGovernance,
+)
 from shared.models.metric_value import MetricValue
 from workbook_population.constants.workbook_constants import (
+    INSIGHTS_REVIEW_SHEET_NAME,
     INSIGHTS_SHEET_NAME,
 )
 from workbook_population.models.sheet_validation_result import SheetValidationResult
@@ -39,6 +43,7 @@ class TemplatePopulationService:
 
         self._mapper = mapper or WorkbookMapper()
         self._logger = log or logger
+        self._insight_governance = InsightConfidenceGovernance()
 
     def populate(
         self,
@@ -135,8 +140,7 @@ class TemplatePopulationService:
                 metrics_written += self._write_generated_metric_sheet(worksheet, values)
                 sheets_replaced.append(sheet_name)
 
-            if self._populate_insights(workbook, insights):
-                sheets_created.append(INSIGHTS_SHEET_NAME)
+            sheets_created.extend(self._populate_insights(workbook, insights))
 
             output_path = Path(output_file_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -259,15 +263,38 @@ class TemplatePopulationService:
         _autosize_columns(worksheet)
         return written
 
-    @staticmethod
-    def _populate_insights(workbook: object, insights: list[Insight]) -> bool:
-        """Write insights to a dedicated sheet without touching formulas elsewhere."""
+    def _populate_insights(self, workbook: object, insights: list[Insight]) -> list[str]:
+        """Write governed insights without touching formulas elsewhere."""
 
-        sheet_created = INSIGHTS_SHEET_NAME not in workbook.sheetnames
+        governance_result = self._insight_governance.apply(insights)
+        sheets_created: list[str] = []
+        if self._write_insights_sheet(
+            workbook,
+            INSIGHTS_SHEET_NAME,
+            governance_result.exported_insights,
+        ):
+            sheets_created.append(INSIGHTS_SHEET_NAME)
+        if governance_result.review_insights and self._write_insights_sheet(
+            workbook,
+            INSIGHTS_REVIEW_SHEET_NAME,
+            governance_result.review_insights,
+        ):
+            sheets_created.append(INSIGHTS_REVIEW_SHEET_NAME)
+        return sheets_created
+
+    @staticmethod
+    def _write_insights_sheet(
+        workbook: object,
+        sheet_name: str,
+        insights: list[Insight],
+    ) -> bool:
+        """Write one governed insight bucket to a workbook sheet."""
+
+        sheet_created = sheet_name not in workbook.sheetnames
         if sheet_created:
-            worksheet = workbook.create_sheet(INSIGHTS_SHEET_NAME)
+            worksheet = workbook.create_sheet(sheet_name)
         else:
-            worksheet = workbook[INSIGHTS_SHEET_NAME]
+            worksheet = workbook[sheet_name]
             worksheet.delete_rows(1, worksheet.max_row)
 
         headers = [

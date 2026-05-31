@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import re
 from typing import Iterable
 
@@ -78,9 +79,13 @@ class SectionIdentifier:
             "operating review",
             "performance review",
             "business operations",
+            "company overview",
+            "key performance indicators",
+            "segmental review of business performance",
         ),
         "Risks": (
-            "risks",
+            "risks and opportunities",
+            "operational risks",
             "risk factors",
             "principal risks",
             "risk management",
@@ -96,11 +101,21 @@ class SectionIdentifier:
             "future prospects",
             "market outlook",
         ),
+        "Strategy": (
+            "strategy",
+            "pestle analysis",
+            "swot analysis",
+            "strategic objectives",
+            "strategy and resource allocation",
+        ),
         "Financial Review": (
             "financial review",
             "financial performance",
             "financial results",
             "financial overview",
+            "key figures",
+            "financial highlights",
+            "dupont analysis",
         ),
         "Sustainability": (
             "sustainability",
@@ -170,6 +185,20 @@ class SectionIdentifier:
                 diagnostic.page_type for diagnostic in page_diagnostics
             ),
             text_source_counts=_count_values(page.text_source for page in pages),
+            ocr_engine_counts=_count_values(
+                page.ocr_engine_selected
+                for page in pages
+                if page.ocr_engine_selected
+            ),
+            ocr_pages_escalated=sum(
+                1 for page in pages if page.ocr_escalated
+            ),
+            ocr_pages_recovered=sum(
+                1 for page in pages if page.ocr_recovered
+            ),
+            additional_accepted_pages=sum(
+                1 for page in pages if page.ocr_recovered
+            ),
             page_diagnostics=page_diagnostics,
         )
         return section_pages
@@ -224,6 +253,19 @@ class SectionIdentifier:
             narrative_density=page_type.narrative_density,
             table_density=page_type.table_density,
             ignored_keyword_count=len(ignored_keywords),
+            ocr_engine_selected=page.ocr_engine_selected,
+            pymupdf_ocr_confidence=page.pymupdf_ocr_confidence,
+            tesseract_ocr_confidence=page.tesseract_ocr_confidence,
+            ocr_escalation_reason=page.ocr_escalation_reason,
+            ocr_escalated=page.ocr_escalated,
+            ocr_recovered=page.ocr_recovered,
+            ocr_heading_alias_match_count=page.ocr_heading_alias_match_count,
+            ocr_heading_fragmentation_ratio=(
+                page.ocr_heading_fragmentation_ratio
+            ),
+            ocr_single_character_line_count=(
+                page.ocr_single_character_line_count
+            ),
         )
 
     def _identify_section(self, text: str) -> str | None:
@@ -236,19 +278,20 @@ class SectionIdentifier:
         """Identify a relevant section and whether the hit is heading-like."""
 
         heading_area = _normalize_text(text[:1200])
-        heading_lines = _normalize_text("\n".join(text.splitlines()[:8]))
+        heading_block = _heading_block(text)
+        top_heading_block = _normalize_text(text[:500])
         for section in INSIGHTS_RELEVANT_SECTIONS:
             aliases = self._section_aliases.get(section, (section.lower(),))
             for alias in aliases:
                 normalized_alias = _normalize_text(alias)
                 if not normalized_alias:
                     continue
-                if normalized_alias in heading_area:
-                    return (
-                        section,
-                        alias,
-                        normalized_alias in heading_lines,
-                    )
+                if _alias_matches_heading(normalized_alias, heading_block):
+                    return (section, alias, True)
+                if _alias_matches_heading(normalized_alias, top_heading_block):
+                    return (section, alias, True)
+                if _contains_normalized_phrase(heading_area, normalized_alias):
+                    return (section, alias, False)
         return None, None, False
 
     def _is_ignored_page(self, text: str) -> bool:
@@ -276,6 +319,81 @@ def _normalize_text(value: str) -> str:
     return normalized.strip()
 
 
+def _heading_block(text: str, max_lines: int = 12) -> str:
+    """Return a normalized heading block with adjacent short OCR lines merged."""
+
+    raw_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    heading_lines = raw_lines[:max_lines]
+    candidates = list(heading_lines)
+
+    short_buffer: list[str] = []
+    for line in heading_lines:
+        clean_line = re.sub(r"\s+", " ", line).strip()
+        if not clean_line:
+            continue
+        if _is_short_heading_fragment(clean_line):
+            short_buffer.append(clean_line)
+            continue
+
+        if short_buffer:
+            candidates.append(" ".join(short_buffer))
+            short_buffer.clear()
+        candidates.append(clean_line)
+
+    if short_buffer:
+        candidates.append(" ".join(short_buffer))
+
+    return _normalize_text(" ".join(candidates))
+
+
+def _is_short_heading_fragment(line: str) -> bool:
+    """Return whether a line is likely part of an OCR-split heading."""
+
+    words = re.findall(r"[A-Za-z0-9']+", line)
+    if not words:
+        return False
+    return len(words) <= 3 and len(line) <= 36
+
+
+def _alias_matches_heading(normalized_alias: str, normalized_heading: str) -> bool:
+    """Return whether an alias matches a heading block, allowing OCR noise."""
+
+    if _contains_normalized_phrase(normalized_heading, normalized_alias):
+        return True
+
+    alias_words = normalized_alias.split()
+    heading_words = normalized_heading.split()
+    if (
+        len(alias_words) < 2
+        or len(normalized_alias) < 10
+        or any(len(word) <= 1 for word in alias_words)
+        or not heading_words
+    ):
+        return False
+
+    min_window = max(1, len(alias_words) - 1)
+    max_window = min(len(heading_words), len(alias_words) + 2)
+    for window_size in range(min_window, max_window + 1):
+        for index in range(0, len(heading_words) - window_size + 1):
+            candidate = " ".join(heading_words[index : index + window_size])
+            if _fuzzy_ratio(normalized_alias, candidate) >= 0.86:
+                return True
+
+    return False
+
+
+def _contains_normalized_phrase(normalized_text: str, normalized_phrase: str) -> bool:
+    """Return whether a normalized phrase appears on word boundaries."""
+
+    return f" {normalized_phrase} " in f" {normalized_text} "
+
+
+def _fuzzy_ratio(left: str, right: str) -> float:
+    """Return a deterministic similarity score for OCR-tolerant heading matches."""
+
+    return SequenceMatcher(None, left, right).ratio()
+
+
 def _confidence_score(
     *,
     page_type: str,
@@ -290,7 +408,7 @@ def _confidence_score(
 
     score = 0.0
     if has_heading_match:
-        score += 0.65
+        score += 0.78
     elif has_section_alias:
         score += 0.45
     elif is_continuation:

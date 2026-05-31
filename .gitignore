@@ -7,6 +7,7 @@ venv/
 
 # Pytest
 .pytest_cache/
+.pytest_tmp/
 
 # Coverage
 .coverage

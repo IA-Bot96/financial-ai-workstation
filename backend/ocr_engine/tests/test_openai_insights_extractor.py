@@ -213,6 +213,80 @@ def test_openai_insights_extractor_passes_request_timeout() -> None:
     assert client.responses.calls[0]["timeout"] == 17.0
 
 
+def test_openai_insights_extractor_records_confidence_governance_diagnostics() -> None:
+    class ConfidenceAwareInsightsExtractor:
+        def extract(self, messages: list[dict[str, str]]) -> InsightsExtractionResult:
+            return InsightsExtractionResult(
+                insights=[
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Exports",
+                        takeaway="Export sales increased by 20%.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.9,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Exports",
+                        takeaway="Export earnings are tracked as a growth lever.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.6,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Internal controls",
+                        takeaway="Adequate internal financial controls are in place.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.6,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Sustainability",
+                        takeaway=(
+                            "Generated 799,551 kWh renewable electricity."
+                        ),
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.0,
+                    ),
+                ]
+            )
+
+    extractor = OpenAIInsightsExtractor(
+        insights_extractor=ConfidenceAwareInsightsExtractor(),
+        narrative_text_extractor=FakeNarrativeTextExtractor(),
+        section_identifier=FakeSectionIdentifier(),
+        chunk_builder=FakeChunkBuilder(),
+        chunk_ranker=FakeChunkRanker(),
+        prompt_builder=FakePromptBuilder(),
+    )
+
+    result = extractor.extract_insights(
+        pdf_path="annual_report.pdf",
+        normalization_result=_normalization_result(),
+    )
+
+    assert len(result.insights) == 4
+    assert result.diagnostics.exported_high_confidence_count == 1
+    assert result.diagnostics.review_bucket_count == 2
+    assert result.diagnostics.rejected_low_confidence_count == 1
+    assert result.diagnostics.generic_filtered_count == 1
+    assert result.diagnostics.confidence_distribution == {
+        "0.0": 1,
+        "0.1-0.5": 0,
+        "0.5-0.7": 2,
+        "0.7-0.9": 0,
+        "0.9+": 1,
+    }
+
+
 def test_extract_insights_for_context_stores_results_by_report_year() -> None:
     fake_insights_extractor = FakeInsightsExtractor()
     fake_narrative_extractor = FakeNarrativeTextExtractor()

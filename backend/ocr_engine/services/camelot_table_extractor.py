@@ -14,8 +14,12 @@ from ocr_engine.models.financial_table_classification import (
 from ocr_engine.models.table_detection_result import TableDetectionResult
 from ocr_engine.models.table_extraction import (
     ExtractedTable,
+    ExtractionQualityReport,
     ExtractionSummary,
+    MetricValueOccurrence,
     PageExtractionDiagnostic,
+    SuspiciousMetricFinding,
+    SuspiciousTableFinding,
     TableExtractionResult,
 )
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
@@ -27,6 +31,13 @@ logger = logging.getLogger(__name__)
 
 RawTable = list[list[str]]
 UNCLASSIFIED_TABLE_TYPE = "unclassified_table"
+EXTRACTION_STRATEGY_CAMELOT = "full_page_camelot"
+EXTRACTION_STRATEGY_PDFPLUMBER_DEFAULT = "full_page_pdfplumber_default"
+EXTRACTION_STRATEGY_PDFPLUMBER_TEXT = "full_page_pdfplumber_text"
+PDFPLUMBER_TEXT_TABLE_SETTINGS = {
+    "vertical_strategy": "text",
+    "horizontal_strategy": "text",
+}
 
 
 @dataclass(frozen=True)
@@ -44,6 +55,36 @@ class _TableMappingResult:
 
     table_type_by_raw_index: dict[int, str]
     assigned_classified_type_indexes: set[int]
+
+
+@dataclass(frozen=True)
+class _ExtractionQuality:
+    """Quality metrics for raw table extraction before classification mapping."""
+
+    quality_score: float
+    year_column_count: int
+    metric_label_count: int
+    metric_value_count: int
+    numeric_only_table_count: int
+
+    @property
+    def is_sufficient(self) -> bool:
+        """Return whether extraction is usable for MetricValue generation."""
+
+        return (
+            self.year_column_count > 0
+            and self.metric_label_count > 0
+            and self.metric_value_count > 0
+        )
+
+
+@dataclass(frozen=True)
+class _RawExtractionResult:
+    """Raw extraction rows with selected strategy diagnostics."""
+
+    strategy: str
+    raw_tables: list[RawTable]
+    quality: _ExtractionQuality
 
 
 class CamelotTableExtractor(ITableExtractor):
@@ -206,17 +247,26 @@ class CamelotTableExtractor(ITableExtractor):
                 extra={"page": page_number},
             )
 
-            raw_tables = self._extract_page_tables(pdf_path, page_number)
+            raw_extraction = self._extract_page_tables(pdf_path, page_number)
             page_tables, page_diagnostic = self._build_extracted_tables(
                 page_table_type=page_table_type,
-                raw_tables=raw_tables,
+                raw_tables=raw_extraction.raw_tables,
                 detected_table_count=detected_counts_by_page.get(page_number, 0),
+                extraction_strategy=raw_extraction.strategy,
+                extraction_quality=raw_extraction.quality,
             )
             extracted_tables.extend(page_tables)
             page_diagnostics.append(page_diagnostic)
             self._log_page_diagnostic(page_diagnostic)
 
         extraction_summary = _build_extraction_summary(page_diagnostics)
+        extraction_summary = extraction_summary.model_copy(
+            update={
+                "quality_report": _build_extraction_quality_report(
+                    extracted_tables
+                )
+            }
+        )
         result = TableExtractionResult(
             tables=extracted_tables,
             metric_values=[
@@ -236,28 +286,120 @@ class CamelotTableExtractor(ITableExtractor):
                 ),
             },
         )
+        self._logger.info(
+            "Extraction quality validation completed",
+            extra=result.extraction_summary.quality_report.model_dump(
+                exclude={"top_suspicious_tables", "top_suspicious_metrics"}
+            ),
+        )
         return result
 
-    def _extract_page_tables(self, pdf_path: str, page_number: int) -> list[RawTable]:
-        """Extract tables from a page using Camelot with pdfplumber fallback."""
+    def _extract_page_tables(
+        self,
+        pdf_path: str,
+        page_number: int,
+    ) -> _RawExtractionResult:
+        """Extract tables and select the best available raw table strategy."""
 
         raw_tables = self._extract_with_camelot(pdf_path, page_number)
+        camelot_result = self._raw_extraction_result(
+            strategy=EXTRACTION_STRATEGY_CAMELOT,
+            raw_tables=raw_tables,
+        )
         if raw_tables:
             self._logger.info(
                 "Camelot succeeded",
-                extra={"page": page_number, "tables_extracted": len(raw_tables)},
+                extra={
+                    "page": page_number,
+                    "tables_extracted": len(raw_tables),
+                    **_quality_log_extra(camelot_result.quality),
+                },
             )
-            return raw_tables
+            if camelot_result.quality.is_sufficient:
+                return camelot_result
 
         self._logger.info(
             "Camelot failed",
-            extra={"page": page_number, "reason": "no_tables"},
+            extra={
+                "page": page_number,
+                "reason": "no_tables_or_poor_quality",
+                **_quality_log_extra(camelot_result.quality),
+            },
         )
         self._logger.info(
-            "Using pdfplumber fallback",
+            "Using pdfplumber default fallback",
             extra={"page": page_number},
         )
-        return self._extract_with_pdfplumber(pdf_path, page_number)
+        pdfplumber_default_result = self._raw_extraction_result(
+            strategy=EXTRACTION_STRATEGY_PDFPLUMBER_DEFAULT,
+            raw_tables=self._extract_with_pdfplumber(pdf_path, page_number),
+        )
+        if pdfplumber_default_result.quality.is_sufficient:
+            return self._select_best_extraction(
+                camelot_result,
+                pdfplumber_default_result,
+            )
+
+        self._logger.info(
+            "Using pdfplumber text fallback",
+            extra={
+                "page": page_number,
+                **_quality_log_extra(pdfplumber_default_result.quality),
+            },
+        )
+        pdfplumber_text_result = self._raw_extraction_result(
+            strategy=EXTRACTION_STRATEGY_PDFPLUMBER_TEXT,
+            raw_tables=self._extract_with_pdfplumber(
+                pdf_path,
+                page_number,
+                table_settings=PDFPLUMBER_TEXT_TABLE_SETTINGS,
+            ),
+        )
+        return self._select_best_extraction(
+            camelot_result,
+            pdfplumber_default_result,
+            pdfplumber_text_result,
+        )
+
+    def _raw_extraction_result(
+        self,
+        *,
+        strategy: str,
+        raw_tables: list[RawTable],
+    ) -> _RawExtractionResult:
+        """Build a raw extraction result with quality metrics."""
+
+        return _RawExtractionResult(
+            strategy=strategy,
+            raw_tables=raw_tables,
+            quality=self._evaluate_extraction_quality(raw_tables),
+        )
+
+    def _select_best_extraction(
+        self,
+        *results: _RawExtractionResult,
+    ) -> _RawExtractionResult:
+        """Select the highest-quality extraction result deterministically."""
+
+        selected = max(
+            results,
+            key=lambda result: (
+                result.quality.quality_score,
+                result.quality.metric_value_count,
+                result.quality.year_column_count,
+                result.quality.metric_label_count,
+                -_strategy_rank(result.strategy),
+            ),
+        )
+        self._logger.info(
+            "Extraction strategy selected",
+            extra={
+                "strategy": selected.strategy,
+                "tables_extracted": len(selected.raw_tables),
+                **_quality_log_extra(selected.quality),
+            },
+        )
+        return selected
 
     def _extract_with_camelot(self, pdf_path: str, page_number: int) -> list[RawTable]:
         """Extract tables from a PDF page using Camelot."""
@@ -281,19 +423,24 @@ class CamelotTableExtractor(ITableExtractor):
         self,
         pdf_path: str,
         page_number: int,
+        *,
+        table_settings: dict[str, str] | None = None,
     ) -> list[RawTable]:
         """Extract tables from a PDF page using pdfplumber."""
 
         try:
             with self._pdfplumber_open(pdf_path) as pdf:
                 page = pdf.pages[page_number - 1]
-                tables = page.extract_tables() or []
+                if table_settings is None:
+                    tables = page.extract_tables() or []
+                else:
+                    tables = page.extract_tables(table_settings=table_settings) or []
                 raw_tables = [self._normalize_rows(table) for table in tables]
                 return [table for table in raw_tables if table]
         except Exception:
             self._logger.exception(
                 "pdfplumber failed",
-                extra={"page": page_number},
+                extra={"page": page_number, "table_settings": table_settings},
             )
             return []
 
@@ -303,6 +450,8 @@ class CamelotTableExtractor(ITableExtractor):
         page_table_type: PageTableType,
         raw_tables: list[RawTable],
         detected_table_count: int,
+        extraction_strategy: str,
+        extraction_quality: _ExtractionQuality,
     ) -> tuple[list[ExtractedTable], PageExtractionDiagnostic]:
         """Build output models from raw extracted tables and page classifications."""
 
@@ -322,6 +471,12 @@ class CamelotTableExtractor(ITableExtractor):
                 classified_table_count=len(page_table_type.table_types),
                 extracted_table_count=0,
                 matched_table_count=0,
+                extraction_strategy=extraction_strategy,
+                quality_score=extraction_quality.quality_score,
+                year_column_count=extraction_quality.year_column_count,
+                metric_label_count=extraction_quality.metric_label_count,
+                metric_value_count=extraction_quality.metric_value_count,
+                numeric_only_table_count=extraction_quality.numeric_only_table_count,
                 unmatched_classifications=page_table_type.table_types,
                 unmatched_extractions=[],
             )
@@ -380,6 +535,14 @@ class CamelotTableExtractor(ITableExtractor):
             matched_table_count=len(
                 table_type_by_raw_index.table_type_by_raw_index
             ),
+            extraction_strategy=extraction_strategy,
+            quality_score=extraction_quality.quality_score,
+            year_column_count=extraction_quality.year_column_count,
+            metric_label_count=extraction_quality.metric_label_count,
+            metric_value_count=sum(
+                len(table.metric_values) for table in extracted_tables
+            ),
+            numeric_only_table_count=extraction_quality.numeric_only_table_count,
             unmatched_classifications=unmatched_classifications,
             unmatched_extractions=unmatched_extractions,
         )
@@ -548,6 +711,12 @@ class CamelotTableExtractor(ITableExtractor):
                 "classified_table_count": diagnostic.classified_table_count,
                 "extracted_table_count": diagnostic.extracted_table_count,
                 "matched_table_count": diagnostic.matched_table_count,
+                "extraction_strategy": diagnostic.extraction_strategy,
+                "quality_score": diagnostic.quality_score,
+                "year_column_count": diagnostic.year_column_count,
+                "metric_label_count": diagnostic.metric_label_count,
+                "metric_value_count": diagnostic.metric_value_count,
+                "numeric_only_table_count": diagnostic.numeric_only_table_count,
                 "unmatched_classifications": diagnostic.unmatched_classifications,
                 "unmatched_extractions": diagnostic.unmatched_extractions,
             },
@@ -601,6 +770,47 @@ class CamelotTableExtractor(ITableExtractor):
                 )
 
         return metric_values
+
+    def _evaluate_extraction_quality(
+        self,
+        raw_tables: list[RawTable],
+    ) -> _ExtractionQuality:
+        """Evaluate whether raw tables preserve financial table structure."""
+
+        year_column_count = 0
+        metric_label_count = 0
+        metric_value_count = 0
+        numeric_only_table_count = 0
+
+        for rows in raw_tables:
+            _, year_columns = self._find_year_columns(rows)
+            labels = _metric_labels(rows)
+            metric_values = self._extract_metric_values(
+                rows=rows,
+                source_report_year=9999,
+                page_number=1,
+                table_type="quality_diagnostic",
+            )
+
+            year_column_count += len(year_columns)
+            metric_label_count += len(labels)
+            metric_value_count += len(metric_values)
+            if _is_numeric_only_table(rows):
+                numeric_only_table_count += 1
+
+        return _ExtractionQuality(
+            quality_score=_quality_score(
+                raw_tables=raw_tables,
+                year_column_count=year_column_count,
+                metric_label_count=metric_label_count,
+                metric_value_count=metric_value_count,
+                numeric_only_table_count=numeric_only_table_count,
+            ),
+            year_column_count=year_column_count,
+            metric_label_count=metric_label_count,
+            metric_value_count=metric_value_count,
+            numeric_only_table_count=numeric_only_table_count,
+        )
 
     @staticmethod
     def _find_year_columns(rows: RawTable) -> tuple[int | None, dict[int, int]]:
@@ -774,6 +984,346 @@ def _detected_counts_by_page(
         detected_page.page_number: detected_page.tables_detected
         for detected_page in table_detection_result.detected_pages
     }
+
+
+def _metric_labels(rows: RawTable) -> list[str]:
+    """Return detected metric label cells from raw rows."""
+
+    labels: list[str] = []
+    for row in rows:
+        label_index = CamelotTableExtractor._metric_label_index(row)
+        if label_index is not None:
+            labels.append(row[label_index].strip())
+    return labels
+
+
+def _is_numeric_only_table(rows: RawTable) -> bool:
+    """Return whether a table has numbers but no text metric labels."""
+
+    if _metric_labels(rows):
+        return False
+    return any(
+        CamelotTableExtractor._parse_metric_value(str(cell)) is not None
+        for row in rows
+        for cell in row
+    )
+
+
+def _quality_score(
+    *,
+    raw_tables: list[RawTable],
+    year_column_count: int,
+    metric_label_count: int,
+    metric_value_count: int,
+    numeric_only_table_count: int,
+) -> float:
+    """Score raw extraction usefulness for financial MetricValue generation."""
+
+    if not raw_tables:
+        return 0.0
+
+    score = 10.0
+    if numeric_only_table_count < len(raw_tables):
+        score += 10.0
+    if year_column_count:
+        score += min(25.0, 12.5 * year_column_count)
+    if metric_label_count:
+        score += min(25.0, 2.0 * metric_label_count)
+    if metric_value_count:
+        score += min(30.0, 2.0 * metric_value_count)
+    score -= min(20.0, 10.0 * numeric_only_table_count)
+    return round(max(0.0, min(score, 100.0)), 2)
+
+
+def _quality_log_extra(quality: _ExtractionQuality) -> dict[str, int | float]:
+    """Return structured logging fields for extraction quality."""
+
+    return {
+        "quality_score": quality.quality_score,
+        "year_column_count": quality.year_column_count,
+        "metric_label_count": quality.metric_label_count,
+        "metric_value_count": quality.metric_value_count,
+        "numeric_only_table_count": quality.numeric_only_table_count,
+    }
+
+
+def _strategy_rank(strategy: str) -> int:
+    """Return a stable preference rank used only when quality ties."""
+
+    ranks = {
+        EXTRACTION_STRATEGY_PDFPLUMBER_TEXT: 0,
+        EXTRACTION_STRATEGY_PDFPLUMBER_DEFAULT: 1,
+        EXTRACTION_STRATEGY_CAMELOT: 2,
+    }
+    return ranks.get(strategy, 99)
+
+
+def _build_extraction_quality_report(
+    tables: list[ExtractedTable],
+) -> ExtractionQualityReport:
+    """Build table and metric quality validation findings."""
+
+    table_findings: list[SuspiciousTableFinding] = []
+    confidence_distribution = {
+        "0-20": 0,
+        "20-40": 0,
+        "40-60": 0,
+        "60-80": 0,
+        "80-100": 0,
+    }
+
+    missing_year_table_count = 0
+    missing_label_table_count = 0
+    numeric_only_table_count = 0
+    unclassified_table_count = 0
+
+    for table in tables:
+        finding = _table_quality_finding(table)
+        _increment_quality_bucket(confidence_distribution, finding.quality_score)
+        if finding.year_column_count == 0:
+            missing_year_table_count += 1
+        if finding.metric_label_count == 0:
+            missing_label_table_count += 1
+        if finding.numeric_only:
+            numeric_only_table_count += 1
+        if _normalize_key(table.table_type) == UNCLASSIFIED_TABLE_TYPE:
+            unclassified_table_count += 1
+        if finding.reasons:
+            table_findings.append(finding)
+
+    metric_findings = _metric_quality_findings(tables)
+    top_suspicious_tables = sorted(
+        table_findings,
+        key=lambda finding: (
+            -finding.suspicion_score,
+            finding.page_number,
+            finding.table_index,
+        ),
+    )[:20]
+    top_suspicious_metrics = sorted(
+        metric_findings,
+        key=lambda finding: (
+            -finding.suspicion_score,
+            finding.metric,
+            finding.value_year,
+            finding.table_type,
+        ),
+    )[:20]
+    duplicate_group_count = sum(
+        1 for finding in metric_findings if "duplicate_metric_values" in finding.reasons
+    )
+    conflicting_group_count = sum(
+        1 for finding in metric_findings if "conflicting_values" in finding.reasons
+    )
+    duplicate_value_count = sum(
+        finding.occurrence_count - 1
+        for finding in metric_findings
+        if "duplicate_metric_values" in finding.reasons
+    )
+
+    return ExtractionQualityReport(
+        tables_extracted=len(tables),
+        tables_rejected=len(table_findings),
+        metric_values_generated=sum(len(table.metric_values) for table in tables),
+        duplicate_metric_group_count=duplicate_group_count,
+        duplicate_metric_value_count=duplicate_value_count,
+        conflicting_metric_group_count=conflicting_group_count,
+        missing_year_table_count=missing_year_table_count,
+        missing_label_table_count=missing_label_table_count,
+        numeric_only_table_count=numeric_only_table_count,
+        unclassified_table_count=unclassified_table_count,
+        confidence_distribution=confidence_distribution,
+        top_suspicious_tables=top_suspicious_tables,
+        top_suspicious_metrics=top_suspicious_metrics,
+    )
+
+
+def _table_quality_finding(table: ExtractedTable) -> SuspiciousTableFinding:
+    """Build a quality finding for a table, with empty reasons when clean."""
+
+    _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+    labels = _metric_labels(table.rows)
+    numeric_only = _is_numeric_only_table(table.rows)
+    metric_value_count = len(table.metric_values)
+    quality_score = _quality_score(
+        raw_tables=[table.rows],
+        year_column_count=len(year_columns),
+        metric_label_count=len(labels),
+        metric_value_count=metric_value_count,
+        numeric_only_table_count=1 if numeric_only else 0,
+    )
+    reasons: list[str] = []
+    if not year_columns:
+        reasons.append("missing_years")
+    if not labels:
+        reasons.append("missing_labels")
+    if numeric_only:
+        reasons.append("numeric_only_table")
+    if _normalize_key(table.table_type) == UNCLASSIFIED_TABLE_TYPE:
+        reasons.append("unclassified_table")
+    if metric_value_count == 0:
+        reasons.append("no_metric_values")
+
+    suspicion_score = _table_suspicion_score(
+        quality_score=quality_score,
+        reasons=reasons,
+    )
+    return SuspiciousTableFinding(
+        source_report_year=table.source_report_year,
+        page_number=table.page_number,
+        table_index=table.table_index,
+        table_type=table.table_type,
+        row_count=len(table.rows),
+        column_count=max((len(row) for row in table.rows), default=0),
+        quality_score=quality_score,
+        suspicion_score=suspicion_score,
+        year_column_count=len(year_columns),
+        metric_label_count=len(labels),
+        metric_value_count=metric_value_count,
+        numeric_only=numeric_only,
+        reasons=reasons,
+    )
+
+
+def _table_suspicion_score(*, quality_score: float, reasons: list[str]) -> float:
+    """Return a bounded review priority score for a table."""
+
+    score = 100 - quality_score
+    reason_weights = {
+        "missing_years": 20,
+        "missing_labels": 20,
+        "numeric_only_table": 25,
+        "unclassified_table": 10,
+        "no_metric_values": 15,
+    }
+    score += sum(reason_weights.get(reason, 0) for reason in reasons)
+    return round(max(0.0, min(score, 100.0)), 2)
+
+
+def _metric_quality_findings(
+    tables: list[ExtractedTable],
+) -> list[SuspiciousMetricFinding]:
+    """Return duplicate/conflicting/unclassified metric findings."""
+
+    grouped: dict[
+        tuple[str, int, int, str],
+        list[tuple[MetricValueOccurrence, float | int | str]],
+    ] = {}
+    for table in tables:
+        for metric_value in table.metric_values:
+            key = (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.source_report_year,
+                metric_value.table_type,
+            )
+            occurrence = MetricValueOccurrence(
+                page_number=metric_value.page_number,
+                table_index=table.table_index,
+                table_type=metric_value.table_type,
+                value=metric_value.value,
+            )
+            grouped.setdefault(key, []).append((occurrence, metric_value.value))
+
+    findings: list[SuspiciousMetricFinding] = []
+    for (
+        metric,
+        value_year,
+        source_report_year,
+        table_type,
+    ), occurrences_and_values in grouped.items():
+        occurrences = [
+            occurrence for occurrence, _ in occurrences_and_values
+        ]
+        values = [value for _, value in occurrences_and_values]
+        distinct_values = _distinct_values(values)
+        reasons: list[str] = []
+        if len(occurrences) > 1:
+            reasons.append("duplicate_metric_values")
+        if len(distinct_values) > 1:
+            reasons.append("conflicting_values")
+        if _normalize_key(table_type) == UNCLASSIFIED_TABLE_TYPE:
+            reasons.append("unclassified_table_metric")
+        if not reasons:
+            continue
+
+        findings.append(
+            SuspiciousMetricFinding(
+                metric=metric,
+                value_year=value_year,
+                source_report_year=source_report_year,
+                table_type=table_type,
+                occurrence_count=len(occurrences),
+                distinct_values=distinct_values,
+                suspicion_score=_metric_suspicion_score(
+                    reasons=reasons,
+                    occurrence_count=len(occurrences),
+                    distinct_value_count=len(distinct_values),
+                ),
+                reasons=reasons,
+                occurrences=occurrences[:10],
+            )
+        )
+
+    return findings
+
+
+def _metric_suspicion_score(
+    *,
+    reasons: list[str],
+    occurrence_count: int,
+    distinct_value_count: int,
+) -> float:
+    """Return a bounded review priority score for a metric finding."""
+
+    score = 0.0
+    if "conflicting_values" in reasons:
+        score += 65
+    if "duplicate_metric_values" in reasons:
+        score += min(25, 5 * (occurrence_count - 1))
+    if "unclassified_table_metric" in reasons:
+        score += 20
+    if distinct_value_count > 2:
+        score += min(10, 2 * distinct_value_count)
+    return round(max(0.0, min(score, 100.0)), 2)
+
+
+def _distinct_values(values: list[float | int | str]) -> list[float | int | str]:
+    """Return distinct values while preserving first-seen order."""
+
+    distinct: list[float | int | str] = []
+    seen: set[str] = set()
+    for value in values:
+        stable = _stable_value_text(value)
+        if stable in seen:
+            continue
+        seen.add(stable)
+        distinct.append(value)
+    return distinct
+
+
+def _stable_value_text(value: float | int | str) -> str:
+    """Return a stable comparable representation for a metric value."""
+
+    return f"{type(value).__name__}:{value}"
+
+
+def _increment_quality_bucket(
+    distribution: dict[str, int],
+    quality_score: float,
+) -> None:
+    """Increment the quality-score bucket for one table."""
+
+    if quality_score < 20:
+        distribution["0-20"] += 1
+    elif quality_score < 40:
+        distribution["20-40"] += 1
+    elif quality_score < 60:
+        distribution["40-60"] += 1
+    elif quality_score < 80:
+        distribution["60-80"] += 1
+    else:
+        distribution["80-100"] += 1
 
 
 def _build_extraction_summary(

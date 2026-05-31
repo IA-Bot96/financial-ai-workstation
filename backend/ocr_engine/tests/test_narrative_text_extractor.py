@@ -57,3 +57,43 @@ def test_narrative_text_extractor_skips_corrupted_pages(
     assert [page.page_number for page in pages] == [1, 3]
     assert document.closed is True
     assert "Narrative text extraction complete" in caplog.text
+
+
+class ReadableFakeDocument:
+    def __init__(self, pages: list[FakePage]) -> None:
+        self._pages = pages
+        self.closed = False
+
+    def __len__(self) -> int:
+        return len(self._pages)
+
+    def load_page(self, index: int) -> FakePage:
+        return self._pages[index]
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_narrative_text_extractor_uses_ocr_fallback_for_empty_pymupdf_text() -> None:
+    document = ReadableFakeDocument(
+        [
+            FakePage(""),
+            FakePage("Business Review\nExports increased."),
+        ]
+    )
+    extractor = NarrativeTextExtractor(
+        pdf_loader=lambda _: document,
+        ocr_reader=lambda page, page_number: (
+            "Chairman Review\nDemand improved." if page_number == 1 else ""
+        ),
+    )
+
+    pages = extractor.extract("annual_report.pdf")
+
+    assert [(page.page_number, page.text_source) for page in pages] == [
+        (1, "ocr"),
+        (2, "pymupdf"),
+    ]
+    assert pages[0].pymupdf is False
+    assert pages[0].ocr is True
+    assert pages[0].text.startswith("Chairman Review")

@@ -44,10 +44,20 @@ class FakeCamelotTable:
 
 
 class FakePdfplumberPage:
-    def __init__(self, tables: list[list[list[object]]]) -> None:
+    def __init__(
+        self,
+        tables: list[list[list[object]]],
+        text_tables: list[list[list[object]]] | None = None,
+    ) -> None:
         self._tables = tables
+        self._text_tables = text_tables
 
-    def extract_tables(self) -> list[list[list[object]]]:
+    def extract_tables(
+        self,
+        table_settings: dict[str, str] | None = None,
+    ) -> list[list[list[object]]]:
+        if table_settings is not None and self._text_tables is not None:
+            return self._text_tables
         return self._tables
 
 
@@ -89,7 +99,7 @@ def test_extract_tables_uses_camelot_first() -> None:
             FakeCamelotTable([[" Cash ", 1000], ["Inventory", None]]),
             FakeCamelotTable([["Debt", " 450 "]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     result = extractor.extract_tables(
@@ -131,7 +141,7 @@ def test_extract_tables_identifies_metric_value_years() -> None:
                 ]
             )
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     result = extractor.extract_tables(
@@ -188,7 +198,7 @@ def test_extract_tables_applies_financial_scale_conversion() -> None:
                 ]
             ),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     result = extractor.extract_tables(
@@ -231,7 +241,7 @@ def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:
                 ]
             )
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     result = extractor.extract_tables(
@@ -264,7 +274,7 @@ def test_extract_tables_logs_type_count_mismatch_and_preserves_extra_tables(
             FakeCamelotTable([["Metric", "2024"], ["Cash", "1000"]]),
             FakeCamelotTable([["Metric", "2024"], ["Revenue", "500"]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     with caplog.at_level(logging.WARNING):
@@ -300,7 +310,7 @@ def test_extract_tables_corrects_classification_ordering_mismatch(
             FakeCamelotTable([["Metric", "2024"], ["Revenue", "1000"]]),
             FakeCamelotTable([["Metric", "2024"], ["Cash", "600"]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     with caplog.at_level(logging.WARNING):
@@ -334,7 +344,7 @@ def test_extract_tables_logs_extra_classified_tables(
         camelot_reader=lambda *args, **kwargs: [
             FakeCamelotTable([["Metric", "2024"], ["Cash", "1000"]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     with caplog.at_level(logging.WARNING):
@@ -365,7 +375,7 @@ def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
             FakeCamelotTable([["Metric", "2024"], ["Revenue", "1000"]]),
             FakeCamelotTable([["Metric", "2024"], ["Unmapped Disclosure", "9"]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
 
     with caplog.at_level(logging.INFO):
@@ -402,6 +412,12 @@ def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
         "classified_table_count": 1,
         "extracted_table_count": 2,
         "matched_table_count": 1,
+        "extraction_strategy": "full_page_camelot",
+        "quality_score": 57.0,
+        "year_column_count": 2,
+        "metric_label_count": 4,
+        "metric_value_count": 2,
+        "numeric_only_table_count": 0,
         "unmatched_classifications": [],
         "unmatched_extractions": [1],
     }
@@ -413,7 +429,7 @@ def test_extract_tables_for_context_fails_when_no_tables_match() -> None:
         camelot_reader=lambda *args, **kwargs: [
             FakeCamelotTable([["Metric", "2024"], ["Unmapped Disclosure", "9"]]),
         ],
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
     context = CompanyContext(
         company_name="Maple Leaf Cement Factory Limited",
@@ -472,7 +488,7 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
 
     extractor = CamelotTableExtractor(
         camelot_reader=camelot_reader,
-        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
     context = CompanyContext(
         company_name="Maple Leaf Cement Factory Limited",
@@ -678,6 +694,168 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
         ],
         "metric_values": [],
     }
+
+
+def test_extract_tables_uses_pdfplumber_text_when_default_loses_financial_structure(
+) -> None:
+    numeric_fragments = [
+        [["1,674,225", "", "1,769,093"], ["951,736"]],
+    ]
+    text_mode_tables = [
+        [
+            ["Restated", "2025", "2024"],
+            ["Capital reserve", "1,674,225", "1,769,093"],
+            [
+                "Fair value reserve - Investments measured at FVOCI",
+                "1,674,225",
+                "1,769,093",
+            ],
+            ["Long term loan", "951,736", "1,438,764"],
+        ]
+    ]
+
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [],
+        pdfplumber_open=lambda _: FakePdfplumberDocument(
+            [
+                FakePdfplumberPage(
+                    numeric_fragments,
+                    text_tables=text_mode_tables,
+                )
+            ]
+        ),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=1,
+                    table_types=["debt_schedule"],
+                )
+            ]
+        ),
+    )
+
+    diagnostic = result.extraction_summary.page_diagnostics[0]
+    assert diagnostic.extraction_strategy == "full_page_pdfplumber_text"
+    assert diagnostic.year_column_count == 2
+    assert diagnostic.metric_label_count == 4
+    assert diagnostic.metric_value_count == 6
+    assert diagnostic.numeric_only_table_count == 0
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Capital reserve", 2025, 1_674_225),
+        ("Capital reserve", 2024, 1_769_093),
+        (
+            "Fair value reserve - Investments measured at FVOCI",
+            2025,
+            1_674_225,
+        ),
+        (
+            "Fair value reserve - Investments measured at FVOCI",
+            2024,
+            1_769_093,
+        ),
+        ("Long term loan", 2025, 951_736),
+        ("Long term loan", 2024, 1_438_764),
+    ]
+
+
+def test_extraction_quality_report_flags_duplicate_conflicting_and_unclassified(
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Revenue", "100"],
+                    ["Revenue", "110"],
+                ]
+            ),
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Cash", "50"],
+                ]
+            ),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=1,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.tables_extracted == 2
+    assert quality_report.metric_values_generated == 3
+    assert quality_report.duplicate_metric_group_count == 1
+    assert quality_report.duplicate_metric_value_count == 1
+    assert quality_report.conflicting_metric_group_count == 1
+    assert quality_report.unclassified_table_count == 1
+    assert quality_report.top_suspicious_metrics[0].metric == "Revenue"
+    assert quality_report.top_suspicious_metrics[0].reasons == [
+        "duplicate_metric_values",
+        "conflicting_values",
+    ]
+    assert quality_report.top_suspicious_metrics[0].distinct_values == [100, 110]
+    assert quality_report.top_suspicious_tables[0].table_type == "unclassified_table"
+    assert "unclassified_table" in quality_report.top_suspicious_tables[0].reasons
+
+
+def test_extraction_quality_report_flags_numeric_only_tables() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["2025", "2024"],
+                    ["100", "200"],
+                    ["300", "400"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=1,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.tables_extracted == 1
+    assert quality_report.tables_rejected == 1
+    assert quality_report.metric_values_generated == 0
+    assert quality_report.missing_label_table_count == 1
+    assert quality_report.numeric_only_table_count == 1
+    assert quality_report.confidence_distribution["20-40"] == 1
+    assert quality_report.top_suspicious_tables[0].reasons == [
+        "missing_labels",
+        "numeric_only_table",
+        "no_metric_values",
+    ]
 
 
 def test_extract_tables_returns_empty_when_both_extractors_fail() -> None:

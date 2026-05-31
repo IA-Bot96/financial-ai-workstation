@@ -178,6 +178,16 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
             "chunk_count_by_section": {},
             "ranked_chunk_count_by_section": {},
             "insight_count_by_section": {},
+            "section_identification_report": {
+                "total_pages": 0,
+                "pages_with_pymupdf_text": 0,
+                "pages_with_ocr_text": 0,
+                "accepted_pages": 0,
+                "rejected_pages": 0,
+                "page_type_counts": {},
+                "text_source_counts": {},
+                "page_diagnostics": [],
+            },
         },
     }
 

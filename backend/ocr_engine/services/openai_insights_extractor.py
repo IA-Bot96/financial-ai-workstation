@@ -19,6 +19,7 @@ from ocr_engine.models.insights_extraction import (
     Insight,
     InsightsExtractionDiagnostics,
     InsightsExtractionResult,
+    SectionIdentificationReport,
 )
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
@@ -419,7 +420,9 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
 
         return InsightsExtractionDiagnostics(
             total_pages_processed=total_pages_processed,
-            pages_with_text=len(pages),
+            pages_with_text=sum(
+                1 for page in pages if getattr(page, "text", "").strip()
+            ),
             total_text_characters=sum(len(getattr(page, "text", "")) for page in pages),
             section_pages=len(section_pages),
             total_chunks_created=len(chunks),
@@ -444,6 +447,11 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
                 "source_section",
             ),
             insight_count_by_section=_count_by_attribute(insights, "source_section"),
+            section_identification_report=getattr(
+                self._section_identifier,
+                "last_report",
+                SectionIdentificationReport(),
+            ),
         )
 
     @staticmethod

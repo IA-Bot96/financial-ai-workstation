@@ -3,6 +3,132 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class SectionIdentificationPageDiagnostic(BaseModel):
+    """Per-page diagnostics from narrative section identification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number inspected for narrative sections.",
+        examples=[84],
+    )
+    text_source: str = Field(
+        ...,
+        min_length=1,
+        description="Text source selected for the page.",
+        examples=["pymupdf", "ocr", "none"],
+    )
+    pymupdf: bool = Field(
+        ...,
+        description="Whether PyMuPDF extracted usable text for the page.",
+        examples=[True],
+    )
+    ocr: bool = Field(
+        ...,
+        description="Whether OCR extracted usable fallback text for the page.",
+        examples=[False],
+    )
+    page_type: str = Field(
+        ...,
+        min_length=1,
+        description="Heuristic page type assigned before section selection.",
+        examples=["narrative", "notes", "auditor_report"],
+    )
+    detected_section: str | None = Field(
+        default=None,
+        description="Accepted narrative section, if the page passed scoring.",
+        examples=["Business Review"],
+    )
+    confidence_score: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Section-identification confidence score from 0 to 1.",
+        examples=[0.86],
+    )
+    rejection_reason: str | None = Field(
+        default=None,
+        description="Reason the page was not accepted as narrative.",
+        examples=["page_type_notes"],
+    )
+    heading_match: bool = Field(
+        default=False,
+        description="Whether a section alias matched the page heading area.",
+        examples=[True],
+    )
+    section_alias_match: bool = Field(
+        default=False,
+        description="Whether a known section alias matched the page.",
+        examples=[True],
+    )
+    narrative_density: float = Field(
+        default=0.0,
+        ge=0,
+        le=1,
+        description="Estimated proportion of prose-like lines on the page.",
+        examples=[0.72],
+    )
+    table_density: float = Field(
+        default=0.0,
+        ge=0,
+        le=1,
+        description="Estimated proportion of table-like lines on the page.",
+        examples=[0.18],
+    )
+    ignored_keyword_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of ignored-page keyword signals in the heading area.",
+        examples=[0],
+    )
+
+
+class SectionIdentificationReport(BaseModel):
+    """Diagnostics report for narrative section identification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    total_pages: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages inspected by the section identifier.",
+    )
+    pages_with_pymupdf_text: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages with usable PyMuPDF text.",
+    )
+    pages_with_ocr_text: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages with usable OCR fallback text.",
+    )
+    accepted_pages: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages accepted as narrative section pages.",
+    )
+    rejected_pages: int = Field(
+        default=0,
+        ge=0,
+        description="Number of pages rejected from narrative section extraction.",
+    )
+    page_type_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Page count by heuristic page type.",
+    )
+    text_source_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Page count by selected text source.",
+    )
+    page_diagnostics: list[SectionIdentificationPageDiagnostic] = Field(
+        default_factory=list,
+        description="Per-page section-identification diagnostics.",
+    )
+
+
 class Insight(BaseModel):
     """Business insight extracted from narrative annual-report text.
 
@@ -110,6 +236,16 @@ class InsightsExtractionDiagnostics(BaseModel):
                         "Business Review": 29,
                         "Risks": 8,
                     },
+                    "section_identification_report": {
+                        "total_pages": 400,
+                        "pages_with_pymupdf_text": 312,
+                        "pages_with_ocr_text": 34,
+                        "accepted_pages": 84,
+                        "rejected_pages": 316,
+                        "page_type_counts": {"narrative": 84},
+                        "text_source_counts": {"pymupdf": 312, "ocr": 34},
+                        "page_diagnostics": [],
+                    },
                 }
             ]
         },
@@ -192,6 +328,10 @@ class InsightsExtractionDiagnostics(BaseModel):
     insight_count_by_section: dict[str, int] = Field(
         default_factory=dict,
         description="Generated insight count by source section.",
+    )
+    section_identification_report: SectionIdentificationReport = Field(
+        default_factory=SectionIdentificationReport,
+        description="Page-level diagnostics from section identification.",
     )
 
 

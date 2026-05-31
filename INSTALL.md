@@ -29,8 +29,9 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Install Ghostscript for Camelot table extraction and ensure it is available on
-`PATH`.
+Camelot 1.x uses `pypdfium2` as the default PDF rendering backend, so
+Ghostscript is not required for the default extraction path. Install Ghostscript
+only if you explicitly configure Camelot to use its optional Ghostscript backend.
 
 ## Linux Setup
 
@@ -46,7 +47,7 @@ Install system OCR/PDF dependencies:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y ghostscript poppler-utils libgl1 libglib2.0-0
+sudo apt-get install -y libgl1 libglib2.0-0
 ```
 
 ## Development Setup

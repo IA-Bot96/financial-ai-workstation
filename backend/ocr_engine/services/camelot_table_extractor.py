@@ -11,7 +11,13 @@ from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
     PageTableType,
 )
-from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
+from ocr_engine.models.table_detection_result import TableDetectionResult
+from ocr_engine.models.table_extraction import (
+    ExtractedTable,
+    ExtractionSummary,
+    PageExtractionDiagnostic,
+    TableExtractionResult,
+)
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
 from shared.models.company_context import CompanyContext
@@ -30,6 +36,14 @@ class _TableTypeCandidate:
     score: int
     raw_table_index: int
     classified_type_index: int
+
+
+@dataclass(frozen=True)
+class _TableMappingResult:
+    """Raw table to classified type mapping plus unmatched details."""
+
+    table_type_by_raw_index: dict[int, str]
+    assigned_classified_type_indexes: set[int]
 
 
 class CamelotTableExtractor(ITableExtractor):
@@ -78,6 +92,14 @@ class CamelotTableExtractor(ITableExtractor):
                         "Missing financial table classification result for "
                         f"report year {report.year}."
                     )
+                table_detection_result = context.table_detection_results.get(
+                    report.year
+                )
+                if table_detection_result is None:
+                    raise ValueError(
+                        "Missing table detection result for report year "
+                        f"{report.year}."
+                    )
 
                 self._logger.info(
                     "Extracting tables for report year %s",
@@ -91,7 +113,44 @@ class CamelotTableExtractor(ITableExtractor):
                 context.extraction_results[report.year] = self.extract_tables(
                     pdf_path=report.file_path,
                     classification_result=classification_result,
+                    table_detection_result=table_detection_result,
                 )
+                extraction_summary = (
+                    context.extraction_results[report.year].extraction_summary
+                )
+                self._logger.info(
+                    "Extraction result stored for downstream layers",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "tables": len(context.extraction_results[report.year].tables),
+                        "metric_values": len(
+                            context.extraction_results[report.year].metric_values
+                        ),
+                        "total_matched_tables": (
+                            extraction_summary.total_matched_tables
+                        ),
+                    },
+                )
+                if extraction_summary.total_matched_tables == 0:
+                    failures.append(
+                        f"Report year {report.year} failed table extraction: "
+                        "no matched tables. "
+                        f"detected={extraction_summary.total_detected_tables}, "
+                        f"classified={extraction_summary.total_classified_tables}, "
+                        f"extracted={extraction_summary.total_extracted_tables}."
+                    )
+                    self._logger.error(
+                        "Table extraction produced zero matched tables",
+                        extra={
+                            "company_name": context.company_name,
+                            "year": report.year,
+                            "file_path": report.file_path,
+                            **extraction_summary.model_dump(
+                                exclude={"page_diagnostics"}
+                            ),
+                        },
+                    )
             except Exception as exc:
                 failures.append(
                     f"Report year {report.year} failed table extraction: "
@@ -131,10 +190,13 @@ class CamelotTableExtractor(ITableExtractor):
         self,
         pdf_path: str,
         classification_result: FinancialTableClassificationResult,
+        table_detection_result: TableDetectionResult | None = None,
     ) -> TableExtractionResult:
         """Extract raw tables for all classified pages."""
 
         extracted_tables: list[ExtractedTable] = []
+        page_diagnostics: list[PageExtractionDiagnostic] = []
+        detected_counts_by_page = _detected_counts_by_page(table_detection_result)
 
         for page_table_type in classification_result.page_table_types:
             page_number = page_table_type.page_number
@@ -145,10 +207,16 @@ class CamelotTableExtractor(ITableExtractor):
             )
 
             raw_tables = self._extract_page_tables(pdf_path, page_number)
-            extracted_tables.extend(
-                self._build_extracted_tables(page_table_type, raw_tables)
+            page_tables, page_diagnostic = self._build_extracted_tables(
+                page_table_type=page_table_type,
+                raw_tables=raw_tables,
+                detected_table_count=detected_counts_by_page.get(page_number, 0),
             )
+            extracted_tables.extend(page_tables)
+            page_diagnostics.append(page_diagnostic)
+            self._log_page_diagnostic(page_diagnostic)
 
+        extraction_summary = _build_extraction_summary(page_diagnostics)
         result = TableExtractionResult(
             tables=extracted_tables,
             metric_values=[
@@ -156,12 +224,16 @@ class CamelotTableExtractor(ITableExtractor):
                 for table in extracted_tables
                 for metric_value in table.metric_values
             ],
+            extraction_summary=extraction_summary,
         )
         self._logger.info(
             "Extraction completed",
             extra={
                 "tables_extracted": len(result.tables),
                 "metric_values_extracted": len(result.metric_values),
+                **result.extraction_summary.model_dump(
+                    exclude={"page_diagnostics"}
+                ),
             },
         )
         return result
@@ -227,9 +299,11 @@ class CamelotTableExtractor(ITableExtractor):
 
     def _build_extracted_tables(
         self,
+        *,
         page_table_type: PageTableType,
         raw_tables: list[RawTable],
-    ) -> list[ExtractedTable]:
+        detected_table_count: int,
+    ) -> tuple[list[ExtractedTable], PageExtractionDiagnostic]:
         """Build output models from raw extracted tables and page classifications."""
 
         if not raw_tables:
@@ -241,7 +315,16 @@ class CamelotTableExtractor(ITableExtractor):
                         "table_types": page_table_type.table_types,
                     },
                 )
-            return []
+            return [], PageExtractionDiagnostic(
+                source_report_year=page_table_type.year,
+                page_number=page_table_type.page_number,
+                detected_table_count=detected_table_count,
+                classified_table_count=len(page_table_type.table_types),
+                extracted_table_count=0,
+                matched_table_count=0,
+                unmatched_classifications=page_table_type.table_types,
+                unmatched_extractions=[],
+            )
 
         if len(raw_tables) != len(page_table_type.table_types):
             self._logger.warning(
@@ -257,9 +340,22 @@ class CamelotTableExtractor(ITableExtractor):
             page_table_type=page_table_type,
             raw_tables=raw_tables,
         )
+        unmatched_classifications = [
+            table_type
+            for index, table_type in enumerate(page_table_type.table_types)
+            if index not in table_type_by_raw_index.assigned_classified_type_indexes
+        ]
+        unmatched_extractions = [
+            index
+            for index in range(len(raw_tables))
+            if index not in table_type_by_raw_index.table_type_by_raw_index
+        ]
         extracted_tables: list[ExtractedTable] = []
         for index, rows in enumerate(raw_tables):
-            table_type = table_type_by_raw_index.get(index, UNCLASSIFIED_TABLE_TYPE)
+            table_type = table_type_by_raw_index.table_type_by_raw_index.get(
+                index,
+                UNCLASSIFIED_TABLE_TYPE,
+            )
             extracted_tables.append(
                 ExtractedTable(
                     source_report_year=page_table_type.year,
@@ -275,14 +371,25 @@ class CamelotTableExtractor(ITableExtractor):
                     ),
                 )
             )
-        return extracted_tables
+        return extracted_tables, PageExtractionDiagnostic(
+            source_report_year=page_table_type.year,
+            page_number=page_table_type.page_number,
+            detected_table_count=detected_table_count,
+            classified_table_count=len(page_table_type.table_types),
+            extracted_table_count=len(raw_tables),
+            matched_table_count=len(
+                table_type_by_raw_index.table_type_by_raw_index
+            ),
+            unmatched_classifications=unmatched_classifications,
+            unmatched_extractions=unmatched_extractions,
+        )
 
     def _map_table_types_to_raw_tables(
         self,
         *,
         page_table_type: PageTableType,
         raw_tables: list[RawTable],
-    ) -> dict[int, str]:
+    ) -> _TableMappingResult:
         """Match classified table types to raw tables without positional guessing."""
 
         if not page_table_type.table_types:
@@ -294,7 +401,16 @@ class CamelotTableExtractor(ITableExtractor):
                         "table_index": raw_table_index,
                     },
                 )
-            return {}
+            return _TableMappingResult(
+                table_type_by_raw_index={},
+                assigned_classified_type_indexes=set(),
+            )
+
+        if len(raw_tables) == 1 and len(page_table_type.table_types) == 1:
+            return _TableMappingResult(
+                table_type_by_raw_index={0: page_table_type.table_types[0]},
+                assigned_classified_type_indexes={0},
+            )
 
         candidates = self._table_type_candidates(
             raw_tables=raw_tables,
@@ -326,7 +442,10 @@ class CamelotTableExtractor(ITableExtractor):
             table_type_by_raw_index=table_type_by_raw_index,
             assigned_classified_types=assigned_classified_types,
         )
-        return table_type_by_raw_index
+        return _TableMappingResult(
+            table_type_by_raw_index=table_type_by_raw_index,
+            assigned_classified_type_indexes=assigned_classified_types,
+        )
 
     def _table_type_candidates(
         self,
@@ -413,6 +532,26 @@ class CamelotTableExtractor(ITableExtractor):
                     "table_type": table_type,
                 },
             )
+
+    def _log_page_diagnostic(
+        self,
+        diagnostic: PageExtractionDiagnostic,
+    ) -> None:
+        """Log page-level linkage counts from detection through extraction."""
+
+        self._logger.info(
+            "Extraction page diagnostics",
+            extra={
+                "year": diagnostic.source_report_year,
+                "page": diagnostic.page_number,
+                "detected_table_count": diagnostic.detected_table_count,
+                "classified_table_count": diagnostic.classified_table_count,
+                "extracted_table_count": diagnostic.extracted_table_count,
+                "matched_table_count": diagnostic.matched_table_count,
+                "unmatched_classifications": diagnostic.unmatched_classifications,
+                "unmatched_extractions": diagnostic.unmatched_extractions,
+            },
+        )
 
     def _extract_metric_values(
         self,
@@ -624,6 +763,51 @@ def _scale_multiplier_from_text(text: str) -> int | None:
     ):
         return 1_000
     return None
+
+
+def _detected_counts_by_page(
+    table_detection_result: TableDetectionResult | None,
+) -> dict[int, int]:
+    if table_detection_result is None:
+        return {}
+    return {
+        detected_page.page_number: detected_page.tables_detected
+        for detected_page in table_detection_result.detected_pages
+    }
+
+
+def _build_extraction_summary(
+    page_diagnostics: list[PageExtractionDiagnostic],
+) -> ExtractionSummary:
+    """Build report-level diagnostics from page-level extraction diagnostics."""
+
+    unmatched_classifications = [
+        f"page={diagnostic.page_number} table_type={table_type}"
+        for diagnostic in page_diagnostics
+        for table_type in diagnostic.unmatched_classifications
+    ]
+    unmatched_extractions = [
+        f"page={diagnostic.page_number} table_index={table_index}"
+        for diagnostic in page_diagnostics
+        for table_index in diagnostic.unmatched_extractions
+    ]
+    return ExtractionSummary(
+        total_detected_tables=sum(
+            diagnostic.detected_table_count for diagnostic in page_diagnostics
+        ),
+        total_classified_tables=sum(
+            diagnostic.classified_table_count for diagnostic in page_diagnostics
+        ),
+        total_extracted_tables=sum(
+            diagnostic.extracted_table_count for diagnostic in page_diagnostics
+        ),
+        total_matched_tables=sum(
+            diagnostic.matched_table_count for diagnostic in page_diagnostics
+        ),
+        unmatched_classifications=unmatched_classifications,
+        unmatched_extractions=unmatched_extractions,
+        page_diagnostics=page_diagnostics,
+    )
 
 
 def _table_type_match_score(rows: RawTable, table_type: str) -> int:

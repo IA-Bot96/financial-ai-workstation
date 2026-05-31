@@ -14,6 +14,10 @@ from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
     PageTableType,
 )
+from ocr_engine.models.table_detection_result import (
+    DetectedPage,
+    TableDetectionResult,
+)
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.camelot_table_extractor import CamelotTableExtractor
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
@@ -93,7 +97,7 @@ def test_extract_tables_uses_camelot_first() -> None:
         classification_result=_classification_result(),
     )
 
-    assert result.model_dump() == {
+    assert result.model_dump(exclude={"extraction_summary"}) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -353,6 +357,106 @@ def test_extract_tables_logs_extra_classified_tables(
     assert "Classified table type did not match an extracted table" in caplog.text
 
 
+def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Revenue", "1000"]]),
+            FakeCamelotTable([["Metric", "2024"], ["Unmapped Disclosure", "9"]]),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    with caplog.at_level(logging.INFO):
+        result = extractor.extract_tables(
+            pdf_path="annual_report.pdf",
+            classification_result=FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["income_statement"],
+                    )
+                ]
+            ),
+            table_detection_result=TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2024, page_number=20, tables_detected=2),
+                ],
+                total_pages_processed=100,
+            ),
+        )
+
+    summary = result.extraction_summary
+    assert summary.total_detected_tables == 2
+    assert summary.total_classified_tables == 1
+    assert summary.total_extracted_tables == 2
+    assert summary.total_matched_tables == 1
+    assert summary.unmatched_extractions == ["page=20 table_index=1"]
+    assert summary.unmatched_classifications == []
+    assert summary.page_diagnostics[0].model_dump() == {
+        "source_report_year": 2024,
+        "page_number": 20,
+        "detected_table_count": 2,
+        "classified_table_count": 1,
+        "extracted_table_count": 2,
+        "matched_table_count": 1,
+        "unmatched_classifications": [],
+        "unmatched_extractions": [1],
+    }
+    assert "Extraction page diagnostics" in caplog.text
+
+
+def test_extract_tables_for_context_fails_when_no_tables_match() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Unmapped Disclosure", "9"]]),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[
+            Report(
+                id="rpt_2024_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="reports/MLCF_2024.pdf",
+            )
+        ],
+        classification_results={
+            2024: FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["income_statement", "balance_sheet"],
+                    )
+                ]
+            )
+        },
+        table_detection_results={
+            2024: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2024, page_number=20, tables_detected=2),
+                ],
+                total_pages_processed=100,
+            )
+        },
+    )
+
+    with pytest.raises(PipelineLayerPartialFailure, match="no matched tables"):
+        extractor.extract_tables_for_context(context)
+
+    summary = context.extraction_results[2024].extraction_summary
+    assert summary.total_detected_tables == 2
+    assert summary.total_classified_tables == 2
+    assert summary.total_extracted_tables == 1
+    assert summary.total_matched_tables == 0
+
+
 def test_extract_tables_for_context_stores_results_by_report_year() -> None:
     def camelot_reader(pdf_path: str, pages: str) -> list[FakeCamelotTable]:
         raw_tables_by_page = {
@@ -408,13 +512,29 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
                 ]
             ),
         },
+        table_detection_results={
+            2023: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2023, page_number=10, tables_detected=1),
+                ],
+                total_pages_processed=100,
+            ),
+            2024: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2024, page_number=20, tables_detected=2),
+                ],
+                total_pages_processed=132,
+            ),
+        },
     )
 
     updated_context = extractor.extract_tables_for_context(context)
 
     assert updated_context is context
     assert set(context.extraction_results) == {2023, 2024}
-    assert context.extraction_results[2023].model_dump() == {
+    assert context.extraction_results[2023].model_dump(
+        exclude={"extraction_summary"}
+    ) == {
         "tables": [
             {
                 "source_report_year": 2023,
@@ -427,7 +547,9 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
         ],
         "metric_values": [],
     }
-    assert context.extraction_results[2024].model_dump() == {
+    assert context.extraction_results[2024].model_dump(
+        exclude={"extraction_summary"}
+    ) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -487,6 +609,14 @@ def test_extract_tables_for_context_isolates_year_failures() -> None:
                 ]
             )
         },
+        table_detection_results={
+            2024: TableDetectionResult(
+                detected_pages=[
+                    DetectedPage(year=2024, page_number=20, tables_detected=1),
+                ],
+                total_pages_processed=132,
+            )
+        },
     )
 
     with pytest.raises(PipelineLayerPartialFailure) as exc_info:
@@ -494,7 +624,9 @@ def test_extract_tables_for_context_isolates_year_failures() -> None:
 
     assert exc_info.value.context is context
     assert set(context.extraction_results) == {2023, 2024}
-    assert context.extraction_results[2023].model_dump() == {
+    assert context.extraction_results[2023].model_dump(
+        exclude={"extraction_summary"}
+    ) == {
         "tables": [],
         "metric_values": [],
     }
@@ -533,7 +665,7 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
         ),
     )
 
-    assert result.model_dump() == {
+    assert result.model_dump(exclude={"extraction_summary"}) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -597,7 +729,7 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
         ),
     )
 
-    assert result.model_dump() == {
+    assert result.model_dump(exclude={"extraction_summary"}) == {
         "tables": [
             {
                 "source_report_year": 2024,

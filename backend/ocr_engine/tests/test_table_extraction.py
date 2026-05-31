@@ -10,7 +10,12 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
+from ocr_engine.models.table_extraction import (
+    ExtractedTable,
+    ExtractionSummary,
+    PageExtractionDiagnostic,
+    TableExtractionResult,
+)
 
 
 def test_extracted_table_accepts_valid_payload() -> None:
@@ -127,6 +132,49 @@ def test_table_extraction_result_serializes_expected_output() -> None:
             }
         ],
         "metric_values": [],
+        "extraction_summary": {
+            "total_detected_tables": 0,
+            "total_classified_tables": 0,
+            "total_extracted_tables": 0,
+            "total_matched_tables": 0,
+            "unmatched_classifications": [],
+            "unmatched_extractions": [],
+            "page_diagnostics": [],
+        },
+    }
+
+
+def test_extraction_summary_serializes_page_diagnostics() -> None:
+    summary = ExtractionSummary(
+        total_detected_tables=2,
+        total_classified_tables=2,
+        total_extracted_tables=1,
+        total_matched_tables=1,
+        unmatched_classifications=["page=20 table_type=balance_sheet"],
+        unmatched_extractions=[],
+        page_diagnostics=[
+            PageExtractionDiagnostic(
+                source_report_year=2024,
+                page_number=20,
+                detected_table_count=2,
+                classified_table_count=2,
+                extracted_table_count=1,
+                matched_table_count=1,
+                unmatched_classifications=["balance_sheet"],
+                unmatched_extractions=[],
+            )
+        ],
+    )
+
+    assert summary.model_dump()["page_diagnostics"][0] == {
+        "source_report_year": 2024,
+        "page_number": 20,
+        "detected_table_count": 2,
+        "classified_table_count": 2,
+        "extracted_table_count": 1,
+        "matched_table_count": 1,
+        "unmatched_classifications": ["balance_sheet"],
+        "unmatched_extractions": [],
     }
 
 

@@ -12,7 +12,12 @@ from .insights_extraction import Insight, InsightsExtractionResult
 from .ocr_processing_result import OCRProcessingResult
 from .report import Report
 from .source_reference import SourceReference
-from .table_extraction import ExtractedTable, TableExtractionResult
+from .table_extraction import (
+    ExtractedTable,
+    ExtractionSummary,
+    PageExtractionDiagnostic,
+    TableExtractionResult,
+)
 from .table_normalization import MetricMapping, NormalizationResult, NormalizedTable
 from .table_detection_result import DetectedPage, FailedPage, TableDetectionResult
 from .validation_result import ValidationIssue, ValidationResult, ValidationSeverity
@@ -20,6 +25,7 @@ from .validation_result import ValidationIssue, ValidationResult, ValidationSeve
 __all__ = [
     "DetectedPage",
     "ExtractedTable",
+    "ExtractionSummary",
     "FailedPage",
     "FinancialFact",
     "FinancialFactExtractionResult",
@@ -31,6 +37,7 @@ __all__ = [
     "NormalizedTable",
     "OCRProcessingResult",
     "PageTableType",
+    "PageExtractionDiagnostic",
     "Report",
     "SourceReference",
     "TableExtractionResult",

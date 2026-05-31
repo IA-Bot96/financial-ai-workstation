@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
 )
+from ocr_engine.models.table_detection_result import TableDetectionResult
 from ocr_engine.models.table_extraction import TableExtractionResult
 from shared.models.company_context import CompanyContext
 
@@ -25,5 +26,6 @@ class ITableExtractor(ABC):
         self,
         pdf_path: str,
         classification_result: FinancialTableClassificationResult,
+        table_detection_result: TableDetectionResult | None = None,
     ) -> TableExtractionResult:
         """Extract structured rows from classified financial table pages."""

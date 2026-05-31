@@ -151,9 +151,12 @@ def test_table_extraction_result_serializes_expected_output() -> None:
                 "missing_label_table_count": 0,
                 "numeric_only_table_count": 0,
                 "unclassified_table_count": 0,
+                "labels_reconstructed": 0,
+                "metric_values_improved_by_label_reconstruction": 0,
                 "confidence_distribution": {},
                 "top_suspicious_tables": [],
                 "top_suspicious_metrics": [],
+                "label_reconstruction_diagnostics": [],
             },
         },
     }

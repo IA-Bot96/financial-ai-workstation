@@ -268,6 +268,80 @@ class SuspiciousMetricFinding(BaseModel):
     )
 
 
+class LabelReconstructionDiagnostic(BaseModel):
+    """Trace of a metric label reconstructed from adjacent table cells."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the label was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the label was extracted.",
+        examples=[225],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the label originated.",
+        examples=["balance_sheet"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the reconstructed label.",
+        examples=[3],
+    )
+    original_label: str = Field(
+        ...,
+        min_length=1,
+        description="Original first label fragment selected by row parsing.",
+        examples=["Fair value reserve - In"],
+    )
+    reconstructed_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label reconstructed by merging adjacent text cells.",
+        examples=["Fair value reserve - Investments measured at FVOCI"],
+    )
+    reconstruction_confidence: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Confidence that adjacent cells were merged correctly.",
+        examples=[0.95],
+    )
+    merged_cell_count: int = Field(
+        ...,
+        ge=1,
+        description="Number of non-empty text cells used in the reconstructed label.",
+        examples=[4],
+    )
+    metric_values_affected: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues generated from this reconstructed row.",
+        examples=[2],
+    )
+    stop_reason: str = Field(
+        ...,
+        min_length=1,
+        description="Boundary condition that stopped label merging.",
+        examples=["numeric_value"],
+    )
+
+
 class ExtractionQualityReport(BaseModel):
     """Post-extraction quality validation report."""
 
@@ -336,6 +410,18 @@ class ExtractionQualityReport(BaseModel):
         description="Number of extracted tables classified as unclassified_table.",
         examples=[6],
     )
+    labels_reconstructed: int = Field(
+        default=0,
+        ge=0,
+        description="Number of table rows whose metric label was reconstructed.",
+        examples=[120],
+    )
+    metric_values_improved_by_label_reconstruction: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues receiving reconstructed metric labels.",
+        examples=[240],
+    )
     confidence_distribution: dict[str, int] = Field(
         default_factory=dict,
         description="Distribution of table quality scores by score bucket.",
@@ -348,6 +434,10 @@ class ExtractionQualityReport(BaseModel):
     top_suspicious_metrics: list[SuspiciousMetricFinding] = Field(
         default_factory=list,
         description="Top metric-level findings ordered by suspicion score.",
+    )
+    label_reconstruction_diagnostics: list[LabelReconstructionDiagnostic] = Field(
+        default_factory=list,
+        description="Rows where metric labels were reconstructed from adjacent cells.",
     )
 
 

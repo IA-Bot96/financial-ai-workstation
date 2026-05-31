@@ -173,6 +173,122 @@ def test_extract_tables_identifies_metric_value_years() -> None:
     ]
 
 
+def test_extract_tables_reconstructs_fragmented_metric_labels() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "", "", "", "", "2025", "2024"],
+                    [
+                        "Fair value reserve - In",
+                        "vestments",
+                        "measured",
+                        "at FVOCI",
+                        "",
+                        "1,674",
+                        "1,769",
+                    ],
+                    ["Long term i", "nvestments", "", "", "", "5,874", "6,028"],
+                    ["Bank Al Ha", "bib", "A1+", "AAA", "PACRA", "312", "1,485"],
+                    ["Fair value of plan a", "ssets", "", "", "", "25,642", "27,283"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=225,
+                    table_types=["balance_sheet"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Fair value reserve - Investments measured at FVOCI", 2025, 1674),
+        ("Fair value reserve - Investments measured at FVOCI", 2024, 1769),
+        ("Long term investments", 2025, 5874),
+        ("Long term investments", 2024, 6028),
+        ("Bank Al Habib", 2025, 312),
+        ("Bank Al Habib", 2024, 1485),
+        ("Fair value of plan assets", 2025, 25642),
+        ("Fair value of plan assets", 2024, 27283),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.labels_reconstructed == 4
+    assert quality_report.metric_values_improved_by_label_reconstruction == 8
+    assert [
+        (
+            diagnostic.original_label,
+            diagnostic.reconstructed_label,
+            diagnostic.stop_reason,
+        )
+        for diagnostic in quality_report.label_reconstruction_diagnostics
+    ] == [
+        (
+            "Fair value reserve - In",
+            "Fair value reserve - Investments measured at FVOCI",
+            "year_column",
+        ),
+        ("Long term i", "Long term investments", "year_column"),
+        ("Bank Al Ha", "Bank Al Habib", "rating"),
+        ("Fair value of plan a", "Fair value of plan assets", "year_column"),
+    ]
+    assert all(
+        diagnostic.reconstruction_confidence >= 0.9
+        for diagnostic in quality_report.label_reconstruction_diagnostics
+    )
+
+
+def test_label_reconstruction_stops_before_note_and_percentage_columns() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "Note", "Change", "2025", "2024"],
+                    ["Revenue from contracts", "28.1", "", "100", "80"],
+                    ["Bank balances", "+5%", "", "19,428", "24,830"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=267,
+                    table_types=["notes"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Revenue from contracts", 2025, 100),
+        ("Revenue from contracts", 2024, 80),
+        ("Bank balances", 2025, 19428),
+        ("Bank balances", 2024, 24830),
+    ]
+    assert result.extraction_summary.quality_report.labels_reconstructed == 0
+
+
 def test_extract_tables_applies_financial_scale_conversion() -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [

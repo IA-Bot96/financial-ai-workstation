@@ -16,6 +16,7 @@ from ocr_engine.models.table_extraction import (
     ExtractedTable,
     ExtractionQualityReport,
     ExtractionSummary,
+    LabelReconstructionDiagnostic,
     MetricValueOccurrence,
     PageExtractionDiagnostic,
     SuspiciousMetricFinding,
@@ -85,6 +86,23 @@ class _RawExtractionResult:
     strategy: str
     raw_tables: list[RawTable]
     quality: _ExtractionQuality
+
+
+@dataclass(frozen=True)
+class _ReconstructedLabel:
+    """Metric label reconstructed from adjacent table cells."""
+
+    original_label: str
+    reconstructed_label: str
+    confidence: float
+    merged_cell_count: int
+    stop_reason: str
+
+    @property
+    def changed(self) -> bool:
+        """Return whether reconstruction changed the extracted label."""
+
+        return self.reconstructed_label != self.original_label
 
 
 class CamelotTableExtractor(ITableExtractor):
@@ -746,7 +764,11 @@ class CamelotTableExtractor(ITableExtractor):
             if label_index is None:
                 continue
 
-            metric = row[label_index].strip()
+            metric = self._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            ).reconstructed_label
             for column_index, value_year in year_columns.items():
                 if column_index >= len(row) or column_index == label_index:
                     continue
@@ -843,6 +865,150 @@ class CamelotTableExtractor(ITableExtractor):
             ):
                 return index
         return None
+
+    @classmethod
+    def _reconstruct_metric_label(
+        cls,
+        *,
+        row: Sequence[str],
+        label_index: int,
+        year_columns: dict[int, int],
+    ) -> _ReconstructedLabel:
+        """Merge adjacent text cells that belong to one metric label."""
+
+        original_label = str(row[label_index]).strip()
+        label_parts: list[str] = []
+        stop_reason = "row_end"
+
+        for column_index in range(label_index, len(row)):
+            text = str(row[column_index]).strip()
+            if column_index != label_index:
+                stop_reason = cls._label_merge_stop_reason(
+                    text,
+                    column_index=column_index,
+                    year_columns=year_columns,
+                )
+                if stop_reason is not None:
+                    break
+
+            if not text:
+                continue
+
+            if re.search(r"[A-Za-z]", text):
+                label_parts.append(text)
+                continue
+
+            if column_index == label_index:
+                stop_reason = "non_text_label"
+                break
+
+        reconstructed_label = _normalize_label_text(" ".join(label_parts))
+        if not reconstructed_label:
+            reconstructed_label = original_label
+
+        merged_cell_count = len(label_parts)
+        return _ReconstructedLabel(
+            original_label=original_label,
+            reconstructed_label=reconstructed_label,
+            confidence=cls._label_reconstruction_confidence(
+                original_label=original_label,
+                reconstructed_label=reconstructed_label,
+                merged_cell_count=merged_cell_count,
+                stop_reason=stop_reason,
+            ),
+            merged_cell_count=max(1, merged_cell_count),
+            stop_reason=stop_reason,
+        )
+
+    @classmethod
+    def _label_merge_stop_reason(
+        cls,
+        text: str,
+        *,
+        column_index: int,
+        year_columns: dict[int, int],
+    ) -> str | None:
+        """Return the reason a cell should stop label reconstruction."""
+
+        stripped = str(text).strip()
+        if column_index in year_columns:
+            return "year_column"
+        if not stripped:
+            return None
+        if cls._is_year_cell(stripped):
+            return "year_column"
+        if cls._is_percentage_cell(stripped):
+            return "percentage_column"
+        if cls._is_note_number_cell(stripped):
+            return "note_number"
+        if cls._is_rating_cell(stripped):
+            return "rating"
+        if cls._parse_metric_value(stripped) is not None:
+            return "numeric_value"
+        if not re.search(r"[A-Za-z]", stripped):
+            return "non_text_cell"
+        return None
+
+    @staticmethod
+    def _is_year_cell(text: str) -> bool:
+        return re.fullmatch(r"(?:19|20)\d{2}", text.strip()) is not None
+
+    @staticmethod
+    def _is_note_number_cell(text: str) -> bool:
+        stripped = text.strip()
+        return (
+            re.fullmatch(r"\d+(?:\.\d+)+", stripped) is not None
+            or re.fullmatch(
+                r"note\s*\d+(?:\.\d+)*",
+                stripped,
+                re.IGNORECASE,
+            )
+            is not None
+            or stripped.lower() in {"note", "notes"}
+        )
+
+    @staticmethod
+    def _is_rating_cell(text: str) -> bool:
+        stripped = text.strip()
+        return (
+            re.fullmatch(r"A1\+?|A\+?|AA\+?|AAA|BBB\+?", stripped, re.IGNORECASE)
+            is not None
+            or stripped.upper() in {"PACRA", "VIS", "JCR", "MOODY", "FITCH"}
+        )
+
+    @staticmethod
+    def _is_percentage_cell(text: str) -> bool:
+        return re.fullmatch(r"[+-]?\d+(?:\.\d+)?%", text.strip()) is not None
+
+    @staticmethod
+    def _label_reconstruction_confidence(
+        *,
+        original_label: str,
+        reconstructed_label: str,
+        merged_cell_count: int,
+        stop_reason: str,
+    ) -> float:
+        """Score how likely an adjacent-cell label merge is correct."""
+
+        if reconstructed_label == original_label:
+            return 1.0
+
+        confidence = 0.72
+        if stop_reason in {
+            "year_column",
+            "numeric_value",
+            "note_number",
+            "rating",
+            "percentage_column",
+        }:
+            confidence += 0.18
+        if 2 <= merged_cell_count <= 5:
+            confidence += 0.06
+        if merged_cell_count > 7:
+            confidence -= 0.12
+        if reconstructed_label.lower().startswith(original_label.lower()):
+            confidence += 0.03
+        return round(max(0.0, min(confidence, 0.99)), 2)
 
     @classmethod
     def _parse_metric_value(
@@ -975,6 +1141,39 @@ def _scale_multiplier_from_text(text: str) -> int | None:
     return None
 
 
+def _normalize_label_text(text: str) -> str:
+    """Normalize spacing artifacts introduced by split table cells."""
+
+    normalized = re.sub(r"\s+", " ", text).strip()
+    fragment_replacements = [
+        (r"\bIn\s+vestments\b", "Investments"),
+        (r"\bi\s+nvestments\b", "investments"),
+        (r"\bHa\s+bib\b", "Habib"),
+        (r"\ba\s+ssets\b", "assets"),
+        (r"\bshar\s+e\b", "share"),
+        (r"\bsubscript\s+ion\b", "subscription"),
+        (r"\breserv\s+e\b", "reserve"),
+        (r"\breceiva\s+bles\b", "receivables"),
+        (r"\btaxatio\s+n\b", "taxation"),
+        (r"\bintang\s+ible\b", "intangible"),
+        (r"\bpertai\s+ning\b", "pertaining"),
+        (r"\bcurren\s+t\b", "current"),
+        (r"\bnon[–-]c\s+urrent\b", "non-current"),
+        (r"\bgai\s+n\b", "gain"),
+        (r"\blo\s+ss\b", "loss"),
+        (r"\bobligation\s+s\b", "obligations"),
+        (r"\bpers\s+ons\b", "persons"),
+        (r"\brem\s+uneration\b", "remuneration"),
+        (r"\bexpens\s+es\b", "expenses"),
+        (r"\bprepay\s+ments\b", "prepayments"),
+    ]
+    for pattern, replacement in fragment_replacements:
+        normalized = re.sub(pattern, replacement, normalized)
+    normalized = re.sub(r"\s+([,;:)])", r"\1", normalized)
+    normalized = re.sub(r"([(])\s+", r"\1", normalized)
+    return normalized.strip()
+
+
 def _detected_counts_by_page(
     table_detection_result: TableDetectionResult | None,
 ) -> dict[int, int]:
@@ -1092,6 +1291,7 @@ def _build_extraction_quality_report(
             table_findings.append(finding)
 
     metric_findings = _metric_quality_findings(tables)
+    label_reconstruction_diagnostics = _label_reconstruction_diagnostics(tables)
     top_suspicious_tables = sorted(
         table_findings,
         key=lambda finding: (
@@ -1132,9 +1332,15 @@ def _build_extraction_quality_report(
         missing_label_table_count=missing_label_table_count,
         numeric_only_table_count=numeric_only_table_count,
         unclassified_table_count=unclassified_table_count,
+        labels_reconstructed=len(label_reconstruction_diagnostics),
+        metric_values_improved_by_label_reconstruction=sum(
+            diagnostic.metric_values_affected
+            for diagnostic in label_reconstruction_diagnostics
+        ),
         confidence_distribution=confidence_distribution,
         top_suspicious_tables=top_suspicious_tables,
         top_suspicious_metrics=top_suspicious_metrics,
+        label_reconstruction_diagnostics=label_reconstruction_diagnostics,
     )
 
 
@@ -1198,6 +1404,84 @@ def _table_suspicion_score(*, quality_score: float, reasons: list[str]) -> float
     }
     score += sum(reason_weights.get(reason, 0) for reason in reasons)
     return round(max(0.0, min(score, 100.0)), 2)
+
+
+def _label_reconstruction_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[LabelReconstructionDiagnostic]:
+    """Return row-level diagnostics for reconstructed metric labels."""
+
+    diagnostics: list[LabelReconstructionDiagnostic] = []
+    for table in tables:
+        _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+        if not year_columns:
+            continue
+
+        for row_index, row in enumerate(table.rows):
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            if not reconstructed.changed:
+                continue
+
+            metric_values_affected = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=CamelotTableExtractor._scale_multiplier(
+                    table.rows,
+                ),
+            )
+            if metric_values_affected == 0:
+                continue
+
+            diagnostics.append(
+                LabelReconstructionDiagnostic(
+                    source_report_year=table.source_report_year,
+                    page_number=table.page_number,
+                    table_index=table.table_index,
+                    table_type=table.table_type,
+                    row_index=row_index,
+                    original_label=reconstructed.original_label,
+                    reconstructed_label=reconstructed.reconstructed_label,
+                    reconstruction_confidence=reconstructed.confidence,
+                    merged_cell_count=reconstructed.merged_cell_count,
+                    metric_values_affected=metric_values_affected,
+                    stop_reason=reconstructed.stop_reason,
+                )
+            )
+
+    return diagnostics
+
+
+def _metric_value_count_for_row(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    scale_multiplier: int,
+) -> int:
+    """Return how many MetricValues a row can emit."""
+
+    count = 0
+    for column_index in year_columns:
+        if column_index >= len(row) or column_index == label_index:
+            continue
+        if (
+            CamelotTableExtractor._parse_metric_value(
+                row[column_index],
+                default_scale_multiplier=scale_multiplier,
+            )
+            is not None
+        ):
+            count += 1
+    return count
 
 
 def _metric_quality_findings(

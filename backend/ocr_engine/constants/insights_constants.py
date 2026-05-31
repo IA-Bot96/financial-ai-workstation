@@ -2,7 +2,9 @@
 
 INSIGHTS_CHUNK_MAX_CHARACTERS = 2800
 INSIGHTS_CHUNK_OVERLAP_CHARACTERS = 250
-INSIGHTS_MAX_RANKED_CHUNKS = 12
+INSIGHTS_MAX_RANKED_CHUNKS = None
+INSIGHTS_CHUNKS_PER_LLM_CALL = 8
+INSIGHTS_RETRIEVAL_STRATEGY = "section_balanced_score_all_relevant_chunks"
 
 INSIGHTS_RELEVANT_SECTIONS = (
     "Chairman Review",
@@ -13,6 +15,9 @@ INSIGHTS_RELEVANT_SECTIONS = (
     "Risks",
     "Opportunities",
     "Outlook",
+    "Financial Review",
+    "Sustainability",
+    "ESG",
 )
 
 INSIGHTS_IGNORED_SECTION_KEYWORDS = (

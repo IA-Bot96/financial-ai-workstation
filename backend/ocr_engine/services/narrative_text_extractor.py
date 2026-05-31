@@ -29,15 +29,24 @@ class NarrativeTextExtractor:
 
         self._pdf_loader = pdf_loader or self._load_pdf_document
         self._logger = log or logger
+        self._last_total_pages_processed = 0
+
+    @property
+    def last_total_pages_processed(self) -> int:
+        """Return the total page count from the most recent extraction run."""
+
+        return self._last_total_pages_processed
 
     def extract(self, pdf_path: str) -> list[NarrativePage]:
         """Extract text from all readable pages and skip corrupted pages."""
 
+        self._last_total_pages_processed = 0
         document = self._pdf_loader(pdf_path)
         pages: list[NarrativePage] = []
 
         try:
             total_pages = len(document)
+            self._last_total_pages_processed = total_pages
             for index in range(total_pages):
                 page_number = index + 1
                 try:
@@ -59,7 +68,11 @@ class NarrativeTextExtractor:
 
         self._logger.info(
             "Narrative text extraction complete",
-            extra={"pages_extracted": len(pages)},
+            extra={
+                "total_pages_processed": self._last_total_pages_processed,
+                "pages_extracted": len(pages),
+                "total_text_characters": sum(len(page.text) for page in pages),
+            },
         )
         return pages
 

@@ -90,7 +90,25 @@ def test_ocr_processing_result_serializes_expected_output() -> None:
                     "page_number": 84,
                     "confidence": 0.91,
                 }
-            ]
+            ],
+            "diagnostics": {
+                "total_pages_processed": 0,
+                "pages_with_text": 0,
+                "total_text_characters": 0,
+                "section_pages": 0,
+                "total_chunks_created": 0,
+                "chunk_size": 0,
+                "chunk_overlap": 0,
+                "retrieval_strategy": "section_balanced_score_all_relevant_chunks",
+                "top_k": None,
+                "chunks_sent_to_llm": 0,
+                "llm_call_count": 0,
+                "generated_insights": 0,
+                "section_page_count_by_section": {},
+                "chunk_count_by_section": {},
+                "ranked_chunk_count_by_section": {},
+                "insight_count_by_section": {},
+            },
         },
     }
 

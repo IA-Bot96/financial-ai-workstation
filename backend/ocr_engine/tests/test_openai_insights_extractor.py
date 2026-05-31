@@ -1,6 +1,7 @@
 """Unit tests for the OpenAI insights extraction orchestrator."""
 
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -251,7 +252,9 @@ def test_extract_insights_for_context_stores_results_by_report_year() -> None:
 
     assert updated_context is context
     assert set(context.insights_results) == {2023, 2024}
-    assert context.insights_results[2023].model_dump() == {
+    assert context.insights_results[2023].model_dump(
+        exclude={"diagnostics"}
+    ) == {
         "insights": [
             {
                 "value_year": 2023,
@@ -264,7 +267,9 @@ def test_extract_insights_for_context_stores_results_by_report_year() -> None:
             }
         ]
     }
-    assert context.insights_results[2024].model_dump() == {
+    assert context.insights_results[2024].model_dump(
+        exclude={"diagnostics"}
+    ) == {
         "insights": [
             {
                 "value_year": 2024,
@@ -313,7 +318,9 @@ def test_extract_insights_for_context_requires_normalization_result_per_year() -
     ) as exc_info:
         extractor.extract_insights_for_context(context)
 
-    assert context.insights_results[2024].model_dump() == {"insights": []}
+    assert context.insights_results[2024].model_dump(
+        exclude={"diagnostics"}
+    ) == {"insights": []}
     assert context.pipeline_errors == []
     assert "Report year 2024 failed insights extraction" in (
         exc_info.value.error_messages[0]
@@ -573,7 +580,113 @@ def test_extract_insights_returns_empty_when_no_relevant_chunks() -> None:
         normalization_result=_normalization_result(year=2024),
     )
 
-    assert result == InsightsExtractionResult(insights=[])
+    assert result.insights == []
+    assert result.diagnostics.total_chunks_created == 1
+    assert result.diagnostics.chunks_sent_to_llm == 0
+
+
+def test_extract_insights_batches_all_ranked_chunks_and_records_diagnostics() -> None:
+    class MultiPageNarrativeTextExtractor:
+        last_total_pages_processed = 5
+
+        def extract(self, pdf_path: str) -> list[NarrativePage]:
+            return [
+                NarrativePage(page_number=page_number, text=f"Page {page_number}")
+                for page_number in range(1, 6)
+            ]
+
+    class MultiSectionIdentifier:
+        def identify_sections(self, pages: list[NarrativePage]) -> list[SectionPage]:
+            sections = [
+                "Business Review",
+                "Business Review",
+                "Risks",
+                "Outlook",
+                "Outlook",
+            ]
+            return [
+                SectionPage(
+                    page_number=page.page_number,
+                    section=sections[index],
+                    text=f"{sections[index]}\nExpansion and debt text {page.page_number}.",
+                )
+                for index, page in enumerate(pages)
+            ]
+
+    class MultiChunkBuilder:
+        max_characters = 2800
+        overlap_characters = 250
+
+        def build_chunks(
+            self,
+            section_pages: list[SectionPage],
+        ) -> list[NarrativeChunk]:
+            return [
+                NarrativeChunk(
+                    page_number=section_page.page_number,
+                    source_section=section_page.section,
+                    text=section_page.text,
+                    score=10,
+                )
+                for section_page in section_pages
+            ]
+
+    class MultiChunkRanker(FakeChunkRanker):
+        max_chunks = None
+        retrieval_strategy = "section_balanced_score_all_relevant_chunks"
+
+    class BatchAwareInsightsExtractor:
+        def __init__(self) -> None:
+            self.messages_by_call: list[list[dict[str, str]]] = []
+
+        def extract(self, messages: list[dict[str, str]]) -> InsightsExtractionResult:
+            self.messages_by_call.append(messages)
+            content = messages[1]["content"]
+            insights = []
+            for section, page_number in re.findall(
+                r"source_section: (.+?)\npage_number: (\d+)",
+                content,
+            ):
+                insights.append(
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area=f"{section} {page_number}",
+                        takeaway=f"{section} insight from page {page_number}.",
+                        source_section=section,
+                        page_number=int(page_number),
+                        confidence=0.9,
+                    )
+                )
+            return InsightsExtractionResult(insights=insights)
+
+    fake_insights_extractor = BatchAwareInsightsExtractor()
+    extractor = OpenAIInsightsExtractor(
+        insights_extractor=fake_insights_extractor,
+        narrative_text_extractor=MultiPageNarrativeTextExtractor(),
+        section_identifier=MultiSectionIdentifier(),
+        chunk_builder=MultiChunkBuilder(),
+        chunk_ranker=MultiChunkRanker(),
+        chunks_per_llm_call=2,
+    )
+
+    result = extractor.extract_insights(
+        pdf_path="annual_report.pdf",
+        normalization_result=_normalization_result(year=2024),
+    )
+
+    assert len(fake_insights_extractor.messages_by_call) == 3
+    assert len(result.insights) == 5
+    assert result.diagnostics.total_pages_processed == 5
+    assert result.diagnostics.total_chunks_created == 5
+    assert result.diagnostics.chunks_sent_to_llm == 5
+    assert result.diagnostics.llm_call_count == 3
+    assert result.diagnostics.generated_insights == 5
+    assert result.diagnostics.insight_count_by_section == {
+        "Business Review": 2,
+        "Outlook": 2,
+        "Risks": 1,
+    }
 
 
 def test_openai_insights_extractor_old_message_shape_removed() -> None:

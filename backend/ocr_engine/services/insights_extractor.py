@@ -198,7 +198,7 @@ class InsightsExtractor:
         """Remove duplicate insights while preserving response order."""
 
         unique_insights: list[Insight] = []
-        seen: set[tuple[str, str, int]] = set()
+        seen: set[tuple[str, str, int, int, int]] = set()
         for insight in insights:
             key = (
                 insight.area.strip().lower(),

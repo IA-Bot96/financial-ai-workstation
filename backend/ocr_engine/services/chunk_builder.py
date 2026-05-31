@@ -41,6 +41,18 @@ class ChunkBuilder:
         self._max_characters = max_characters
         self._overlap_characters = overlap_characters
 
+    @property
+    def max_characters(self) -> int:
+        """Return the configured maximum characters per chunk."""
+
+        return self._max_characters
+
+    @property
+    def overlap_characters(self) -> int:
+        """Return the configured overlap characters between chunks."""
+
+        return self._overlap_characters
+
     def build_chunks(self, section_pages: list[SectionPage]) -> list[NarrativeChunk]:
         """Build chunks while preserving page and section traceability."""
 

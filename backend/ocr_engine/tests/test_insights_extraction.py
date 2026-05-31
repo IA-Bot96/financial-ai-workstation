@@ -10,7 +10,11 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from ocr_engine.models.insights_extraction import Insight, InsightsExtractionResult
+from ocr_engine.models.insights_extraction import (
+    Insight,
+    InsightsExtractionDiagnostics,
+    InsightsExtractionResult,
+)
 
 
 def test_insight_accepts_valid_payload() -> None:
@@ -156,7 +160,47 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 "page_number": 92,
                 "confidence": 0.88,
             },
-        ]
+        ],
+        "diagnostics": {
+            "total_pages_processed": 0,
+            "pages_with_text": 0,
+            "total_text_characters": 0,
+            "section_pages": 0,
+            "total_chunks_created": 0,
+            "chunk_size": 0,
+            "chunk_overlap": 0,
+            "retrieval_strategy": "section_balanced_score_all_relevant_chunks",
+            "top_k": None,
+            "chunks_sent_to_llm": 0,
+            "llm_call_count": 0,
+            "generated_insights": 0,
+            "section_page_count_by_section": {},
+            "chunk_count_by_section": {},
+            "ranked_chunk_count_by_section": {},
+            "insight_count_by_section": {},
+        },
+    }
+
+
+def test_insights_diagnostics_serializes_section_counts() -> None:
+    diagnostics = InsightsExtractionDiagnostics(
+        total_pages_processed=400,
+        pages_with_text=312,
+        total_text_characters=745000,
+        section_pages=84,
+        total_chunks_created=126,
+        chunk_size=2800,
+        chunk_overlap=250,
+        top_k=None,
+        chunks_sent_to_llm=96,
+        llm_call_count=12,
+        generated_insights=54,
+        insight_count_by_section={"Business Review": 29, "Risks": 8},
+    )
+
+    assert diagnostics.model_dump()["insight_count_by_section"] == {
+        "Business Review": 29,
+        "Risks": 8,
     }
 
 

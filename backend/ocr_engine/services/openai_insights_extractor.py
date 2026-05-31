@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 import logging
 from typing import Any
 
@@ -12,8 +13,13 @@ from ocr_engine.constants.ai_constants import (
     OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS,
     OPENAI_MODEL,
 )
+from ocr_engine.constants.insights_constants import INSIGHTS_CHUNKS_PER_LLM_CALL
 from ocr_engine.exceptions.openai_exceptions import MissingOpenAIConfigurationError
-from ocr_engine.models.insights_extraction import Insight, InsightsExtractionResult
+from ocr_engine.models.insights_extraction import (
+    Insight,
+    InsightsExtractionDiagnostics,
+    InsightsExtractionResult,
+)
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.chunk_builder import ChunkBuilder
@@ -48,6 +54,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         max_retries: int = OPENAI_INSIGHTS_MAX_RETRIES,
         retry_backoff_seconds: float = OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS,
         request_timeout_seconds: float = OPENAI_INSIGHTS_REQUEST_TIMEOUT_SECONDS,
+        chunks_per_llm_call: int = INSIGHTS_CHUNKS_PER_LLM_CALL,
         log: logging.Logger | None = None,
     ) -> None:
         """Initialize the insights extractor with injectable dependencies."""
@@ -56,6 +63,8 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             raise MissingOpenAIConfigurationError(
                 "OPENAI_API_KEY must be configured for insights extraction."
             )
+        if chunks_per_llm_call < 1:
+            raise ValueError("chunks_per_llm_call must be at least 1.")
 
         self._logger = log or logger
         self._narrative_text_extractor = (
@@ -65,6 +74,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         self._chunk_builder = chunk_builder or ChunkBuilder()
         self._chunk_ranker = chunk_ranker or ChunkRanker()
         self._prompt_builder = prompt_builder or InsightsPromptBuilder()
+        self._chunks_per_llm_call = chunks_per_llm_call
 
         if insights_extractor is not None:
             self._insights_extractor = insights_extractor
@@ -191,13 +201,26 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         chunks = self._chunk_builder.build_chunks(section_pages)
         ranked_chunks = self._chunk_ranker.rank_chunks(chunks, normalization_result)
         metric_context = self._chunk_ranker.extract_metric_context(normalization_result)
+        diagnostics = self._build_diagnostics(
+            pages=pages,
+            section_pages=section_pages,
+            chunks=chunks,
+            ranked_chunks=ranked_chunks,
+            insights=[],
+            llm_call_count=0,
+        )
+
+        self._logger.info(
+            "Insights preprocessing diagnostics",
+            extra=diagnostics.model_dump(),
+        )
 
         if not ranked_chunks:
             self._logger.info(
                 "No relevant narrative chunks found for insights extraction",
                 extra={"pdf_path": pdf_path},
             )
-            return InsightsExtractionResult(insights=[])
+            return InsightsExtractionResult(insights=[], diagnostics=diagnostics)
 
         ranked_chunks = [
             type(chunk)(
@@ -210,19 +233,42 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             for chunk in ranked_chunks
         ]
 
-        messages = self._prompt_builder.build_messages(
-            chunks=ranked_chunks,
-            metric_context=metric_context,
-            report_year=report_year,
+        collected_insights: list[Insight] = []
+        llm_call_count = 0
+        for chunk_batch in _batched(ranked_chunks, self._chunks_per_llm_call):
+            llm_call_count += 1
+            messages = self._prompt_builder.build_messages(
+                chunks=chunk_batch,
+                metric_context=metric_context,
+                report_year=report_year,
+            )
+            batch_result = self._insights_extractor.extract(messages)
+            batch_result = self._ensure_insights_use_source_report_year(
+                batch_result,
+                report_year,
+            )
+            batch_result = self._filter_insights_by_ranked_chunks(
+                batch_result,
+                ranked_chunks,
+            )
+            collected_insights.extend(batch_result.insights)
+
+        result = self._deduplicate_insights(
+            InsightsExtractionResult(insights=collected_insights)
         )
-        result = self._insights_extractor.extract(messages)
-        result = self._ensure_insights_use_source_report_year(result, report_year)
-        result = self._filter_insights_by_ranked_chunks(result, ranked_chunks)
-        result = self._deduplicate_insights(result)
+        diagnostics = self._build_diagnostics(
+            pages=pages,
+            section_pages=section_pages,
+            chunks=chunks,
+            ranked_chunks=ranked_chunks,
+            insights=result.insights,
+            llm_call_count=llm_call_count,
+        )
+        result = result.model_copy(update={"diagnostics": diagnostics})
 
         self._logger.info(
             "Insights extraction complete",
-            extra={"insight_count": len(result.insights)},
+            extra=diagnostics.model_dump(),
         )
         return result
 
@@ -353,6 +399,53 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
 
         return InsightsExtractionResult(insights=insights)
 
+    def _build_diagnostics(
+        self,
+        *,
+        pages: list[Any],
+        section_pages: list[Any],
+        chunks: list[Any],
+        ranked_chunks: list[Any],
+        insights: list[Insight],
+        llm_call_count: int,
+    ) -> InsightsExtractionDiagnostics:
+        """Build trace diagnostics for one report's insights extraction flow."""
+
+        total_pages_processed = getattr(
+            self._narrative_text_extractor,
+            "last_total_pages_processed",
+            0,
+        ) or _max_page_number(pages)
+
+        return InsightsExtractionDiagnostics(
+            total_pages_processed=total_pages_processed,
+            pages_with_text=len(pages),
+            total_text_characters=sum(len(getattr(page, "text", "")) for page in pages),
+            section_pages=len(section_pages),
+            total_chunks_created=len(chunks),
+            chunk_size=getattr(self._chunk_builder, "max_characters", 0),
+            chunk_overlap=getattr(self._chunk_builder, "overlap_characters", 0),
+            retrieval_strategy=getattr(
+                self._chunk_ranker,
+                "retrieval_strategy",
+                "custom_ranker",
+            ),
+            top_k=getattr(self._chunk_ranker, "max_chunks", None),
+            chunks_sent_to_llm=len(ranked_chunks),
+            llm_call_count=llm_call_count,
+            generated_insights=len(insights),
+            section_page_count_by_section=_count_by_attribute(
+                section_pages,
+                "section",
+            ),
+            chunk_count_by_section=_count_by_attribute(chunks, "source_section"),
+            ranked_chunk_count_by_section=_count_by_attribute(
+                ranked_chunks,
+                "source_section",
+            ),
+            insight_count_by_section=_count_by_attribute(insights, "source_section"),
+        )
+
     @staticmethod
     def _create_openai_client(api_key: str) -> Any:
         """Create a real OpenAI SDK client."""
@@ -371,6 +464,38 @@ def _normalize_source_section(source_section: str) -> str:
     """Normalize section names for source-reference validation."""
 
     return " ".join(source_section.strip().lower().split())
+
+
+def _batched(chunks: list[Any], batch_size: int) -> list[list[Any]]:
+    """Split ranked chunks into deterministic LLM request batches."""
+
+    return [
+        chunks[index : index + batch_size]
+        for index in range(0, len(chunks), batch_size)
+    ]
+
+
+def _max_page_number(pages: list[Any]) -> int:
+    """Return the highest page number seen in extracted pages."""
+
+    page_numbers = [
+        getattr(page, "page_number", 0)
+        for page in pages
+        if isinstance(getattr(page, "page_number", 0), int)
+    ]
+    return max(page_numbers, default=0)
+
+
+def _count_by_attribute(items: list[Any], attribute: str) -> dict[str, int]:
+    """Return a stable count by a string-like attribute."""
+
+    counter: Counter[str] = Counter()
+    for item in items:
+        value = getattr(item, attribute, None)
+        if value is None:
+            continue
+        counter[str(value)] += 1
+    return dict(sorted(counter.items()))
 
 
 def _error_message(exc: Exception) -> str:

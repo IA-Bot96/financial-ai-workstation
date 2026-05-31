@@ -71,6 +71,23 @@ class SectionIdentifier:
             "future prospects",
             "market outlook",
         ),
+        "Financial Review": (
+            "financial review",
+            "financial performance",
+            "financial results",
+            "financial overview",
+        ),
+        "Sustainability": (
+            "sustainability",
+            "sustainability review",
+            "corporate social responsibility",
+            "csr",
+        ),
+        "ESG": (
+            "esg",
+            "environmental social and governance",
+            "environment social governance",
+        ),
     }
 
     def identify_sections(self, pages: list[NarrativePage]) -> list[SectionPage]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 import re
 
 import pandas as pd
@@ -9,6 +10,8 @@ import pandas as pd
 from ocr_engine.constants.insights_constants import (
     INSIGHTS_FINANCIAL_KEYWORDS,
     INSIGHTS_MAX_RANKED_CHUNKS,
+    INSIGHTS_RELEVANT_SECTIONS,
+    INSIGHTS_RETRIEVAL_STRATEGY,
 )
 from ocr_engine.models.table_normalization import NormalizationResult
 from ocr_engine.services.chunk_builder import NarrativeChunk
@@ -31,15 +34,28 @@ class ChunkRanker:
     def __init__(
         self,
         financial_keywords: tuple[str, ...] = INSIGHTS_FINANCIAL_KEYWORDS,
-        max_chunks: int = INSIGHTS_MAX_RANKED_CHUNKS,
+        max_chunks: int | None = INSIGHTS_MAX_RANKED_CHUNKS,
     ) -> None:
         """Initialize ranking configuration."""
 
-        if max_chunks < 1:
+        if max_chunks is not None and max_chunks < 1:
             raise ValueError("max_chunks must be at least 1.")
 
         self._financial_keywords = tuple(keyword.lower() for keyword in financial_keywords)
         self._max_chunks = max_chunks
+        self._retrieval_strategy = INSIGHTS_RETRIEVAL_STRATEGY
+
+    @property
+    def max_chunks(self) -> int | None:
+        """Return the optional top-k ranked chunk limit."""
+
+        return self._max_chunks
+
+    @property
+    def retrieval_strategy(self) -> str:
+        """Return the retrieval strategy used to order narrative chunks."""
+
+        return self._retrieval_strategy
 
     def rank_chunks(
         self,
@@ -60,8 +76,10 @@ class ChunkRanker:
             for chunk in chunks
         ]
         relevant_chunks = [chunk for chunk in ranked_chunks if chunk.score > 0]
-        relevant_chunks.sort(key=lambda chunk: chunk.score, reverse=True)
-        return relevant_chunks[: self._max_chunks]
+        ordered_chunks = self._section_balanced_order(relevant_chunks)
+        if self._max_chunks is None:
+            return ordered_chunks
+        return ordered_chunks[: self._max_chunks]
 
     def extract_metric_context(
         self,
@@ -114,6 +132,39 @@ class ChunkRanker:
             if cell and re.search(r"[A-Za-z]", cell):
                 return cell
         return None
+
+    @staticmethod
+    def _section_balanced_order(
+        chunks: list[NarrativeChunk],
+    ) -> list[NarrativeChunk]:
+        """Order chunks by score while preserving coverage across sections."""
+
+        chunks_by_section: dict[str, list[NarrativeChunk]] = defaultdict(list)
+        for chunk in chunks:
+            chunks_by_section[chunk.source_section].append(chunk)
+
+        for section_chunks in chunks_by_section.values():
+            section_chunks.sort(key=lambda chunk: chunk.score, reverse=True)
+
+        section_order = [
+            section
+            for section in INSIGHTS_RELEVANT_SECTIONS
+            if section in chunks_by_section
+        ]
+        section_order.extend(
+            sorted(
+                section
+                for section in chunks_by_section
+                if section not in section_order
+            )
+        )
+
+        ordered: list[NarrativeChunk] = []
+        while any(chunks_by_section[section] for section in section_order):
+            for section in section_order:
+                if chunks_by_section[section]:
+                    ordered.append(chunks_by_section[section].pop(0))
+        return ordered
 
 
 def _normalize_metric_label(value: str) -> str:

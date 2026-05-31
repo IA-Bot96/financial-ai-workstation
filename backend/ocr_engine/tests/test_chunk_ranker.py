@@ -52,3 +52,32 @@ def test_chunk_ranker_extracts_metric_context_with_pandas() -> None:
     metrics = ChunkRanker().extract_metric_context(_normalization_result())
 
     assert metrics == ("revenue", "finance_cost")
+
+
+def test_chunk_ranker_uses_all_relevant_chunks_with_section_balance() -> None:
+    ranker = ChunkRanker()
+    chunks = [
+        NarrativeChunk(
+            page_number=index,
+            source_section="Business Review",
+            text="Expansion and debt increased.",
+        )
+        for index in range(1, 14)
+    ] + [
+        NarrativeChunk(
+            page_number=50 + index,
+            source_section="Risks",
+            text="Cost and working capital risks increased.",
+        )
+        for index in range(1, 4)
+    ]
+
+    ranked = ranker.rank_chunks(chunks, _normalization_result())
+
+    assert len(ranked) == 16
+    assert ranked[0].source_section == "Business Review"
+    assert ranked[1].source_section == "Risks"
+    assert {chunk.source_section for chunk in ranked} == {
+        "Business Review",
+        "Risks",
+    }

@@ -74,7 +74,7 @@ def test_insights_extractor_uses_structured_output_schema() -> None:
 
     result = extractor.extract(messages=[{"role": "user", "content": "Extract."}])
 
-    assert result.model_dump() == {
+    assert result.model_dump(exclude={"diagnostics"}) == {
         "insights": [
             {
                 "area": "Debt",

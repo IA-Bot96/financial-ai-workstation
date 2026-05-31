@@ -8,7 +8,11 @@ from .financial_fact_extraction import (
     FinancialFact,
     FinancialFactExtractionResult,
 )
-from .insights_extraction import Insight, InsightsExtractionResult
+from .insights_extraction import (
+    Insight,
+    InsightsExtractionDiagnostics,
+    InsightsExtractionResult,
+)
 from .ocr_processing_result import OCRProcessingResult
 from .report import Report
 from .source_reference import SourceReference
@@ -31,6 +35,7 @@ __all__ = [
     "FinancialFactExtractionResult",
     "FinancialTableClassificationResult",
     "Insight",
+    "InsightsExtractionDiagnostics",
     "InsightsExtractionResult",
     "MetricMapping",
     "NormalizationResult",

@@ -35,6 +35,39 @@ def test_score_calculator_applies_severity_deductions() -> None:
     assert calculator.is_valid(score) is False
 
 
+def test_score_calculator_critical_issue_always_fails_validation() -> None:
+    calculator = ValidationScoreCalculator()
+    issues = [_issue("critical")]
+    score = calculator.calculate_score(issues)
+
+    assert score == 80.0
+    assert calculator.is_valid(score, issues) is False
+
+
+def test_score_calculator_deduplicates_repeated_multi_year_issues() -> None:
+    calculator = ValidationScoreCalculator()
+    issues = [
+        ValidationIssue(
+            year=2024,
+            rule_name="missing_balance_sheet",
+            expected="balance sheet present",
+            actual="missing",
+            severity="major",
+            message="Balance sheet is missing.",
+        ),
+        ValidationIssue(
+            year=2025,
+            rule_name="missing_balance_sheet",
+            expected="balance sheet present",
+            actual="missing",
+            severity="major",
+            message="Balance sheet is missing.",
+        ),
+    ]
+
+    assert calculator.calculate_score(issues) == 90.0
+
+
 def test_score_calculator_clamps_score_at_zero() -> None:
     calculator = ValidationScoreCalculator()
 

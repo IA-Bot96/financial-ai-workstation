@@ -16,8 +16,18 @@ from ocr_engine.models.financial_table_classification import (
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
 from ocr_engine.models.validation_result import ValidationIssue
-from ocr_engine.validation.financial_validation_service import FinancialValidationService
-from ocr_engine.validation.validators.base import RuleValidator, ValidationContext
+from ocr_engine.validation.financial_validation_service import (
+    FinancialValidationService,
+)
+from ocr_engine.validation.validators.balance_sheet_validator import (
+    BalanceSheetValidator,
+)
+from ocr_engine.validation.validators.base import (
+    RuleValidator,
+    ValidationContext,
+    build_validation_context,
+    parse_number,
+)
 from shared.models.company_context import CompanyContext
 from shared.models.metric_value import MetricValue
 from shared.models.report import Report
@@ -40,6 +50,34 @@ class FakeValidator(RuleValidator):
 class FailingValidator(RuleValidator):
     def validate(self, context: ValidationContext) -> list[ValidationIssue]:
         raise RuntimeError("boom")
+
+
+class CriticalValidator(RuleValidator):
+    def validate(self, context: ValidationContext) -> list[ValidationIssue]:
+        return [
+            ValidationIssue(
+                year=context.primary_year,
+                rule_name="critical_rule",
+                expected="balanced",
+                actual="unbalanced",
+                severity="critical",
+                message="Critical validation issue.",
+            )
+        ]
+
+
+class DuplicateIssueValidator(RuleValidator):
+    def validate(self, context: ValidationContext) -> list[ValidationIssue]:
+        return [
+            ValidationIssue(
+                year=context.primary_year,
+                rule_name="same_structural_issue",
+                expected="present",
+                actual="missing",
+                severity="major",
+                message="Same issue repeated for each value year.",
+            )
+        ]
 
 
 class RecordingValidator(RuleValidator):
@@ -93,6 +131,19 @@ def test_financial_validation_service_aggregates_issues_and_score() -> None:
         "fake_major_rule",
         "FailingValidator",
     ]
+
+
+def test_financial_validation_service_critical_issue_fails_regardless_of_score(
+) -> None:
+    service = FinancialValidationService(validators=[CriticalValidator()])
+
+    result = service.validate(
+        classification_result=_classification_result(),
+        table_extraction_result=TableExtractionResult(tables=[]),
+    )
+
+    assert result.validation_score == 80.0
+    assert result.is_valid is False
 
 
 def test_financial_validation_service_logs_completion(
@@ -332,3 +383,134 @@ def test_validate_executes_rules_independently_by_value_year() -> None:
 
     assert [context[0] for context in validator.seen_contexts] == [2024, 2025]
     assert [issue.year for issue in result.issues] == [2024, 2025]
+
+
+def test_validate_scores_repeated_multi_year_issues_once() -> None:
+    service = FinancialValidationService(validators=[DuplicateIssueValidator()])
+
+    result = service.validate(
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=120,
+                    table_types=["balance_sheet"],
+                )
+            ]
+        ),
+        table_extraction_result=TableExtractionResult(
+            tables=[
+                ExtractedTable(
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                    table_index=0,
+                    rows=[],
+                )
+            ],
+            metric_values=[
+                MetricValue(
+                    metric="total_assets",
+                    value_year=2025,
+                    value=100,
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                ),
+                MetricValue(
+                    metric="total_assets",
+                    value_year=2024,
+                    value=80,
+                    source_report_year=2025,
+                    page_number=120,
+                    table_type="balance_sheet",
+                ),
+            ],
+        ),
+    )
+
+    assert [issue.year for issue in result.issues] == [2024, 2025]
+    assert result.validation_score == 90.0
+
+
+def test_validation_parses_common_financial_scales() -> None:
+    assert parse_number("Rs 2 thousand") == 2_000
+    assert parse_number("Rs 2 million") == 2_000_000
+    assert parse_number("Rs 2 billion") == 2_000_000_000
+
+
+def test_validation_context_applies_table_scale_to_raw_values() -> None:
+    context = build_validation_context(
+        classification_result=_classification_result(),
+        table_extraction_result=TableExtractionResult(
+            tables=[
+                ExtractedTable(
+                    source_report_year=2024,
+                    page_number=1,
+                    table_type="balance_sheet",
+                    table_index=0,
+                    rows=[
+                        ["Amounts in million"],
+                        ["Particulars", "2024"],
+                        ["Total assets", "2"],
+                        ["Total liabilities", "1.2"],
+                        ["Total equity", "0.8"],
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert context.value_for("total_assets") == 2_000_000
+    assert BalanceSheetValidator().validate(context) == []
+
+
+def test_validation_ignores_note_reference_columns() -> None:
+    context = build_validation_context(
+        classification_result=_classification_result(),
+        table_extraction_result=TableExtractionResult(
+            tables=[
+                ExtractedTable(
+                    source_report_year=2024,
+                    page_number=1,
+                    table_type="balance_sheet",
+                    table_index=0,
+                    rows=[
+                        ["Particulars", "Note", "2024"],
+                        ["Total assets", "4", "2500"],
+                        ["Total liabilities", "5", "1500"],
+                        ["Total equity", "6", "1000"],
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert context.value_for("total_assets") == 2500
+    assert BalanceSheetValidator().validate(context) == []
+
+
+def test_accounting_equation_uses_tight_tolerance() -> None:
+    context = build_validation_context(
+        classification_result=_classification_result(),
+        table_extraction_result=TableExtractionResult(
+            tables=[
+                ExtractedTable(
+                    source_report_year=2024,
+                    page_number=1,
+                    table_type="balance_sheet",
+                    table_index=0,
+                    rows=[
+                        ["Particulars", "2024"],
+                        ["Total assets", "1000.75"],
+                        ["Total liabilities", "500"],
+                        ["Total equity", "500"],
+                    ],
+                )
+            ]
+        ),
+    )
+
+    issues = BalanceSheetValidator().validate(context)
+
+    assert "accounting_equation" in {issue.rule_name for issue in issues}

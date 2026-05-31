@@ -10,7 +10,11 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from ocr_engine.models.validation_result import ValidationIssue, ValidationResult
+from ocr_engine.models.validation_result import (
+    ValidationIssue,
+    ValidationResult,
+    ValidationSeverity,
+)
 
 
 def test_validation_result_accepts_valid_payload() -> None:
@@ -29,6 +33,7 @@ def test_validation_result_accepts_valid_payload() -> None:
         issues=[issue],
     )
 
+    assert issue.severity is ValidationSeverity.CRITICAL
     assert result.model_dump() == {
         "is_valid": False,
         "validation_score": 80.0,

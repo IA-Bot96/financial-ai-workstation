@@ -14,6 +14,7 @@ from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
     PageTableType,
 )
+from ocr_engine.models.table_detection_result import FailedPage
 
 
 def test_page_table_type_accepts_valid_payload() -> None:
@@ -99,7 +100,32 @@ def test_financial_table_classification_result_serializes_expected_output() -> N
                 "page_number": 25,
                 "table_types": ["income_statement"],
             },
-        ]
+        ],
+        "failed_pages": [],
+    }
+
+
+def test_financial_table_classification_result_tracks_failed_pages() -> None:
+    result = FinancialTableClassificationResult(
+        page_table_types=[],
+        failed_pages=[
+            FailedPage(
+                year=2024,
+                page_number=21,
+                error_message="OpenAI request failed",
+            )
+        ],
+    )
+
+    assert result.model_dump() == {
+        "page_table_types": [],
+        "failed_pages": [
+            {
+                "year": 2024,
+                "page_number": 21,
+                "error_message": "OpenAI request failed",
+            }
+        ],
     }
 
 

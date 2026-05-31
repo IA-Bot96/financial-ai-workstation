@@ -82,6 +82,7 @@ class InsightsExtractor:
         model: str,
         max_retries: int,
         retry_backoff_seconds: float,
+        request_timeout_seconds: float = 60.0,
         sleep: Callable[[float], None] = time.sleep,
         log: logging.Logger | None = None,
     ) -> None:
@@ -91,11 +92,14 @@ class InsightsExtractor:
             raise ValueError("max_retries must be at least 1.")
         if retry_backoff_seconds < 0:
             raise ValueError("retry_backoff_seconds cannot be negative.")
+        if request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be greater than 0.")
 
         self._client = client
         self._model = model
         self._max_retries = max_retries
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._request_timeout_seconds = request_timeout_seconds
         self._sleep = sleep
         self._logger = log or logger
 
@@ -119,9 +123,24 @@ class InsightsExtractor:
                     model=self._model,
                     input=messages,
                     text={"format": self._RESPONSE_FORMAT},
+                    timeout=self._request_timeout_seconds,
                 )
             except Exception as exc:
                 last_error = exc
+                if _is_terminal_client_error(exc):
+                    self._logger.warning(
+                        "OpenAI insights extraction terminal client error",
+                        extra={
+                            "attempt": attempt,
+                            "status_code": _status_code(exc),
+                        },
+                        exc_info=True,
+                    )
+                    raise OpenAIInsightsExtractionError(
+                        "OpenAI insights extraction failed with terminal "
+                        "client error."
+                    ) from exc
+
                 self._logger.warning(
                     "OpenAI insights extraction request failed",
                     extra={
@@ -193,3 +212,25 @@ class InsightsExtractor:
             unique_insights.append(insight)
             seen.add(key)
         return unique_insights
+
+
+def _status_code(exc: Exception) -> int | None:
+    """Extract an HTTP status code from OpenAI SDK or test-double errors."""
+
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
+
+    response = getattr(exc, "response", None)
+    response_status_code = getattr(response, "status_code", None)
+    if isinstance(response_status_code, int):
+        return response_status_code
+
+    return None
+
+
+def _is_terminal_client_error(exc: Exception) -> bool:
+    """Return True for non-retryable HTTP 4xx errors."""
+
+    status_code = _status_code(exc)
+    return status_code is not None and 400 <= status_code < 500

@@ -4,6 +4,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ocr_engine.models.table_detection_result import FailedPage
+
 TableType = Annotated[str, Field(min_length=1)]
 
 
@@ -40,7 +42,9 @@ class PageTableType(BaseModel):
     page_number: int = Field(
         ...,
         gt=0,
-        description="One-based PDF page number where financial tables were classified.",
+        description=(
+            "One-based PDF page number where financial tables were classified."
+        ),
         examples=[20],
     )
     table_types: list[TableType] = Field(
@@ -77,7 +81,8 @@ class FinancialTableClassificationResult(BaseModel):
                                 "income_statement",
                             ],
                         },
-                    ]
+                    ],
+                    "failed_pages": [],
                 }
             ]
         },
@@ -86,4 +91,8 @@ class FinancialTableClassificationResult(BaseModel):
     page_table_types: list[PageTableType] = Field(
         ...,
         description="Financial table type classifications grouped by detected page.",
+    )
+    failed_pages: list[FailedPage] = Field(
+        default_factory=list,
+        description="Pages skipped due to page-level classification failures.",
     )

@@ -10,7 +10,12 @@ from ocr_engine.constants.detection_constants import (
     TABLE_DETECTION_CONFIDENCE_THRESHOLD,
     TABLE_DETECTION_MODEL_NAME,
 )
-from ocr_engine.models.table_detection_result import DetectedPage, TableDetectionResult
+from ocr_engine.models.table_detection_result import (
+    DetectedPage,
+    FailedPage,
+    TableDetectionResult,
+)
+from ocr_engine.pipeline.models.pipeline_error import PipelineError
 from ocr_engine.services.interfaces.table_detector import ITableDetector
 from shared.models.company_context import CompanyContext
 
@@ -86,10 +91,35 @@ class TableTransformerDetector(ITableDetector):
                     "file_path": report.file_path,
                 },
             )
-            context.table_detection_results[report.year] = self.detect_tables(
-                report.file_path,
-                year=report.year,
-            )
+            try:
+                context.table_detection_results[report.year] = self.detect_tables(
+                    report.file_path,
+                    year=report.year,
+                )
+            except Exception as exc:
+                context.table_detection_results[report.year] = TableDetectionResult(
+                    detected_pages=[],
+                    failed_pages=[],
+                    total_pages_processed=0,
+                )
+                context.pipeline_errors.append(
+                    PipelineError(
+                        layer_name="Table Detection",
+                        error_message=(
+                            f"Report year {report.year} failed table detection: "
+                            f"{_error_message(exc)}"
+                        ),
+                    )
+                )
+                self._logger.exception(
+                    "Table detection failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                continue
 
         self._logger.info(
             "Company context table detection complete",
@@ -109,6 +139,7 @@ class TableTransformerDetector(ITableDetector):
         """Return page-level table detection metadata for a PDF."""
 
         detected_pages: dict[int, int] = {}
+        failed_pages: list[FailedPage] = []
         document = None
         total_pages_processed = 0
 
@@ -125,7 +156,7 @@ class TableTransformerDetector(ITableDetector):
         try:
             for page_index in range(total_pages_processed):
                 page_number = page_index + 1
-                self._logger.info(
+                self._logger.debug(
                     "Processing page %s/%s",
                     page_number,
                     total_pages_processed,
@@ -140,7 +171,7 @@ class TableTransformerDetector(ITableDetector):
                     tables_detected = self._count_tables_in_image(image)
                     if tables_detected > 0:
                         detected_pages[page_number] = tables_detected
-                        self._logger.info(
+                        self._logger.debug(
                             "Tables detected on page %s",
                             page_number,
                             extra={
@@ -148,7 +179,14 @@ class TableTransformerDetector(ITableDetector):
                                 "tables_detected": tables_detected,
                             },
                         )
-                except Exception:
+                except Exception as exc:
+                    failed_pages.append(
+                        FailedPage(
+                            year=year,
+                            page_number=page_number,
+                            error_message=_error_message(exc),
+                        )
+                    )
                     self._logger.exception(
                         "Page skipped due to error",
                         extra={"page": page_number},
@@ -168,6 +206,7 @@ class TableTransformerDetector(ITableDetector):
                 )
                 for page_number, tables_detected in sorted(detected_pages.items())
             ],
+            failed_pages=failed_pages,
             total_pages_processed=total_pages_processed,
         )
         self._logger.info(
@@ -176,6 +215,9 @@ class TableTransformerDetector(ITableDetector):
                 "detected_pages": [
                     detected_page.model_dump()
                     for detected_page in result.detected_pages
+                ],
+                "failed_pages": [
+                    failed_page.model_dump() for failed_page in result.failed_pages
                 ],
                 "total_pages_processed": result.total_pages_processed,
             },
@@ -313,3 +355,9 @@ class TableTransformerDetector(ITableDetector):
             (pixmap.width, pixmap.height),
             pixmap.samples,
         )
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for logging and result metadata."""
+
+    return str(exc) or exc.__class__.__name__

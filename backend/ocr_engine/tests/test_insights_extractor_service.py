@@ -21,6 +21,10 @@ class FakeResponse:
         self.output_text = output_text
 
 
+class FakeTerminalOpenAIError(RuntimeError):
+    status_code = 400
+
+
 class FakeResponses:
     def __init__(self, responses: list[object]) -> None:
         self._responses = responses
@@ -86,6 +90,22 @@ def test_insights_extractor_uses_structured_output_schema() -> None:
     request = client.responses.calls[0]
     assert request["model"] == "gpt-5"
     assert request["text"]["format"]["type"] == "json_schema"
+    assert request["timeout"] == 60.0
+
+
+def test_insights_extractor_passes_configured_request_timeout() -> None:
+    client = FakeClient([FakeResponse('{"insights": []}')])
+    extractor = InsightsExtractor(
+        client=client,
+        model="gpt-5",
+        max_retries=1,
+        retry_backoff_seconds=0,
+        request_timeout_seconds=12.5,
+    )
+
+    extractor.extract(messages=[{"role": "user", "content": "Extract."}])
+
+    assert client.responses.calls[0]["timeout"] == 12.5
 
 
 def test_insights_extractor_retries_failures() -> None:
@@ -121,6 +141,22 @@ def test_insights_extractor_raises_after_retries() -> None:
 
     with pytest.raises(OpenAIInsightsExtractionError):
         extractor.extract(messages=[{"role": "user", "content": "Extract."}])
+
+
+def test_insights_extractor_does_not_retry_terminal_4xx_errors() -> None:
+    client = FakeClient([FakeTerminalOpenAIError("bad request")])
+    extractor = InsightsExtractor(
+        client=client,
+        model="gpt-5",
+        max_retries=3,
+        retry_backoff_seconds=0,
+        sleep=lambda _: None,
+    )
+
+    with pytest.raises(OpenAIInsightsExtractionError):
+        extractor.extract(messages=[{"role": "user", "content": "Extract."}])
+
+    assert len(client.responses.calls) == 1
 
 
 def test_insights_extractor_validates_response_schema() -> None:

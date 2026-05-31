@@ -1,6 +1,16 @@
 """Models returned by the OCR financial validation layer."""
 
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ValidationSeverity(str, Enum):
+    """Supported severity levels for validation issues."""
+
+    CRITICAL = "critical"
+    MAJOR = "major"
+    MINOR = "minor"
 
 
 class ValidationIssue(BaseModel):
@@ -47,9 +57,8 @@ class ValidationIssue(BaseModel):
         description="Actual extracted value or observed condition.",
         examples=[1240000.0],
     )
-    severity: str = Field(
+    severity: ValidationSeverity = Field(
         ...,
-        min_length=1,
         description="Issue severity. Expected values are critical, major, or minor.",
         examples=["critical"],
     )

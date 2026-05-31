@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import torch, transformers, fitz, camelot, pdfplumber, openai, sentence_transformers, sklearn, openpyxl, pydantic, numpy, pandas, fastapi\")"
+      "Bash(python -c \"import torch, transformers, fitz, camelot, pdfplumber, openai, sentence_transformers, sklearn, openpyxl, pydantic, numpy, pandas, fastapi\")",
+      "Bash(python -m pytest ocr_engine/tests/test_camelot_table_extractor.py -q)",
+      "Bash(python -c \"import pydantic; print\\(pydantic.VERSION\\)\")"
     ]
   }
 }

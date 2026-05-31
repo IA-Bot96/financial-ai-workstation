@@ -11,6 +11,7 @@ from ocr_engine.models.financial_table_classification import (
     PageTableType,
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
+from ocr_engine.pipeline.models.pipeline_error import PipelineError
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
 from shared.models.company_context import CompanyContext
 from shared.models.metric_value import MetricValue
@@ -58,26 +59,50 @@ class CamelotTableExtractor(ITableExtractor):
         )
 
         for report in context.reports:
-            classification_result = context.classification_results.get(report.year)
-            if classification_result is None:
-                raise ValueError(
-                    "Missing financial table classification result for report year "
-                    f"{report.year}."
-                )
+            try:
+                classification_result = context.classification_results.get(report.year)
+                if classification_result is None:
+                    raise ValueError(
+                        "Missing financial table classification result for "
+                        f"report year {report.year}."
+                    )
 
-            self._logger.info(
-                "Extracting tables for report year %s",
-                report.year,
-                extra={
-                    "company_name": context.company_name,
-                    "year": report.year,
-                    "file_path": report.file_path,
-                },
-            )
-            context.extraction_results[report.year] = self.extract_tables(
-                pdf_path=report.file_path,
-                classification_result=classification_result,
-            )
+                self._logger.info(
+                    "Extracting tables for report year %s",
+                    report.year,
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                context.extraction_results[report.year] = self.extract_tables(
+                    pdf_path=report.file_path,
+                    classification_result=classification_result,
+                )
+            except Exception as exc:
+                context.extraction_results[report.year] = TableExtractionResult(
+                    tables=[],
+                    metric_values=[],
+                )
+                context.pipeline_errors.append(
+                    PipelineError(
+                        layer_name="Table Extraction",
+                        error_message=(
+                            f"Report year {report.year} failed table extraction: "
+                            f"{_error_message(exc)}"
+                        ),
+                    )
+                )
+                self._logger.exception(
+                    "Table extraction failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                continue
 
         self._logger.info(
             "Company context table extraction complete",
@@ -201,10 +226,19 @@ class CamelotTableExtractor(ITableExtractor):
         if not raw_tables or not page_table_type.table_types:
             return []
 
+        if len(raw_tables) != len(page_table_type.table_types):
+            self._logger.warning(
+                "Table count and classification type count mismatch",
+                extra={
+                    "page": page_table_type.page_number,
+                    "tables_extracted": len(raw_tables),
+                    "table_types": len(page_table_type.table_types),
+                },
+            )
+
         extracted_tables: list[ExtractedTable] = []
-        for index, rows in enumerate(raw_tables):
-            table_type_index = min(index, len(page_table_type.table_types) - 1)
-            table_type = page_table_type.table_types[table_type_index]
+        for index, rows in enumerate(raw_tables[: len(page_table_type.table_types)]):
+            table_type = page_table_type.table_types[index]
             extracted_tables.append(
                 ExtractedTable(
                     source_report_year=page_table_type.year,
@@ -236,6 +270,7 @@ class CamelotTableExtractor(ITableExtractor):
         if not year_columns:
             return []
 
+        scale_multiplier = self._scale_multiplier(rows)
         metric_values: list[MetricValue] = []
         for row_index, row in enumerate(rows):
             if row_index == header_row_index:
@@ -250,7 +285,10 @@ class CamelotTableExtractor(ITableExtractor):
                 if column_index >= len(row) or column_index == label_index:
                     continue
 
-                value = self._parse_metric_value(row[column_index])
+                value = self._parse_metric_value(
+                    row[column_index],
+                    default_scale_multiplier=scale_multiplier,
+                )
                 if value is None:
                     continue
 
@@ -299,36 +337,81 @@ class CamelotTableExtractor(ITableExtractor):
                 return index
         return None
 
-    @staticmethod
-    def _parse_metric_value(value: str) -> float | int | str | None:
+    @classmethod
+    def _parse_metric_value(
+        cls,
+        value: str,
+        *,
+        default_scale_multiplier: int = 1,
+    ) -> float | int | None:
         """Parse a table cell into a typed financial value when possible."""
 
         text = str(value).strip()
         if not text or text.lower() in {"-", "na", "n/a", "nil", "none"}:
             return None
 
-        negative = "(" in text and ")" in text
-        cleaned = (
-            text.replace(",", "")
-            .replace("\u2212", "-")
-            .replace("(", "")
-            .replace(")", "")
-        )
-        cleaned = re.sub(
-            r"(?i)\b(rs|pkr|usd|eur|gbp|rupees|rupee|million|mn|billion|bn)\b\.?",
-            " ",
+        cell_scale_multiplier = cls._cell_scale_multiplier(text)
+        multiplier = cell_scale_multiplier or default_scale_multiplier
+        cleaned = text.replace("\u2212", "-").replace(",", "")
+        cleaned = cls._remove_allowed_financial_tokens(cleaned)
+        if re.search(r"[A-Za-z]", cleaned):
+            return None
+
+        match = re.search(
+            r"(?P<accounting>\(\s*[+-]?\d+(?:\.\d+)?\s*\))|"
+            r"(?P<signed>[-+]?\d+(?:\.\d+)?)",
             cleaned,
         )
-        match = re.search(r"[-+]?\d+(?:\.\d+)?", cleaned)
         if match is None:
-            return text
+            return None
 
-        parsed = float(match.group(0))
+        token = match.group(0)
+        negative = bool(match.group("accounting")) or token.strip().startswith("-")
+        parsed = float(token.replace("(", "").replace(")", ""))
+        parsed = abs(parsed) * multiplier
         if negative:
             parsed = -abs(parsed)
         if parsed.is_integer():
             return int(parsed)
         return parsed
+
+    @classmethod
+    def _scale_multiplier(cls, rows: RawTable) -> int:
+        """Detect a financial scale multiplier from table-level text."""
+
+        for row in rows:
+            for cell in row:
+                multiplier = cls._table_scale_multiplier(str(cell))
+                if multiplier is not None:
+                    return multiplier
+        return 1
+
+    @staticmethod
+    def _table_scale_multiplier(text: str) -> int | None:
+        normalized = text.lower().replace(",", "")
+        if not re.search(r"\b(in|amounts?|rs|pkr|usd|rupees?)\b", normalized):
+            return None
+        return _scale_multiplier_from_text(normalized)
+
+    @staticmethod
+    def _cell_scale_multiplier(text: str) -> int | None:
+        return _scale_multiplier_from_text(text.lower().replace(",", ""))
+
+    @staticmethod
+    def _remove_allowed_financial_tokens(text: str) -> str:
+        cleaned = re.sub(
+            r"(?i)\b(rs|pkr|usd|eur|gbp|rupees|rupee|amounts?|in)\b\.?",
+            " ",
+            text,
+        )
+        cleaned = re.sub(
+            r"(?i)\b(thousands?|million|millions|mn|billion|billions|bn)\b\.?",
+            " ",
+            cleaned,
+        )
+        cleaned = re.sub(r"(?i)(?<!\d)'000s?\b|(?<!\d)\b000s?\b", " ", cleaned)
+        cleaned = cleaned.replace("%", " ")
+        return cleaned
 
     @classmethod
     def _normalize_rows(cls, rows: Any) -> RawTable:
@@ -368,3 +451,24 @@ class CamelotTableExtractor(ITableExtractor):
             raise RuntimeError("pdfplumber is required for table extraction.") from exc
 
         return pdfplumber.open
+
+
+def _scale_multiplier_from_text(text: str) -> int | None:
+    """Return a financial scale multiplier mentioned in text."""
+
+    if re.search(r"\b(billion|billions|bn)\b", text):
+        return 1_000_000_000
+    if re.search(r"\b(million|millions|mn)\b", text):
+        return 1_000_000
+    if re.search(
+        r"\b(thousand|thousands)\b|(?<!\d)'000s?\b|(?<!\d)\b000s?\b",
+        text,
+    ):
+        return 1_000
+    return None
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for result metadata."""
+
+    return str(exc) or exc.__class__.__name__

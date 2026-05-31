@@ -158,6 +158,131 @@ def test_extract_tables_identifies_metric_value_years() -> None:
     ]
 
 
+def test_extract_tables_applies_financial_scale_conversion() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Rupees in thousand"],
+                    ["Metric", "2025"],
+                    ["Revenue", "1.5"],
+                ]
+            ),
+            FakeCamelotTable(
+                [
+                    ["Amounts in million"],
+                    ["Metric", "2025"],
+                    ["EBITDA", "2"],
+                ]
+            ),
+            FakeCamelotTable(
+                [
+                    ["USD in billion"],
+                    ["Metric", "2025"],
+                    ["Debt", "3"],
+                ]
+            ),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=120,
+                    table_types=[
+                        "income_statement",
+                        "income_statement",
+                        "debt_schedule",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Revenue", 1500),
+        ("EBITDA", 2_000_000),
+        ("Debt", 3_000_000_000),
+    ]
+
+
+def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2024"],
+                    ["Profit", "(1,250)"],
+                    ["Expense", "-25"],
+                    ["Restated value", "(Restated) 100"],
+                    ["Disclosure", "Note 12"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2024,
+                    page_number=20,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Profit", -1250),
+        ("Expense", -25),
+    ]
+
+
+def test_extract_tables_logs_type_count_mismatch_and_skips_untyped_tables(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Cash", "1000"]]),
+            FakeCamelotTable([["Metric", "2024"], ["Debt", "500"]]),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = extractor.extract_tables(
+            pdf_path="annual_report.pdf",
+            classification_result=FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["balance_sheet"],
+                    )
+                ]
+            ),
+        )
+
+    assert len(result.tables) == 1
+    assert result.tables[0].table_type == "balance_sheet"
+    assert result.tables[0].rows == [["Metric", "2024"], ["Cash", "1000"]]
+    assert result.metric_values[0].metric == "Cash"
+    assert "Table count and classification type count mismatch" in caplog.text
+
+
 def test_extract_tables_for_context_stores_results_by_report_year() -> None:
     def camelot_reader(pdf_path: str, pages: str) -> list[FakeCamelotTable]:
         raw_tables_by_page = {
@@ -222,43 +347,57 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
     assert context.extraction_results[2023].model_dump() == {
         "tables": [
             {
-                "year": 2023,
+                "source_report_year": 2023,
                 "page_number": 10,
                 "table_type": "balance_sheet",
                 "table_index": 0,
                 "rows": [["Cash", "800"]],
+                "metric_values": [],
             }
-        ]
+        ],
+        "metric_values": [],
     }
     assert context.extraction_results[2024].model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
                 "rows": [["Cash", "1000"]],
+                "metric_values": [],
             },
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 20,
                 "table_type": "debt_schedule",
                 "table_index": 1,
                 "rows": [["Debt", "450"]],
+                "metric_values": [],
             },
-        ]
+        ],
+        "metric_values": [],
     }
     assert context.extraction_results[2023] is not context.extraction_results[2024]
 
 
-def test_extract_tables_for_context_requires_classification_result_per_year() -> None:
+def test_extract_tables_for_context_isolates_year_failures() -> None:
     extractor = CamelotTableExtractor(
-        camelot_reader=lambda *args, **kwargs: [],
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Revenue", "1000"]])
+        ],
         pdfplumber_open=lambda _: FakePdfplumberDocument([]),
     )
     context = CompanyContext(
         company_name="Maple Leaf Cement Factory Limited",
         reports=[
+            Report(
+                id="rpt_2023_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2023,
+                file_name="MLCF_2023_Annual_Report.pdf",
+                file_path="reports/MLCF_2023.pdf",
+            ),
             Report(
                 id="rpt_2024_001",
                 company_name="Maple Leaf Cement Factory Limited",
@@ -267,13 +406,37 @@ def test_extract_tables_for_context_requires_classification_result_per_year() ->
                 file_path="reports/MLCF_2024.pdf",
             )
         ],
+        classification_results={
+            2024: FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["income_statement"],
+                    )
+                ]
+            )
+        },
     )
 
-    with pytest.raises(ValueError, match="Missing financial table classification"):
-        extractor.extract_tables_for_context(context)
+    updated_context = extractor.extract_tables_for_context(context)
+
+    assert updated_context is context
+    assert set(context.extraction_results) == {2023, 2024}
+    assert context.extraction_results[2023].model_dump() == {
+        "tables": [],
+        "metric_values": [],
+    }
+    assert context.extraction_results[2024].metric_values[0].metric == "Revenue"
+    assert len(context.pipeline_errors) == 1
+    assert context.pipeline_errors[0].layer_name == "Table Extraction"
+    assert "Report year 2023 failed table extraction" in (
+        context.pipeline_errors[0].error_message
+    )
 
 
-def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables() -> None:
+def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
+) -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [],
         pdfplumber_open=lambda _: FakePdfplumberDocument(
@@ -291,7 +454,11 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
         pdf_path="annual_report.pdf",
         classification_result=FinancialTableClassificationResult(
             page_table_types=[
-                PageTableType(year=2024, page_number=1, table_types=["balance_sheet"])
+                PageTableType(
+                    year=2024,
+                    page_number=1,
+                    table_types=["balance_sheet"],
+                )
             ]
         ),
     )
@@ -299,13 +466,15 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
     assert result.model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 1,
                 "table_type": "balance_sheet",
                 "table_index": 0,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
+                "metric_values": [],
             }
-        ]
+        ],
+        "metric_values": [],
     }
 
 
@@ -344,8 +513,16 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
         pdf_path="annual_report.pdf",
         classification_result=FinancialTableClassificationResult(
             page_table_types=[
-                PageTableType(year=2024, page_number=20, table_types=["balance_sheet"]),
-                PageTableType(year=2024, page_number=25, table_types=["income_statement"]),
+                PageTableType(
+                    year=2024,
+                    page_number=20,
+                    table_types=["balance_sheet"],
+                ),
+                PageTableType(
+                    year=2024,
+                    page_number=25,
+                    table_types=["income_statement"],
+                ),
             ]
         ),
     )
@@ -353,13 +530,15 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
     assert result.model_dump() == {
         "tables": [
             {
-                "year": 2024,
+                "source_report_year": 2024,
                 "page_number": 25,
                 "table_type": "income_statement",
                 "table_index": 0,
                 "rows": [["Revenue", "1000"]],
+                "metric_values": [],
             }
-        ]
+        ],
+        "metric_values": [],
     }
 
 
@@ -378,7 +557,11 @@ def test_extract_tables_logs_processing_and_completion(
             pdf_path="annual_report.pdf",
             classification_result=FinancialTableClassificationResult(
                 page_table_types=[
-                    PageTableType(year=2024, page_number=20, table_types=["balance_sheet"])
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["balance_sheet"],
+                    )
                 ]
             ),
         )

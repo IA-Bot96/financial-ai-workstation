@@ -70,7 +70,7 @@ def test_normalizer_uses_exact_match_without_embeddings(
         embedding_generator=embedding_generator,
     )
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         result = normalizer.normalize_metric("Revenue")
 
     assert result.model_dump() == {
@@ -122,7 +122,7 @@ def test_normalizer_uses_embedding_similarity_for_unknown_metric() -> None:
     assert result.requires_review is False
 
 
-def test_medium_confidence_embedding_match_normalizes_with_warning(
+def test_medium_confidence_embedding_match_normalizes_with_debug_log(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     normalizer = EmbeddingMetricNormalizer(
@@ -131,7 +131,7 @@ def test_medium_confidence_embedding_match_normalizes_with_warning(
         similarity_search_service=FixedSimilaritySearchService(score=0.85),
     )
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.DEBUG):
         result = normalizer.normalize_metric("Top line")
 
     assert result.normalized_metric == "revenue"
@@ -140,18 +140,22 @@ def test_medium_confidence_embedding_match_normalizes_with_warning(
     assert "Metric Found Via Embedding Search" in caplog.text
 
 
-def test_low_confidence_embedding_match_requires_review() -> None:
+def test_low_confidence_embedding_match_requires_review(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     normalizer = EmbeddingMetricNormalizer(
         canonical_metric_registry=_registry(),
         embedding_generator=FakeEmbeddingGenerator(),
         similarity_search_service=FixedSimilaritySearchService(score=0.79),
     )
 
-    result = normalizer.normalize_metric("Unclear OCR Label")
+    with caplog.at_level(logging.WARNING):
+        result = normalizer.normalize_metric("Unclear OCR Label")
 
     assert result.normalized_metric is None
     assert result.confidence == 0.79
     assert result.requires_review is True
+    assert "Metric Requires Review" in caplog.text
 
 
 def test_candidate_embeddings_are_cached() -> None:

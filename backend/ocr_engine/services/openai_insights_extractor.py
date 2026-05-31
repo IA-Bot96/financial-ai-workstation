@@ -8,6 +8,7 @@ from typing import Any
 from ocr_engine.constants.ai_constants import (
     OPENAI_API_KEY,
     OPENAI_INSIGHTS_MAX_RETRIES,
+    OPENAI_INSIGHTS_REQUEST_TIMEOUT_SECONDS,
     OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS,
     OPENAI_MODEL,
 )
@@ -45,6 +46,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         insights_extractor: InsightsExtractor | None = None,
         max_retries: int = OPENAI_INSIGHTS_MAX_RETRIES,
         retry_backoff_seconds: float = OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS,
+        request_timeout_seconds: float = OPENAI_INSIGHTS_REQUEST_TIMEOUT_SECONDS,
         log: logging.Logger | None = None,
     ) -> None:
         """Initialize the insights extractor with injectable dependencies."""
@@ -72,6 +74,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
                 model=model,
                 max_retries=max_retries,
                 retry_backoff_seconds=retry_backoff_seconds,
+                request_timeout_seconds=request_timeout_seconds,
                 log=self._logger,
             )
 
@@ -190,6 +193,8 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         )
         result = self._insights_extractor.extract(messages)
         result = self._ensure_insights_use_source_report_year(result, report_year)
+        result = self._filter_insights_by_ranked_chunks(result, ranked_chunks)
+        result = self._deduplicate_insights(result)
 
         self._logger.info(
             "Insights extraction complete",
@@ -220,7 +225,7 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
         year: int,
         normalization_result: NormalizationResult,
     ) -> None:
-        """Ensure a context year bucket contains only normalization data for that year."""
+        """Ensure a context year bucket contains only one report year's data."""
 
         result_years = cls._normalization_years(normalization_result)
         mismatched_years = result_years - {year}
@@ -268,6 +273,62 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
 
         return InsightsExtractionResult(insights=insights)
 
+    def _filter_insights_by_ranked_chunks(
+        self,
+        result: InsightsExtractionResult,
+        ranked_chunks: list[Any],
+    ) -> InsightsExtractionResult:
+        """Accept only insights whose source reference exists in ranked chunks."""
+
+        valid_sources = {
+            (chunk.page_number, _normalize_source_section(chunk.source_section))
+            for chunk in ranked_chunks
+        }
+        insights: list[Insight] = []
+        for insight in result.insights:
+            source_key = (
+                insight.page_number,
+                _normalize_source_section(insight.source_section),
+            )
+            if source_key not in valid_sources:
+                self._logger.warning(
+                    "Insight source reference rejected",
+                    extra={
+                        "page_number": insight.page_number,
+                        "source_section": insight.source_section,
+                        "source_report_year": insight.source_report_year,
+                        "area": insight.area,
+                    },
+                )
+                continue
+            insights.append(insight)
+
+        return InsightsExtractionResult(insights=insights)
+
+    @staticmethod
+    def _deduplicate_insights(
+        result: InsightsExtractionResult,
+    ) -> InsightsExtractionResult:
+        """Remove duplicates after source-report-year normalization."""
+
+        insights: list[Insight] = []
+        seen: set[tuple[str, str, str, int, int, int]] = set()
+        for insight in result.insights:
+            key = (
+                insight.area.strip().lower(),
+                insight.takeaway.strip().lower(),
+                insight.source_section.strip().lower(),
+                insight.value_year,
+                insight.source_report_year,
+                insight.page_number,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            insights.append(insight)
+
+        return InsightsExtractionResult(insights=insights)
+
     @staticmethod
     def _create_openai_client(api_key: str) -> Any:
         """Create a real OpenAI SDK client."""
@@ -280,3 +341,9 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             ) from exc
 
         return OpenAI(api_key=api_key)
+
+
+def _normalize_source_section(source_section: str) -> str:
+    """Normalize section names for source-reference validation."""
+
+    return " ".join(source_section.strip().lower().split())

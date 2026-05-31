@@ -141,7 +141,10 @@ class FinancialValidationService(IValidationService):
         issues: list[ValidationIssue] = []
 
         value_years = sorted(
-            {metric_value.value_year for metric_value in table_extraction_result.metric_values}
+            {
+                metric_value.value_year
+                for metric_value in table_extraction_result.metric_values
+            }
         )
         if value_years:
             for value_year in value_years:
@@ -160,7 +163,7 @@ class FinancialValidationService(IValidationService):
 
         score = self._score_calculator.calculate_score(issues)
         result = ValidationResult(
-            is_valid=self._score_calculator.is_valid(score),
+            is_valid=self._score_calculator.is_valid(score, issues),
             validation_score=score,
             issues=issues,
         )

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         ge=0,
         alias="OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS",
     )
+    openai_classification_request_timeout_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        alias="OPENAI_CLASSIFICATION_REQUEST_TIMEOUT_SECONDS",
+    )
     openai_insights_max_retries: int = Field(
         default=3,
         ge=1,
@@ -56,6 +61,11 @@ class Settings(BaseSettings):
         default=1.0,
         ge=0,
         alias="OPENAI_INSIGHTS_RETRY_BACKOFF_SECONDS",
+    )
+    openai_insights_request_timeout_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        alias="OPENAI_INSIGHTS_REQUEST_TIMEOUT_SECONDS",
     )
 
     @field_validator("openai_api_key")

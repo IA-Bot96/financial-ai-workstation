@@ -12,14 +12,14 @@ if str(BACKEND_DIR) not in sys.path:
 from shared.normalization.services.metric_registry_loader import MetricRegistryLoader
 
 
-def test_registry_loader_validates_and_deduplicates_aliases() -> None:
+def test_registry_loader_validates_registry_entries() -> None:
     loader = MetricRegistryLoader()
 
     metrics = loader.load_from_dict(
         {
             "revenue": {
                 "display_name": "Revenue",
-                "aliases": ["sales", "sales", "turnover"],
+                "aliases": ["sales", "turnover"],
                 "category": "income_statement",
             }
         }
@@ -50,3 +50,85 @@ def test_registry_loader_rejects_missing_display_name() -> None:
                 }
             }
         )
+
+
+def test_registry_loader_rejects_duplicate_aliases() -> None:
+    loader = MetricRegistryLoader()
+
+    with pytest.raises(ValueError, match="Duplicate alias"):
+        loader.load_from_dict(
+            {
+                "revenue": {
+                    "display_name": "Revenue",
+                    "aliases": ["sales"],
+                    "category": "income_statement",
+                },
+                "gross_sales": {
+                    "display_name": "Gross Sales",
+                    "aliases": ["Sales"],
+                    "category": "income_statement",
+                },
+            }
+        )
+
+
+def test_registry_loader_rejects_duplicate_aliases_within_metric() -> None:
+    loader = MetricRegistryLoader()
+
+    with pytest.raises(ValueError, match="Duplicate alias"):
+        loader.load_from_dict(
+            {
+                "revenue": {
+                    "display_name": "Revenue",
+                    "aliases": ["net sales", "Net Sales"],
+                    "category": "income_statement",
+                }
+            }
+        )
+
+
+def test_registry_loader_rejects_duplicate_display_names() -> None:
+    loader = MetricRegistryLoader()
+
+    with pytest.raises(ValueError, match="Duplicate display name"):
+        loader.load_from_dict(
+            {
+                "revenue": {
+                    "display_name": "Revenue",
+                    "aliases": ["sales"],
+                    "category": "income_statement",
+                },
+                "net_revenue": {
+                    "display_name": "revenue",
+                    "aliases": ["net sales"],
+                    "category": "income_statement",
+                },
+            }
+        )
+
+
+def test_registry_loader_rejects_duplicate_canonical_metric_names() -> None:
+    loader = MetricRegistryLoader()
+
+    with pytest.raises(ValueError, match="Duplicate canonical metric name"):
+        loader.load_from_dict(
+            {
+                "net_revenue": {
+                    "display_name": "Net Revenue",
+                    "aliases": ["net sales"],
+                    "category": "income_statement",
+                },
+                " net revenue ": {
+                    "display_name": "Reported Net Revenue",
+                    "aliases": ["reported net sales"],
+                    "category": "income_statement",
+                },
+            }
+        )
+
+
+def test_registry_loader_rejects_empty_registry() -> None:
+    loader = MetricRegistryLoader()
+
+    with pytest.raises(ValueError, match="cannot be empty"):
+        loader.load_from_dict({})

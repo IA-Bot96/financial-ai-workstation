@@ -68,6 +68,8 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
             similarity_search_service or SimilaritySearchService()
         )
         self._metrics = self._load_metrics(canonical_metric_registry, registry_path)
+        if not self._metrics:
+            raise ValueError("Canonical metric registry cannot be empty.")
         self._lookup = self._build_lookup(self._metrics)
         self._candidate_embeddings: np.ndarray | None = None
 
@@ -82,7 +84,7 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
 
         exact_match = self._lookup.exact_lookup.get(normalized_input)
         if exact_match is not None:
-            logger.info(
+            logger.debug(
                 "Metric Found Via Exact Match",
                 extra={
                     "original_metric": original_metric,
@@ -97,7 +99,7 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
 
         alias_match = self._lookup.alias_lookup.get(normalized_input)
         if alias_match is not None:
-            logger.info(
+            logger.debug(
                 "Metric Found Via Alias Match",
                 extra={
                     "original_metric": original_metric,
@@ -138,7 +140,9 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
 
         for metric in metrics:
             exact_terms = tuple(
-                dict.fromkeys((metric.key, metric.display_name, _normalize_key(metric.key)))
+                dict.fromkeys(
+                    (metric.key, metric.display_name, _normalize_key(metric.key))
+                )
             )
             for term in exact_terms:
                 normalized = _normalize_text(term)
@@ -191,6 +195,13 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
         )
 
         if match is None:
+            logger.warning(
+                "Metric Requires Review",
+                extra={
+                    "original_metric": original_metric,
+                    "confidence": 0.0,
+                },
+            )
             return self._build_result(
                 original_metric=original_metric,
                 normalized_metric=None,
@@ -205,7 +216,7 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
         )
 
         if result.requires_review:
-            logger.info(
+            logger.warning(
                 "Metric Requires Review",
                 extra={
                     "original_metric": original_metric,
@@ -214,7 +225,7 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
                 },
             )
         elif result.confidence < HIGH_CONFIDENCE_THRESHOLD:
-            logger.warning(
+            logger.debug(
                 "Metric Found Via Embedding Search",
                 extra={
                     "original_metric": original_metric,
@@ -223,7 +234,7 @@ class EmbeddingMetricNormalizer(IMetricNormalizer):
                 },
             )
         else:
-            logger.info(
+            logger.debug(
                 "Metric Found Via Embedding Search",
                 extra={
                     "original_metric": original_metric,

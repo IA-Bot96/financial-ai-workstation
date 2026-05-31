@@ -484,7 +484,10 @@ class ValidationContext:
     ) -> bool:
         """Return whether any canonical metric is present in the context."""
 
-        return any(self.value_for(metric_name, table_types) is not None for metric_name in metric_names)
+        return any(
+            self.value_for(metric_name, table_types) is not None
+            for metric_name in metric_names
+        )
 
     def labels_for(
         self,
@@ -518,7 +521,10 @@ def build_validation_context(
     observations: list[MetricObservation] = []
     table_dataframes: dict[tuple[int, int, int], pd.DataFrame] = {}
     labels_by_table: dict[tuple[int, int, int], tuple[str, ...]] = {}
-    year_sequences_by_table: dict[tuple[int, int, int], tuple[tuple[int, ...], ...]] = {}
+    year_sequences_by_table: dict[
+        tuple[int, int, int],
+        tuple[tuple[int, ...], ...],
+    ] = {}
     tables_by_key: dict[tuple[int, int, int], ExtractedTable] = {}
 
     if table_extraction_result.metric_values:
@@ -533,6 +539,8 @@ def build_validation_context(
         key = (table.year, table.page_number, table.table_index)
         table_dataframes[key] = pd.DataFrame(table.rows)
         tables_by_key[key] = table
+        note_column_indices = detect_note_reference_columns(table.rows)
+        scale_multiplier = detect_table_scale_multiplier(table.rows)
 
         if table_extraction_result.metric_values:
             labels_by_table[key] = tuple(
@@ -561,7 +569,12 @@ def build_validation_context(
             if metric_name is None:
                 continue
 
-            values = extract_numeric_values(row, label_index)
+            values = extract_numeric_values(
+                row,
+                label_index,
+                note_column_indices=note_column_indices,
+                scale_multiplier=scale_multiplier,
+            )
             if not values:
                 continue
 
@@ -760,8 +773,8 @@ def labels_contain_any(labels: Iterable[str], keywords: Sequence[str]) -> bool:
 def amounts_match(
     expected: float,
     actual: float,
-    absolute_tolerance: float = 1.0,
-    relative_tolerance: float = 0.01,
+    absolute_tolerance: float = 0.5,
+    relative_tolerance: float = 0.0001,
 ) -> bool:
     """Compare numeric values using absolute and percentage tolerance."""
 
@@ -841,16 +854,25 @@ def extract_label(row: Sequence[str]) -> tuple[int, str | None]:
     return -1, None
 
 
-def extract_numeric_values(row: Sequence[str], label_index: int) -> tuple[float, ...]:
+def extract_numeric_values(
+    row: Sequence[str],
+    label_index: int,
+    *,
+    note_column_indices: set[int] | None = None,
+    scale_multiplier: int = 1,
+) -> tuple[float, ...]:
     """Extract numeric values from a row while preserving left-to-right order."""
 
     values: list[float] = []
+    note_column_indices = note_column_indices or set()
     for index, cell in enumerate(row):
         text = str(cell).strip()
+        if index in note_column_indices:
+            continue
         if index == label_index and not re.search(r"\d", text):
             continue
 
-        value = parse_number(text)
+        value = parse_number(text, default_scale_multiplier=scale_multiplier)
         if value is not None and not is_year_cell(text):
             values.append(value)
 
@@ -875,7 +897,11 @@ def years_are_descending(years: Sequence[int]) -> bool:
     return all(left > right for left, right in zip(years, years[1:]))
 
 
-def parse_number(value: object) -> float | None:
+def parse_number(
+    value: object,
+    *,
+    default_scale_multiplier: int = 1,
+) -> float | None:
     """Parse OCR text into a float using financial statement conventions."""
 
     if value is None:
@@ -889,30 +915,91 @@ def parse_number(value: object) -> float | None:
     if normalized in {"", "-", "na", "n a", "nil", "none"}:
         return None
 
-    negative = "(" in text and ")" in text
+    cell_scale_multiplier = scale_multiplier_from_text(text)
+    multiplier = cell_scale_multiplier or default_scale_multiplier
     percent = "%" in text
-    cleaned = (
-        text.replace(",", "")
-        .replace("\u2212", "-")
-        .replace("(", "")
-        .replace(")", "")
-    )
-    cleaned = re.sub(
-        r"(?i)\b(rs|pkr|usd|eur|gbp|rupees|rupee|million|mn|billion|bn)\b\.?",
-        " ",
+    cleaned = text.replace(",", "").replace("\u2212", "-")
+    cleaned = remove_allowed_financial_tokens(cleaned)
+    if re.search(r"[A-Za-z]", cleaned):
+        return None
+
+    match = re.search(
+        r"(?P<accounting>\(\s*[+-]?\d+(?:\.\d+)?\s*\))|"
+        r"(?P<signed>[-+]?\d+(?:\.\d+)?)",
         cleaned,
     )
-
-    match = re.search(r"[-+]?\d+(?:\.\d+)?", cleaned)
     if match is None:
         return None
 
-    number = float(match.group(0))
+    token = match.group(0)
+    negative = bool(match.group("accounting")) or token.strip().startswith("-")
+    number = float(token.replace("(", "").replace(")", ""))
+    number = abs(number) * multiplier
     if negative:
         number = -abs(number)
     if percent:
         number = number / 100
     return number
+
+
+def detect_note_reference_columns(rows: Sequence[Sequence[str]]) -> set[int]:
+    """Return columns that are explicitly labeled as note/reference columns."""
+
+    note_columns: set[int] = set()
+    for row in rows:
+        for index, cell in enumerate(row):
+            normalized = normalize_text(str(cell))
+            if normalized in {"note", "notes", "reference", "ref"}:
+                note_columns.add(index)
+    return note_columns
+
+
+def detect_table_scale_multiplier(rows: Sequence[Sequence[str]]) -> int:
+    """Detect a financial scale multiplier from table-level text."""
+
+    for row in rows:
+        for cell in row:
+            text = str(cell).lower().replace(",", "")
+            if not re.search(r"\b(in|amounts?|rs|pkr|usd|rupees?)\b", text):
+                continue
+            multiplier = scale_multiplier_from_text(text)
+            if multiplier is not None:
+                return multiplier
+    return 1
+
+
+def scale_multiplier_from_text(text: str) -> int | None:
+    """Return the financial scale multiplier mentioned in text."""
+
+    normalized = text.lower().replace(",", "")
+    if re.search(r"\b(billion|billions|bn)\b", normalized):
+        return 1_000_000_000
+    if re.search(r"\b(million|millions|mn)\b", normalized):
+        return 1_000_000
+    if re.search(
+        r"\b(thousand|thousands)\b|(?<!\d)'000s?\b|(?<!\d)\b000s?\b",
+        normalized,
+    ):
+        return 1_000
+    return None
+
+
+def remove_allowed_financial_tokens(text: str) -> str:
+    """Remove currency and scale words while leaving non-financial text visible."""
+
+    cleaned = re.sub(
+        r"(?i)\b(rs|pkr|usd|eur|gbp|rupees|rupee|amounts?|in)\b\.?",
+        " ",
+        text,
+    )
+    cleaned = re.sub(
+        r"(?i)\b(thousands?|million|millions|mn|billion|billions|bn)\b\.?",
+        " ",
+        cleaned,
+    )
+    cleaned = re.sub(r"(?i)(?<!\d)'000s?\b|(?<!\d)\b000s?\b", " ", cleaned)
+    cleaned = cleaned.replace("%", " ")
+    return cleaned
 
 
 def is_year_cell(value: str) -> bool:

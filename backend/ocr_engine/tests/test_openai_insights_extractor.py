@@ -109,6 +109,29 @@ class FakeInsightsExtractor:
         )
 
 
+class FakeOpenAIResponse:
+    def __init__(self, output_text: str) -> None:
+        self.output_text = output_text
+
+
+class FakeOpenAIResponsesClient:
+    def __init__(self, responses: list[object]) -> None:
+        self._responses = responses
+        self.calls: list[dict[str, object]] = []
+
+    def create(self, **kwargs: object) -> object:
+        self.calls.append(kwargs)
+        response = self._responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+class FakeOpenAIClient:
+    def __init__(self, responses: list[object]) -> None:
+        self.responses = FakeOpenAIResponsesClient(responses)
+
+
 def _normalization_result(year: int = 2024) -> NormalizationResult:
     return NormalizationResult(
         tables=[
@@ -123,7 +146,8 @@ def _normalization_result(year: int = 2024) -> NormalizationResult:
     )
 
 
-def test_openai_insights_extractor_requires_api_key_without_injected_extractor() -> None:
+def test_openai_insights_extractor_requires_api_key_without_injected_extractor(
+) -> None:
     with pytest.raises(MissingOpenAIConfigurationError):
         OpenAIInsightsExtractor(api_key="")
 
@@ -162,6 +186,29 @@ def test_openai_insights_extractor_orchestrates_preprocessing(
         ]
     ]
     assert "Insights extraction complete" in caplog.text
+
+
+def test_openai_insights_extractor_passes_request_timeout() -> None:
+    client = FakeOpenAIClient([FakeOpenAIResponse('{"insights": []}')])
+    extractor = OpenAIInsightsExtractor(
+        client=client,
+        api_key="test_key",
+        request_timeout_seconds=17.0,
+        max_retries=1,
+        retry_backoff_seconds=0,
+        narrative_text_extractor=FakeNarrativeTextExtractor(),
+        section_identifier=FakeSectionIdentifier(),
+        chunk_builder=FakeChunkBuilder(),
+        chunk_ranker=FakeChunkRanker(),
+        prompt_builder=FakePromptBuilder(),
+    )
+
+    extractor.extract_insights(
+        pdf_path="annual_report.pdf",
+        normalization_result=_normalization_result(),
+    )
+
+    assert client.responses.calls[0]["timeout"] == 17.0
 
 
 def test_extract_insights_for_context_stores_results_by_report_year() -> None:
@@ -386,6 +433,102 @@ def test_extract_insights_corrects_llm_year_to_report_year() -> None:
     )
 
     assert result.insights[0].source_report_year == 2024
+
+
+def test_extract_insights_deduplicates_after_year_normalization() -> None:
+    class DuplicateYearInsightsExtractor:
+        def extract(self, messages: list[dict[str, str]]) -> InsightsExtractionResult:
+            return InsightsExtractionResult(
+                insights=[
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2023,
+                        area="Debt",
+                        takeaway="Borrowings increased to finance expansion.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.92,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Debt",
+                        takeaway="Borrowings increased to finance expansion.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.9,
+                    ),
+                ]
+            )
+
+    extractor = OpenAIInsightsExtractor(
+        insights_extractor=DuplicateYearInsightsExtractor(),
+        narrative_text_extractor=FakeNarrativeTextExtractor(),
+        section_identifier=FakeSectionIdentifier(),
+        chunk_builder=FakeChunkBuilder(),
+        chunk_ranker=FakeChunkRanker(),
+        prompt_builder=FakePromptBuilder(),
+    )
+
+    result = extractor.extract_insights(
+        pdf_path="annual_report.pdf",
+        normalization_result=_normalization_result(year=2024),
+    )
+
+    assert len(result.insights) == 1
+    assert result.insights[0].source_report_year == 2024
+
+
+def test_extract_insights_rejects_invalid_ranked_chunk_references() -> None:
+    class InvalidReferenceInsightsExtractor:
+        def extract(self, messages: list[dict[str, str]]) -> InsightsExtractionResult:
+            return InsightsExtractionResult(
+                insights=[
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Exports",
+                        takeaway="Exports grew due to Middle East expansion.",
+                        source_section="Business Review",
+                        page_number=84,
+                        confidence=0.92,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Debt",
+                        takeaway="Borrowings increased.",
+                        source_section="Business Review",
+                        page_number=999,
+                        confidence=0.9,
+                    ),
+                    Insight(
+                        value_year=2024,
+                        source_report_year=2024,
+                        area="Margins",
+                        takeaway="Margins improved.",
+                        source_section="Chairman Review",
+                        page_number=84,
+                        confidence=0.9,
+                    ),
+                ]
+            )
+
+    extractor = OpenAIInsightsExtractor(
+        insights_extractor=InvalidReferenceInsightsExtractor(),
+        narrative_text_extractor=FakeNarrativeTextExtractor(),
+        section_identifier=FakeSectionIdentifier(),
+        chunk_builder=FakeChunkBuilder(),
+        chunk_ranker=FakeChunkRanker(),
+        prompt_builder=FakePromptBuilder(),
+    )
+
+    result = extractor.extract_insights(
+        pdf_path="annual_report.pdf",
+        normalization_result=_normalization_result(year=2024),
+    )
+
+    assert [insight.area for insight in result.insights] == ["Exports"]
 
 
 def test_extract_insights_returns_empty_when_no_relevant_chunks() -> None:

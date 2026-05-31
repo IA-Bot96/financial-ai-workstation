@@ -120,7 +120,6 @@
   "operating_profit": {
     "display_name": "Operating Profit",
     "aliases": [
-      "profit from operations",
       "operating income",
       "operating result",
       "operating profit",
@@ -166,8 +165,6 @@
     "aliases": [
       "financial charges",
       "borrowing cost",
-      "markup expense",
-      "mark-up expense",
       "finance cost",
       "total finance cost"
     ],
@@ -212,7 +209,6 @@
     "aliases": [
       "taxation",
       "income tax expense",
-      "provision for taxation",
       "tax expense",
       "total tax expense",
       "reported tax expense"
@@ -401,7 +397,6 @@
       "wppf",
       "workers' profit participation fund",
       "provision for workers profit participation fund",
-      "workers profit participation fund",
       "total workers profit participation fund",
       "reported workers profit participation fund"
     ],
@@ -413,7 +408,6 @@
       "wwf",
       "workers' welfare fund",
       "provision for workers welfare fund",
-      "workers welfare fund",
       "total workers welfare fund",
       "reported workers welfare fund"
     ],
@@ -514,7 +508,6 @@
   "trade_receivables": {
     "display_name": "Trade Receivables",
     "aliases": [
-      "trade debts",
       "accounts receivable",
       "trade debtors",
       "trade receivables",
@@ -568,7 +561,6 @@
     "aliases": [
       "inventories",
       "stock",
-      "stock in trade",
       "inventory",
       "total inventory",
       "reported inventory"
@@ -581,7 +573,6 @@
       "stock-in-trade",
       "finished goods stock",
       "raw and packing material stock",
-      "stock in trade",
       "total stock in trade",
       "reported stock in trade"
     ],
@@ -667,7 +658,6 @@
       "cwip",
       "capital work-in-progress",
       "projects in progress",
-      "capital work in progress",
       "total capital work in progress",
       "reported capital work in progress"
     ],
@@ -679,7 +669,6 @@
       "right-of-use assets",
       "rou assets",
       "leased assets under ifrs 16",
-      "right of use assets",
       "total right of use assets",
       "reported right of use assets"
     ],
@@ -805,7 +794,6 @@
       "short-term borrowings",
       "short term running finance",
       "short term financing",
-      "short term borrowings",
       "total short term borrowings",
       "reported short term borrowings"
     ],
@@ -839,7 +827,6 @@
       "long-term financing",
       "long term loans",
       "term finance",
-      "long term financing",
       "total long term financing",
       "reported long term financing"
     ],
@@ -937,7 +924,6 @@
       "paid-up capital",
       "issued paid up capital",
       "subscribed and paid up capital",
-      "paid up capital",
       "total paid up capital",
       "reported paid up capital"
     ],
@@ -1406,7 +1392,6 @@
     "aliases": [
       "dio",
       "inventory days",
-      "stock days",
       "days inventory outstanding",
       "total days inventory outstanding",
       "reported days inventory outstanding"
@@ -2428,7 +2413,6 @@
       "usd pkr exchange rate",
       "pkr per usd",
       "pkr/usd exchange rate",
-      "pkr usd exchange rate",
       "total pkr usd exchange rate"
     ],
     "category": "forecast_assumptions"
@@ -3162,7 +3146,6 @@
   "electricity_generation": {
     "display_name": "Electricity Generation",
     "aliases": [
-      "net electrical output",
       "units generated",
       "energy generated",
       "electricity generation",

@@ -156,6 +156,7 @@ def test_detect_tables_returns_pages_with_detections_without_duplicates() -> Non
                 "tables_detected": 2,
             },
         ],
+        "failed_pages": [],
         "total_pages_processed": 3,
     }
     assert processor.thresholds == [0.93, 0.93, 0.93]
@@ -214,6 +215,7 @@ def test_detect_tables_for_context_stores_results_by_report_year() -> None:
                 "tables_detected": 1,
             }
         ],
+        "failed_pages": [],
         "total_pages_processed": 2,
     }
     assert context.table_detection_results[2024].model_dump() == {
@@ -224,6 +226,7 @@ def test_detect_tables_for_context_stores_results_by_report_year() -> None:
                 "tables_detected": 2,
             }
         ],
+        "failed_pages": [],
         "total_pages_processed": 1,
     }
     assert (
@@ -257,26 +260,120 @@ def test_detect_tables_skips_corrupted_pages_and_continues(
         torch_module=FakeTorch(),
     )
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         result = detector.detect_tables("annual_report.pdf", year=2024)
 
-    assert result.model_dump()["detected_pages"] == [
-        {
-            "year": 2024,
-            "page_number": 1,
-            "tables_detected": 1,
-        },
-        {
-            "year": 2024,
-            "page_number": 3,
-            "tables_detected": 1,
-        },
-    ]
-    assert result.total_pages_processed == 3
+    assert result.model_dump() == {
+        "detected_pages": [
+            {
+                "year": 2024,
+                "page_number": 1,
+                "tables_detected": 1,
+            },
+            {
+                "year": 2024,
+                "page_number": 3,
+                "tables_detected": 1,
+            },
+        ],
+        "failed_pages": [
+            {
+                "year": 2024,
+                "page_number": 2,
+                "error_message": "corrupted page",
+            }
+        ],
+        "total_pages_processed": 3,
+    }
     assert "Processing page 1/3" in caplog.text
     assert "Tables detected on page 1" in caplog.text
     assert "Page skipped due to error" in caplog.text
     assert "Detection complete" in caplog.text
+
+
+def test_detect_tables_page_processing_logs_are_debug_only(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    detector = TableTransformerDetector(
+        processor=FakeProcessor([{"scores": [0.96]}]),
+        model=FakeModel(),
+        pdf_loader=lambda _: FakeDocument(1),
+        page_renderer=lambda document, page_index: FakeImage(),
+        torch_module=FakeTorch(),
+    )
+
+    with caplog.at_level(logging.INFO):
+        detector.detect_tables("annual_report.pdf", year=2024)
+
+    assert "Processing page 1/1" not in caplog.text
+    assert "Tables detected on page 1" not in caplog.text
+    assert "Detection complete" in caplog.text
+
+
+def test_detect_tables_for_context_isolates_report_failures() -> None:
+    documents = {
+        "reports/MLCF_2024.pdf": FakeDocument(1),
+    }
+    processor = FakeProcessor([{"scores": [0.91]}])
+
+    def load_pdf(pdf_path: str) -> FakeDocument:
+        if pdf_path == "reports/MLCF_2023.pdf":
+            raise FileNotFoundError("missing report")
+        return documents[pdf_path]
+
+    detector = TableTransformerDetector(
+        processor=processor,
+        model=FakeModel(),
+        pdf_loader=load_pdf,
+        page_renderer=lambda document, page_index: FakeImage(),
+        torch_module=FakeTorch(),
+    )
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[
+            Report(
+                id="rpt_2023_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2023,
+                file_name="MLCF_2023_Annual_Report.pdf",
+                file_path="reports/MLCF_2023.pdf",
+            ),
+            Report(
+                id="rpt_2024_001",
+                company_name="Maple Leaf Cement Factory Limited",
+                year=2024,
+                file_name="MLCF_2024_Annual_Report.pdf",
+                file_path="reports/MLCF_2024.pdf",
+            ),
+        ],
+    )
+
+    updated_context = detector.detect_tables_for_context(context)
+
+    assert updated_context is context
+    assert set(context.table_detection_results) == {2023, 2024}
+    assert context.table_detection_results[2023].model_dump() == {
+        "detected_pages": [],
+        "failed_pages": [],
+        "total_pages_processed": 0,
+    }
+    assert context.table_detection_results[2024].model_dump() == {
+        "detected_pages": [
+            {
+                "year": 2024,
+                "page_number": 1,
+                "tables_detected": 1,
+            }
+        ],
+        "failed_pages": [],
+        "total_pages_processed": 1,
+    }
+    assert len(context.pipeline_errors) == 1
+    assert context.pipeline_errors[0].layer_name == "Table Detection"
+    assert "Report year 2023 failed table detection" in (
+        context.pipeline_errors[0].error_message
+    )
+    assert documents["reports/MLCF_2024.pdf"].closed is True
 
 
 def test_detect_tables_raises_when_pdf_cannot_be_opened() -> None:

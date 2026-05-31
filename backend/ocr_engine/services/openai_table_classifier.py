@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ocr_engine.constants.ai_constants import (
     OPENAI_API_KEY,
     OPENAI_CLASSIFICATION_MAX_RETRIES,
+    OPENAI_CLASSIFICATION_REQUEST_TIMEOUT_SECONDS,
     OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS,
     OPENAI_MODEL,
 )
@@ -25,7 +26,7 @@ from ocr_engine.models.financial_table_classification import (
     PageTableType,
     TableType,
 )
-from ocr_engine.models.table_detection_result import TableDetectionResult
+from ocr_engine.models.table_detection_result import FailedPage, TableDetectionResult
 from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.prompt_builders.table_classification_prompt_builder import (
     TableClassificationPromptBuilder,
@@ -57,7 +58,7 @@ class OpenAITableClassifier(ITableClassifier):
                 "table_types": {
                     "type": "array",
                     "description": "All financial table types present on the page.",
-                    "items": {"type": "string"},
+                    "items": {"type": "string", "minLength": 1},
                 }
             },
             "required": ["table_types"],
@@ -74,6 +75,9 @@ class OpenAITableClassifier(ITableClassifier):
         pdf_loader: Callable[[str], Any] | None = None,
         max_retries: int = OPENAI_CLASSIFICATION_MAX_RETRIES,
         retry_backoff_seconds: float = OPENAI_CLASSIFICATION_RETRY_BACKOFF_SECONDS,
+        request_timeout_seconds: float = (
+            OPENAI_CLASSIFICATION_REQUEST_TIMEOUT_SECONDS
+        ),
         sleep: Callable[[float], None] = time.sleep,
         log: logging.Logger | None = None,
     ) -> None:
@@ -87,6 +91,8 @@ class OpenAITableClassifier(ITableClassifier):
             raise ValueError("max_retries must be at least 1.")
         if retry_backoff_seconds < 0:
             raise ValueError("retry_backoff_seconds cannot be negative.")
+        if request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be greater than 0.")
 
         self._api_key = api_key
         self._model = model
@@ -94,6 +100,7 @@ class OpenAITableClassifier(ITableClassifier):
         self._pdf_loader = pdf_loader or self._load_pdf_document
         self._max_retries = max_retries
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._request_timeout_seconds = request_timeout_seconds
         self._sleep = sleep
         self._logger = log or logger
         self._client = client or self._create_openai_client(api_key)
@@ -159,6 +166,7 @@ class OpenAITableClassifier(ITableClassifier):
         """Classify all financial table types on detected PDF pages."""
 
         page_table_types: list[PageTableType] = []
+        failed_pages: list[FailedPage] = []
         document = None
 
         try:
@@ -196,12 +204,14 @@ class OpenAITableClassifier(ITableClassifier):
                             table_types=table_types,
                         )
                     )
-                except (
-                    OpenAITableClassificationError,
-                    OpenAIResponseValidationError,
-                ):
-                    raise
-                except Exception:
+                except Exception as exc:
+                    failed_pages.append(
+                        FailedPage(
+                            year=detected_page.year,
+                            page_number=page_number,
+                            error_message=_error_message(exc),
+                        )
+                    )
                     self._logger.exception(
                         "Page skipped due to classification error",
                         extra={"page": page_number},
@@ -213,11 +223,17 @@ class OpenAITableClassifier(ITableClassifier):
                 close()
 
         result = FinancialTableClassificationResult(
-            page_table_types=page_table_types
+            page_table_types=page_table_types,
+            failed_pages=failed_pages,
         )
         self._logger.info(
             "Table classification complete",
-            extra={"pages_classified": len(result.page_table_types)},
+            extra={
+                "pages_classified": len(result.page_table_types),
+                "failed_pages": [
+                    failed_page.model_dump() for failed_page in result.failed_pages
+                ],
+            },
         )
         return result
 
@@ -239,26 +255,54 @@ class OpenAITableClassifier(ITableClassifier):
             messages=messages,
             page_number=page_number,
         )
-        return self._parse_table_types(response)
+        return response
 
     def _create_response_with_retries(
         self,
         *,
         messages: list[dict[str, str]],
         page_number: int,
-    ) -> Any:
-        """Call OpenAI Responses API with bounded retry logic."""
+    ) -> list[str]:
+        """Call OpenAI Responses API and validate output with bounded retries."""
 
         last_error: Exception | None = None
         for attempt in range(1, self._max_retries + 1):
             try:
-                return self._client.responses.create(
+                response = self._client.responses.create(
                     model=self._model,
                     input=messages,
                     text={"format": self._RESPONSE_FORMAT},
+                    timeout=self._request_timeout_seconds,
+                )
+                return self._parse_table_types(response)
+            except OpenAIResponseValidationError as exc:
+                last_error = exc
+                self._logger.warning(
+                    "OpenAI table classification response invalid",
+                    extra={
+                        "page": page_number,
+                        "attempt": attempt,
+                        "max_retries": self._max_retries,
+                    },
+                    exc_info=True,
                 )
             except Exception as exc:
                 last_error = exc
+                if _is_terminal_client_error(exc):
+                    self._logger.warning(
+                        "OpenAI table classification terminal client error",
+                        extra={
+                            "page": page_number,
+                            "attempt": attempt,
+                            "status_code": _status_code(exc),
+                        },
+                        exc_info=True,
+                    )
+                    raise OpenAITableClassificationError(
+                        "OpenAI table classification failed with terminal "
+                        f"client error for page {page_number}."
+                    ) from exc
+
                 self._logger.warning(
                     "OpenAI table classification request failed",
                     extra={
@@ -356,3 +400,31 @@ class OpenAITableClassifier(ITableClassifier):
             ) from exc
 
         return OpenAI(api_key=api_key)
+
+
+def _status_code(exc: Exception) -> int | None:
+    """Extract an HTTP status code from OpenAI SDK or test-double errors."""
+
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
+
+    response = getattr(exc, "response", None)
+    response_status_code = getattr(response, "status_code", None)
+    if isinstance(response_status_code, int):
+        return response_status_code
+
+    return None
+
+
+def _is_terminal_client_error(exc: Exception) -> bool:
+    """Return True for non-retryable HTTP 4xx errors."""
+
+    status_code = _status_code(exc)
+    return status_code is not None and 400 <= status_code < 500
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for page failure metadata."""
+
+    return str(exc) or exc.__class__.__name__

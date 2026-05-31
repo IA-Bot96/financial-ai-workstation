@@ -14,6 +14,7 @@ from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
     PageTableType,
 )
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.camelot_table_extractor import CamelotTableExtractor
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
 from shared.models.company_context import CompanyContext
@@ -419,20 +420,20 @@ def test_extract_tables_for_context_isolates_year_failures() -> None:
         },
     )
 
-    updated_context = extractor.extract_tables_for_context(context)
+    with pytest.raises(PipelineLayerPartialFailure) as exc_info:
+        extractor.extract_tables_for_context(context)
 
-    assert updated_context is context
+    assert exc_info.value.context is context
     assert set(context.extraction_results) == {2023, 2024}
     assert context.extraction_results[2023].model_dump() == {
         "tables": [],
         "metric_values": [],
     }
     assert context.extraction_results[2024].metric_values[0].metric == "Revenue"
-    assert len(context.pipeline_errors) == 1
-    assert context.pipeline_errors[0].layer_name == "Table Extraction"
     assert "Report year 2023 failed table extraction" in (
-        context.pipeline_errors[0].error_message
+        exc_info.value.error_messages[0]
     )
+    assert context.pipeline_errors == []
 
 
 def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(

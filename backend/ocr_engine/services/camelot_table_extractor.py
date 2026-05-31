@@ -11,7 +11,7 @@ from ocr_engine.models.financial_table_classification import (
     PageTableType,
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
-from ocr_engine.pipeline.models.pipeline_error import PipelineError
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
 from shared.models.company_context import CompanyContext
 from shared.models.metric_value import MetricValue
@@ -58,6 +58,7 @@ class CamelotTableExtractor(ITableExtractor):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
             try:
                 classification_result = context.classification_results.get(report.year)
@@ -81,18 +82,13 @@ class CamelotTableExtractor(ITableExtractor):
                     classification_result=classification_result,
                 )
             except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed table extraction: "
+                    f"{_error_message(exc)}"
+                )
                 context.extraction_results[report.year] = TableExtractionResult(
                     tables=[],
                     metric_values=[],
-                )
-                context.pipeline_errors.append(
-                    PipelineError(
-                        layer_name="Table Extraction",
-                        error_message=(
-                            f"Report year {report.year} failed table extraction: "
-                            f"{_error_message(exc)}"
-                        ),
-                    )
                 )
                 self._logger.exception(
                     "Table extraction failed for report; continuing",
@@ -111,6 +107,8 @@ class CamelotTableExtractor(ITableExtractor):
                 "result_years": sorted(context.extraction_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:

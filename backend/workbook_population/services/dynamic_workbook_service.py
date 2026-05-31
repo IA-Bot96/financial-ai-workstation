@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -58,10 +58,15 @@ class DynamicWorkbookService:
             self._write_insights_sheet(workbook, insights)
             created_sheets.append(INSIGHTS_SHEET_NAME)
 
-        output_path = Path(output_file_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        workbook.save(output_path)
-        workbook.close()
+        try:
+            output_path = Path(output_file_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                workbook.save(output_path)
+            except PermissionError as exc:
+                raise PermissionError(_save_permission_message(output_path)) from exc
+        finally:
+            workbook.close()
 
         warnings: list[str] = []
         if not metric_values:
@@ -83,9 +88,17 @@ class DynamicWorkbookService:
     @staticmethod
     def _write_metric_sheet(worksheet: object, metric_values: list[MetricValue]) -> int:
         years = sorted({metric_value.value_year for metric_value in metric_values})
-        metrics = _ordered_unique(metric_value.metric for metric_value in metric_values)
+        row_keys = _ordered_unique(
+            (metric_value.metric, metric_value.table_type)
+            for metric_value in metric_values
+        )
+        duplicate_metrics = _duplicate_metrics(metric_values)
         values_by_metric_year = {
-            (metric_value.metric, metric_value.value_year): metric_value.value
+            (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            ): metric_value.value
             for metric_value in metric_values
         }
 
@@ -93,10 +106,10 @@ class DynamicWorkbookService:
         _style_header(worksheet[1])
 
         written = 0
-        for metric in metrics:
-            row = [metric]
+        for metric, table_type in row_keys:
+            row = [_row_label(metric, table_type, duplicate_metrics)]
             for year in years:
-                value = values_by_metric_year.get((metric, year))
+                value = values_by_metric_year.get((metric, year, table_type))
                 row.append(value)
                 if value is not None:
                     written += 1
@@ -156,15 +169,39 @@ def _autosize_columns(worksheet: object) -> None:
         )
 
 
-def _ordered_unique(values: Iterable[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
+def _ordered_unique(values: Iterable[Any]) -> list[Any]:
+    seen: set[object] = set()
+    ordered: list[object] = []
     for value in values:
         if value in seen:
             continue
         ordered.append(value)
         seen.add(value)
     return ordered
+
+
+def _duplicate_metrics(metric_values: Iterable[MetricValue]) -> set[str]:
+    table_types_by_metric: dict[str, set[str]] = defaultdict(set)
+    for metric_value in metric_values:
+        table_types_by_metric[metric_value.metric].add(metric_value.table_type)
+    return {
+        metric
+        for metric, table_types in table_types_by_metric.items()
+        if len(table_types) > 1
+    }
+
+
+def _row_label(metric: str, table_type: str, duplicate_metrics: set[str]) -> str:
+    if metric not in duplicate_metrics:
+        return metric
+    return f"{metric} ({table_type.replace('_', ' ').title()})"
+
+
+def _save_permission_message(output_path: Path) -> str:
+    return (
+        f"Could not save workbook to '{output_path}'. Close the Excel file if it "
+        "is open, verify write permissions, or choose a different output path."
+    )
 
 
 __all__ = ["DynamicWorkbookService"]

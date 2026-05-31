@@ -10,6 +10,7 @@ from ocr_engine.models.financial_table_classification import (
 )
 from ocr_engine.models.table_extraction import TableExtractionResult
 from ocr_engine.models.validation_result import ValidationIssue, ValidationResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.validation.interfaces.validation_service import IValidationService
 from ocr_engine.validation.scoring.validation_score_calculator import (
     ValidationScoreCalculator,
@@ -71,38 +72,60 @@ class FinancialValidationService(IValidationService):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
-            classification_result = context.classification_results.get(report.year)
-            if classification_result is None:
-                raise ValueError(
-                    "Missing financial table classification result for report year "
-                    f"{report.year}."
+            try:
+                classification_result = context.classification_results.get(
+                    report.year
                 )
+                if classification_result is None:
+                    raise ValueError(
+                        "Missing financial table classification result for "
+                        f"report year {report.year}."
+                    )
 
-            extraction_result = context.extraction_results.get(report.year)
-            if extraction_result is None:
-                raise ValueError(
-                    "Missing table extraction result for report year "
-                    f"{report.year}."
+                extraction_result = context.extraction_results.get(report.year)
+                if extraction_result is None:
+                    raise ValueError(
+                        "Missing table extraction result for report year "
+                        f"{report.year}."
+                    )
+
+                self._ensure_results_match_year(
+                    report.year,
+                    classification_result,
+                    extraction_result,
                 )
-
-            self._ensure_results_match_year(
-                report.year,
-                classification_result,
-                extraction_result,
-            )
-            logger.info(
-                "Validating extracted tables for report year %s",
-                report.year,
-                extra={
-                    "company_name": context.company_name,
-                    "year": report.year,
-                },
-            )
-            context.validation_results[report.year] = self.validate(
-                classification_result=classification_result,
-                table_extraction_result=extraction_result,
-            )
+                logger.info(
+                    "Validating extracted tables for report year %s",
+                    report.year,
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                    },
+                )
+                context.validation_results[report.year] = self.validate(
+                    classification_result=classification_result,
+                    table_extraction_result=extraction_result,
+                )
+            except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed financial validation: "
+                    f"{_error_message(exc)}"
+                )
+                context.validation_results[report.year] = ValidationResult(
+                    is_valid=False,
+                    validation_score=0,
+                    issues=[],
+                )
+                logger.exception(
+                    "Financial validation failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                    },
+                )
+                continue
 
         logger.info(
             "Company context financial validation complete",
@@ -111,6 +134,8 @@ class FinancialValidationService(IValidationService):
                 "result_years": sorted(context.validation_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:
@@ -258,3 +283,9 @@ class FinancialValidationService(IValidationService):
             metric_value.source_report_year
             for metric_value in table_extraction_result.metric_values
         }
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for result metadata."""
+
+    return str(exc) or exc.__class__.__name__

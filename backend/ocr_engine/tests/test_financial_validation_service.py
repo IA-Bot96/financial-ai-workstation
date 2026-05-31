@@ -15,6 +15,7 @@ from ocr_engine.models.financial_table_classification import (
     PageTableType,
 )
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.models.validation_result import ValidationIssue
 from ocr_engine.validation.financial_validation_service import (
     FinancialValidationService,
@@ -256,8 +257,21 @@ def test_validate_for_context_requires_classification_result_per_year() -> None:
         ],
     )
 
-    with pytest.raises(ValueError, match="Missing financial table classification"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="Missing financial table classification",
+    ) as exc_info:
         service.validate_for_context(context)
+
+    assert context.validation_results[2024].model_dump() == {
+        "is_valid": False,
+        "validation_score": 0.0,
+        "issues": [],
+    }
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed financial validation" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_validate_for_context_requires_extraction_result_per_year() -> None:
@@ -276,8 +290,18 @@ def test_validate_for_context_requires_extraction_result_per_year() -> None:
         classification_results={2024: _classification_result()},
     )
 
-    with pytest.raises(ValueError, match="Missing table extraction result"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="Missing table extraction result",
+    ) as exc_info:
         service.validate_for_context(context)
+
+    assert context.validation_results[2024].is_valid is False
+    assert context.validation_results[2024].validation_score == 0
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed financial validation" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_validate_for_context_rejects_contaminated_year_bucket() -> None:
@@ -309,8 +333,17 @@ def test_validate_for_context_rejects_contaminated_year_bucket() -> None:
         },
     )
 
-    with pytest.raises(ValueError, match="contain data from other years"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="contain data from other years",
+    ) as exc_info:
         service.validate_for_context(context)
+
+    assert context.validation_results[2024].is_valid is False
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed financial validation" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_validate_rejects_merged_multi_year_inputs() -> None:

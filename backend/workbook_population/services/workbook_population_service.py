@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from ocr_engine.models.insights_extraction import Insight
 from shared.models.metric_value import MetricValue
@@ -12,8 +14,6 @@ from workbook_population.constants.workbook_constants import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_OUTPUT_FILE_NAME,
     DYNAMIC_WORKBOOK_MODE,
-    HIGH_TEMPLATE_MATCH_THRESHOLD,
-    LOW_TEMPLATE_MATCH_THRESHOLD,
     TEMPLATE_WORKBOOK_MODE,
     USER_DECISION_WORKBOOK_MODE,
 )
@@ -71,7 +71,7 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
         """Generate or populate an Excel workbook from normalized financial data."""
 
         self._validate_inputs(metric_values)
-        output_file_path = str(self._output_dir / self._output_file_name)
+        output_file_path = str(self._build_unique_output_file_path())
         warnings: list[str] = []
         workbook_match_score = 0.0
 
@@ -160,20 +160,26 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
 
     @staticmethod
     def _validate_inputs(metric_values: list[MetricValue]) -> None:
-        seen: set[tuple[str, int]] = set()
-        duplicates: set[tuple[str, int]] = set()
+        seen: set[tuple[str, int, str]] = set()
+        duplicates: set[tuple[str, int, str]] = set()
         for metric_value in metric_values:
-            key = (metric_value.metric, metric_value.value_year)
+            key = (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            )
             if key in seen:
                 duplicates.add(key)
             seen.add(key)
 
         if duplicates:
             formatted = ", ".join(
-                f"{metric}/{year}" for metric, year in sorted(duplicates)
+                f"{metric}/{year}/{table_type}"
+                for metric, year, table_type in sorted(duplicates)
             )
             raise ValueError(
-                "Duplicate consolidated metric/value_year combinations: "
+                "Duplicate consolidated metric/value_year/table_type "
+                "combinations: "
                 f"{formatted}."
             )
 
@@ -210,13 +216,21 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
         sheet_results: list[SheetValidationResult],
     ) -> str:
         for sheet_result in sheet_results:
-            if (
-                LOW_TEMPLATE_MATCH_THRESHOLD
-                <= sheet_result.match_score
-                < HIGH_TEMPLATE_MATCH_THRESHOLD
+            if not sheet_result.is_compatible and _requires_user_decision(
+                sheet_result,
             ):
                 return USER_DECISION_WORKBOOK_MODE
         return TEMPLATE_WORKBOOK_MODE
+
+    def _build_unique_output_file_path(self) -> Path:
+        """Return a unique output workbook path for this generation run."""
+
+        configured = Path(self._output_file_name)
+        suffix = configured.suffix or ".xlsx"
+        stem = configured.stem or DEFAULT_OUTPUT_FILE_NAME
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
+        unique_name = f"{stem}_{timestamp}_{uuid4().hex[:8]}{suffix}"
+        return self._output_dir / unique_name
 
 
 def _deduplicate(values: list[str]) -> list[str]:
@@ -228,6 +242,13 @@ def _deduplicate(values: list[str]) -> list[str]:
         deduplicated.append(value)
         seen.add(value)
     return deduplicated
+
+
+def _requires_user_decision(sheet_result: SheetValidationResult) -> bool:
+    return any(
+        "requires user decision" in warning.lower()
+        for warning in sheet_result.warnings
+    )
 
 
 __all__ = ["OpenPyXLWorkbookPopulationService"]

@@ -15,6 +15,10 @@ from workbook_population.models.sheet_validation_result import SheetValidationRe
 from workbook_population.services.template_population_service import (
     TemplatePopulationService,
 )
+from workbook_population.services.workbook_mapper import (
+    WorkbookCellMapping,
+    WorkbookMapper,
+)
 
 
 def _metric_value(
@@ -152,4 +156,62 @@ def test_template_population_replaces_incompatible_and_creates_missing_sheets(
     assert sheets_created == ["Debt Schedule", "Insights"]
     assert metrics_written == 2
     assert warnings == []
+    populated.close()
+
+
+def test_template_population_replaces_cross_sheet_mapping_conflicts(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    output_path = tmp_path / "output.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Income Statement"
+    worksheet.append(["Metric", 2025])
+    worksheet.append(["revenue", None])
+    balance_sheet = workbook.create_sheet("Balance Sheet")
+    balance_sheet.append(["Metric", 2025])
+    balance_sheet.append(["revenue", None])
+    workbook.save(template_path)
+    workbook.close()
+
+    service = TemplatePopulationService(
+        mapper=WorkbookMapper(
+            explicit_mappings={
+                ("revenue", 2025, "income_statement"): WorkbookCellMapping(
+                    "Balance Sheet",
+                    2,
+                    2,
+                )
+            }
+        )
+    )
+
+    sheets_reused, sheets_replaced, sheets_created, metrics_written, warnings = (
+        service.populate(
+            template_path=str(template_path),
+            output_file_path=str(output_path),
+            metric_values=[_metric_value("revenue", 2025, 1000)],
+            insights=[],
+            sheet_results=[
+                SheetValidationResult(
+                    sheet_name="Income Statement",
+                    match_score=100,
+                    is_compatible=True,
+                    missing_metrics=[],
+                    extra_metrics=[],
+                    warnings=[],
+                )
+            ],
+        )
+    )
+
+    populated = load_workbook(output_path, data_only=False)
+    assert populated["Income Statement"]["A2"].value == "revenue"
+    assert populated["Income Statement"]["B2"].value == 1000
+    assert sheets_reused == []
+    assert sheets_replaced == ["Income Statement"]
+    assert "Insights" in sheets_created
+    assert metrics_written == 1
+    assert any("Cross-sheet mapping conflict" in warning for warning in warnings)
     populated.close()

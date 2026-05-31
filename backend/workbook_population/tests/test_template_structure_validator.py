@@ -83,6 +83,26 @@ def test_template_validator_reports_missing_metrics_and_years(tmp_path: Path) ->
     assert any("year columns" in warning for warning in result.warnings)
 
 
+def test_template_validator_does_not_award_free_score_components(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Cash Flow"
+    worksheet.append(["Metric", 2025])
+    worksheet.append([None, None, None, None, "operating_cash_flow"])
+    workbook.save(template_path)
+    workbook.close()
+
+    result = TemplateStructureValidator().validate(
+        str(template_path),
+        [_metric_value("operating_cash_flow", 2025, "cash_flow_statement")],
+    )
+
+    assert result.sheet_results[0].match_score == 75
+
+
 def test_template_validator_marks_missing_sheet_for_creation(tmp_path: Path) -> None:
     template_path = tmp_path / "template.xlsx"
     _save_template(template_path, ["revenue"], [2025])

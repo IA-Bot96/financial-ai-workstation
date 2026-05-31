@@ -33,7 +33,8 @@ class WorkbookMapper:
 
     def __init__(
         self,
-        explicit_mappings: Mapping[tuple[str, int], WorkbookCellMapping] | None = None,
+        explicit_mappings: Mapping[tuple[str, int, str], WorkbookCellMapping]
+        | None = None,
     ) -> None:
         """Initialize the mapper with optional configured cell mappings."""
 
@@ -47,7 +48,11 @@ class WorkbookMapper:
         """Resolve the destination cell for a metric value in an existing workbook."""
 
         explicit = self._explicit_mappings.get(
-            (metric_value.metric, metric_value.value_year)
+            (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            )
         )
         if explicit is not None:
             return explicit

@@ -20,14 +20,19 @@ from workbook_population.services.workbook_population_service import (
 )
 
 
-def _metric_value(metric: str, year: int, value: int) -> MetricValue:
+def _metric_value(
+    metric: str,
+    year: int,
+    value: int,
+    table_type: str = "income_statement",
+) -> MetricValue:
     return MetricValue(
         metric=metric,
         value_year=year,
         value=value,
         source_report_year=2025,
         page_number=120,
-        table_type="income_statement",
+        table_type=table_type,
     )
 
 
@@ -111,6 +116,8 @@ def test_workbook_population_generates_dynamic_without_template(tmp_path: Path) 
     assert result.workbook_match_score == 0
     assert result.metrics_written == 1
     assert Path(result.output_file_path).exists()
+    assert Path(result.output_file_path).name.startswith("dynamic_")
+    assert Path(result.output_file_path).suffix == ".xlsx"
 
 
 def test_workbook_population_rejects_duplicate_metric_years(tmp_path: Path) -> None:
@@ -125,6 +132,27 @@ def test_workbook_population_rejects_duplicate_metric_years(tmp_path: Path) -> N
             insights=[],
             template_path=None,
         )
+
+
+def test_workbook_population_allows_duplicate_metrics_across_table_types(
+    tmp_path: Path,
+) -> None:
+    service = OpenPyXLWorkbookPopulationService(output_dir=tmp_path)
+
+    result = service.generate_workbook(
+        metric_values=[
+            _metric_value("revenue", 2024, 1000, "income_statement"),
+            _metric_value("revenue", 2024, 300, "segment_information"),
+        ],
+        insights=[],
+        template_path=None,
+    )
+
+    workbook = load_workbook(result.output_file_path)
+    assert workbook["Income Statement"]["B2"].value == 1000
+    assert workbook["Segment Information"]["B2"].value == 300
+    assert result.metrics_written == 2
+    workbook.close()
 
 
 def test_workbook_population_process_sets_generated_workbook(tmp_path: Path) -> None:
@@ -144,4 +172,6 @@ def test_workbook_population_process_sets_generated_workbook(tmp_path: Path) -> 
     assert result is context
     assert context.generated_workbook is not None
     assert context.workbook_result == context.generated_workbook
-    assert context.generated_workbook.output_file_path.endswith("context_model.xlsx")
+    generated_path = Path(context.generated_workbook.output_file_path)
+    assert generated_path.name.startswith("context_model_")
+    assert generated_path.suffix == ".xlsx"

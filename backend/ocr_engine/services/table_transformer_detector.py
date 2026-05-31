@@ -15,7 +15,7 @@ from ocr_engine.models.table_detection_result import (
     FailedPage,
     TableDetectionResult,
 )
-from ocr_engine.pipeline.models.pipeline_error import PipelineError
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_detector import ITableDetector
 from shared.models.company_context import CompanyContext
 
@@ -81,6 +81,7 @@ class TableTransformerDetector(ITableDetector):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
             self._logger.info(
                 "Detecting tables for report year %s",
@@ -97,19 +98,14 @@ class TableTransformerDetector(ITableDetector):
                     year=report.year,
                 )
             except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed table detection: "
+                    f"{_error_message(exc)}"
+                )
                 context.table_detection_results[report.year] = TableDetectionResult(
                     detected_pages=[],
                     failed_pages=[],
                     total_pages_processed=0,
-                )
-                context.pipeline_errors.append(
-                    PipelineError(
-                        layer_name="Table Detection",
-                        error_message=(
-                            f"Report year {report.year} failed table detection: "
-                            f"{_error_message(exc)}"
-                        ),
-                    )
                 )
                 self._logger.exception(
                     "Table detection failed for report; continuing",
@@ -128,6 +124,8 @@ class TableTransformerDetector(ITableDetector):
                 "result_years": sorted(context.table_detection_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:

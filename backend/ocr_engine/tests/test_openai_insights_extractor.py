@@ -17,6 +17,7 @@ from ocr_engine.models.table_normalization import (
     NormalizationResult,
     NormalizedTable,
 )
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.chunk_builder import NarrativeChunk
 from ocr_engine.services.narrative_text_extractor import NarrativePage
 from ocr_engine.services.openai_insights_extractor import OpenAIInsightsExtractor
@@ -306,8 +307,17 @@ def test_extract_insights_for_context_requires_normalization_result_per_year() -
         ],
     )
 
-    with pytest.raises(ValueError, match="Missing normalization result"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="Missing normalization result",
+    ) as exc_info:
         extractor.extract_insights_for_context(context)
+
+    assert context.insights_results[2024].model_dump() == {"insights": []}
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed insights extraction" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_extract_insights_for_context_rejects_contaminated_year_bucket() -> None:
@@ -333,8 +343,17 @@ def test_extract_insights_for_context_rejects_contaminated_year_bucket() -> None
         normalization_results={2024: _normalization_result(year=2023)},
     )
 
-    with pytest.raises(ValueError, match="contains data from other years"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="contains data from other years",
+    ) as exc_info:
         extractor.extract_insights_for_context(context)
+
+    assert context.insights_results[2024].insights == []
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed insights extraction" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_extract_insights_rejects_merged_multi_year_normalization() -> None:

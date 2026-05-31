@@ -15,6 +15,7 @@ from ocr_engine.constants.ai_constants import (
 from ocr_engine.exceptions.openai_exceptions import MissingOpenAIConfigurationError
 from ocr_engine.models.insights_extraction import Insight, InsightsExtractionResult
 from ocr_engine.models.table_normalization import NormalizationResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.chunk_builder import ChunkBuilder
 from ocr_engine.services.chunk_ranker import ChunkRanker
 from ocr_engine.services.insights_extractor import InsightsExtractor
@@ -95,32 +96,53 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
-            normalization_result = context.normalization_results.get(report.year)
-            if normalization_result is None:
-                raise ValueError(
-                    "Missing normalization result for report year "
-                    f"{report.year}."
-                )
+            try:
+                normalization_result = context.normalization_results.get(report.year)
+                if normalization_result is None:
+                    raise ValueError(
+                        "Missing normalization result for report year "
+                        f"{report.year}."
+                    )
 
-            self._ensure_normalization_matches_year(
-                report.year,
-                normalization_result,
-            )
-            self._logger.info(
-                "Extracting insights for report year %s",
-                report.year,
-                extra={
-                    "company_name": context.company_name,
-                    "year": report.year,
-                    "file_path": report.file_path,
-                },
-            )
-            context.insights_results[report.year] = self._extract_insights_for_year(
-                pdf_path=report.file_path,
-                normalization_result=normalization_result,
-                report_year=report.year,
-            )
+                self._ensure_normalization_matches_year(
+                    report.year,
+                    normalization_result,
+                )
+                self._logger.info(
+                    "Extracting insights for report year %s",
+                    report.year,
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                context.insights_results[report.year] = (
+                    self._extract_insights_for_year(
+                        pdf_path=report.file_path,
+                        normalization_result=normalization_result,
+                        report_year=report.year,
+                    )
+                )
+            except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed insights extraction: "
+                    f"{_error_message(exc)}"
+                )
+                context.insights_results[report.year] = InsightsExtractionResult(
+                    insights=[],
+                )
+                self._logger.exception(
+                    "Insights extraction failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                continue
 
         self._logger.info(
             "Company context insights extraction complete",
@@ -129,6 +151,8 @@ class OpenAIInsightsExtractor(IInsightsExtractor):
                 "result_years": sorted(context.insights_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:
@@ -347,3 +371,9 @@ def _normalize_source_section(source_section: str) -> str:
     """Normalize section names for source-reference validation."""
 
     return " ".join(source_section.strip().lower().split())
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for result metadata."""
+
+    return str(exc) or exc.__class__.__name__

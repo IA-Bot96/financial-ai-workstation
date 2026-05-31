@@ -10,6 +10,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ocr_engine.models.table_extraction import ExtractedTable, TableExtractionResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_metric_normalizer import (
     ITableMetricNormalizer,
 )
@@ -195,8 +196,21 @@ def test_normalize_for_context_requires_extraction_result_per_year() -> None:
         reports=[_report(2024, "reports/MLCF_2024.pdf")],
     )
 
-    with pytest.raises(ValueError, match="Missing table extraction result"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="Missing table extraction result",
+    ) as exc_info:
         service.normalize_for_context(context)
+
+    assert context.normalization_results[2024].model_dump() == {
+        "tables": [],
+        "metric_values": [],
+        "mappings": [],
+    }
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed metric normalization" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_normalize_for_context_rejects_contaminated_year_bucket() -> None:
@@ -207,8 +221,17 @@ def test_normalize_for_context_rejects_contaminated_year_bucket() -> None:
         extraction_results={2024: _extraction_result(year=2023, page_number=20)},
     )
 
-    with pytest.raises(ValueError, match="contains data from other years"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="contains data from other years",
+    ) as exc_info:
         service.normalize_for_context(context)
+
+    assert context.normalization_results[2024].tables == []
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed metric normalization" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_normalize_tables_rejects_merged_multi_year_inputs() -> None:

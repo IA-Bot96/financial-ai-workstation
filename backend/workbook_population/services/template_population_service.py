@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
@@ -14,14 +14,16 @@ from openpyxl.worksheet.worksheet import Worksheet
 from ocr_engine.models.insights_extraction import Insight
 from shared.models.metric_value import MetricValue
 from workbook_population.constants.workbook_constants import (
-    HIGH_TEMPLATE_MATCH_THRESHOLD,
     INSIGHTS_SHEET_NAME,
-    LOW_TEMPLATE_MATCH_THRESHOLD,
 )
 from workbook_population.models.sheet_validation_result import SheetValidationResult
 from workbook_population.services.workbook_mapper import WorkbookMapper, _normalize_key
 
 logger = logging.getLogger(__name__)
+
+
+class CrossSheetMappingConflict(RuntimeError):
+    """Raised when a template mapping targets a different sheet than expected."""
 
 
 class TemplatePopulationService:
@@ -85,18 +87,42 @@ class TemplatePopulationService:
                     )
                     continue
 
-                if sheet_result.match_score >= HIGH_TEMPLATE_MATCH_THRESHOLD:
-                    written, sheet_warnings = self._populate_compatible_sheet(
-                        workbook=workbook,
-                        sheet_name=sheet_name,
-                        metric_values=values,
-                    )
+                if sheet_result.is_compatible:
+                    try:
+                        written, sheet_warnings = self._populate_compatible_sheet(
+                            workbook=workbook,
+                            sheet_name=sheet_name,
+                            metric_values=values,
+                        )
+                    except CrossSheetMappingConflict as exc:
+                        warning = f"{exc} Replacing sheet to prevent data loss."
+                        warnings.append(warning)
+                        self._logger.warning(
+                            "Replacing sheet due to cross-sheet mapping conflict",
+                            extra={"sheet_name": sheet_name},
+                            exc_info=True,
+                        )
+                        replacement_index = workbook.sheetnames.index(
+                            existing_sheet_name
+                        )
+                        workbook.remove(workbook[existing_sheet_name])
+                        worksheet = workbook.create_sheet(
+                            sheet_name,
+                            replacement_index,
+                        )
+                        metrics_written += self._write_generated_metric_sheet(
+                            worksheet,
+                            values,
+                        )
+                        sheets_replaced.append(sheet_name)
+                        continue
+
                     metrics_written += written
                     warnings.extend(sheet_warnings)
                     sheets_reused.append(existing_sheet_name)
                     continue
 
-                if sheet_result.match_score >= LOW_TEMPLATE_MATCH_THRESHOLD:
+                if _requires_user_decision(sheet_result):
                     warnings.append(
                         f"{sheet_name} template is {sheet_result.match_score}% "
                         "compatible and requires user decision."
@@ -114,7 +140,10 @@ class TemplatePopulationService:
 
             output_path = Path(output_file_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            workbook.save(output_path)
+            try:
+                workbook.save(output_path)
+            except PermissionError as exc:
+                raise PermissionError(_save_permission_message(output_path)) from exc
             return (
                 sheets_reused,
                 sheets_replaced,
@@ -145,11 +174,21 @@ class TemplatePopulationService:
                 continue
 
             if _normalize_key(mapping.sheet_name) != _normalize_key(sheet_name):
-                warnings.append(
-                    "Skipped cross-sheet mapping for "
-                    f"{metric_value.metric} {metric_value.value_year}."
+                message = (
+                    "Cross-sheet mapping conflict for "
+                    f"{metric_value.metric} {metric_value.value_year}: "
+                    f"expected {sheet_name}, got {mapping.sheet_name}."
                 )
-                continue
+                self._logger.warning(
+                    "Cross-sheet template mapping conflict",
+                    extra={
+                        "metric": metric_value.metric,
+                        "value_year": metric_value.value_year,
+                        "expected_sheet": sheet_name,
+                        "mapped_sheet": mapping.sheet_name,
+                    },
+                )
+                raise CrossSheetMappingConflict(message)
 
             worksheet = workbook[mapping.sheet_name]
             cell = worksheet.cell(row=mapping.row, column=mapping.column)
@@ -192,18 +231,26 @@ class TemplatePopulationService:
         metric_values: list[MetricValue],
     ) -> int:
         years = sorted({metric_value.value_year for metric_value in metric_values})
-        metrics = _ordered_unique(metric_value.metric for metric_value in metric_values)
+        row_keys = _ordered_unique(
+            (metric_value.metric, metric_value.table_type)
+            for metric_value in metric_values
+        )
+        duplicate_metrics = _duplicate_metrics(metric_values)
         values_by_metric_year = {
-            (metric_value.metric, metric_value.value_year): metric_value.value
+            (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            ): metric_value.value
             for metric_value in metric_values
         }
 
         worksheet.append(["Metric", *years])
         written = 0
-        for metric in metrics:
-            row = [metric]
+        for metric, table_type in row_keys:
+            row = [_row_label(metric, table_type, duplicate_metrics)]
             for year in years:
-                value = values_by_metric_year.get((metric, year))
+                value = values_by_metric_year.get((metric, year, table_type))
                 row.append(value)
                 if value is not None:
                     written += 1
@@ -253,15 +300,46 @@ class TemplatePopulationService:
         return isinstance(value, str) and value.startswith("=")
 
 
-def _ordered_unique(values: Iterable[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
+def _ordered_unique(values: Iterable[Any]) -> list[Any]:
+    seen: set[object] = set()
+    ordered: list[object] = []
     for value in values:
         if value in seen:
             continue
         ordered.append(value)
         seen.add(value)
     return ordered
+
+
+def _duplicate_metrics(metric_values: Iterable[MetricValue]) -> set[str]:
+    table_types_by_metric: dict[str, set[str]] = defaultdict(set)
+    for metric_value in metric_values:
+        table_types_by_metric[metric_value.metric].add(metric_value.table_type)
+    return {
+        metric
+        for metric, table_types in table_types_by_metric.items()
+        if len(table_types) > 1
+    }
+
+
+def _row_label(metric: str, table_type: str, duplicate_metrics: set[str]) -> str:
+    if metric not in duplicate_metrics:
+        return metric
+    return f"{metric} ({table_type.replace('_', ' ').title()})"
+
+
+def _requires_user_decision(sheet_result: SheetValidationResult) -> bool:
+    return any(
+        "requires user decision" in warning.lower()
+        for warning in sheet_result.warnings
+    )
+
+
+def _save_permission_message(output_path: Path) -> str:
+    return (
+        f"Could not save workbook to '{output_path}'. Close the Excel file if it "
+        "is open, verify write permissions, or choose a different output path."
+    )
 
 
 def _autosize_columns(worksheet: Worksheet) -> None:

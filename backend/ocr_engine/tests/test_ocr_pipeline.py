@@ -12,6 +12,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.pipeline.models.layer_execution_result import LayerExecutionResult
 from ocr_engine.pipeline.models.pipeline_error import PipelineError
 from ocr_engine.pipeline.models.pipeline_status import PipelineStatus
@@ -38,6 +39,17 @@ class FailingLayer(FakeLayer):
     def process(self, context: CompanyContext) -> CompanyContext:
         self._calls.append(self._name)
         raise RuntimeError("planned failure")
+
+
+class PartialFailingLayer(FakeLayer):
+    """Test double for a layer that isolates one failed report year."""
+
+    def process(self, context: CompanyContext) -> CompanyContext:
+        self._calls.append(self._name)
+        raise PipelineLayerPartialFailure(
+            ["Report year 2023 failed table detection: missing file"],
+            context=context,
+        )
 
 
 def _context() -> CompanyContext:
@@ -125,6 +137,77 @@ def test_ocr_pipeline_records_layer_error_and_continues() -> None:
     ]
     assert result.execution_results[1].layer_name == "Classification"
     assert result.execution_results[1].success is False
+
+
+def test_ocr_pipeline_centralizes_partial_year_pipeline_errors() -> None:
+    calls: list[str] = []
+    layers: list[object] = [
+        PartialFailingLayer("Table Detection", calls),
+        FakeLayer("Classification", calls),
+        FakeLayer("Table Extraction", calls),
+        FakeLayer("Validation", calls),
+        FakeLayer("Metric Normalization", calls),
+        FakeLayer("Insights Extraction", calls),
+        FakeLayer("Financial Year Consolidation", calls),
+        FakeLayer("Workbook Population", calls),
+    ]
+
+    result = _pipeline_with_layers(layers).process(_context())
+
+    assert result.pipeline_status is PipelineStatus.FAILED
+    assert calls == [
+        "Table Detection",
+        "Classification",
+        "Table Extraction",
+        "Validation",
+        "Metric Normalization",
+        "Insights Extraction",
+        "Financial Year Consolidation",
+        "Workbook Population",
+    ]
+    assert result.pipeline_errors == [
+        PipelineError(
+            layer_name="Table Detection",
+            error_message="Report year 2023 failed table detection: missing file",
+        )
+    ]
+    assert result.execution_results[0].layer_name == "Table Detection"
+    assert result.execution_results[0].success is False
+    assert all(item.success for item in result.execution_results[1:])
+
+
+def test_ocr_pipeline_execution_results_reflect_mixed_failures() -> None:
+    calls: list[str] = []
+    layers: list[object] = [
+        FakeLayer("Table Detection", calls),
+        PartialFailingLayer("Classification", calls),
+        FailingLayer("Table Extraction", calls),
+        FakeLayer("Validation", calls),
+        FakeLayer("Metric Normalization", calls),
+        FakeLayer("Insights Extraction", calls),
+        FakeLayer("Financial Year Consolidation", calls),
+        FakeLayer("Workbook Population", calls),
+    ]
+
+    result = _pipeline_with_layers(layers).process(_context())
+
+    success_by_layer = {
+        item.layer_name: item.success for item in result.execution_results
+    }
+    assert success_by_layer == {
+        "Table Detection": True,
+        "Classification": False,
+        "Table Extraction": False,
+        "Validation": True,
+        "Metric Normalization": True,
+        "Insights Extraction": True,
+        "Financial Year Consolidation": True,
+        "Workbook Population": True,
+    }
+    assert [error.layer_name for error in result.pipeline_errors] == [
+        "Classification",
+        "Table Extraction",
+    ]
 
 
 def test_layer_execution_result_rejects_negative_time() -> None:

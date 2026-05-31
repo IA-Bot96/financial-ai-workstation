@@ -12,6 +12,7 @@ from ocr_engine.models.table_normalization import (
     NormalizationResult,
     NormalizedTable,
 )
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_metric_normalizer import (
     ITableMetricNormalizer,
 )
@@ -56,26 +57,46 @@ class TableMetricNormalizer(ITableMetricNormalizer):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
-            extraction_result = context.extraction_results.get(report.year)
-            if extraction_result is None:
-                raise ValueError(
-                    "Missing table extraction result for report year "
-                    f"{report.year}."
-                )
+            try:
+                extraction_result = context.extraction_results.get(report.year)
+                if extraction_result is None:
+                    raise ValueError(
+                        "Missing table extraction result for report year "
+                        f"{report.year}."
+                    )
 
-            self._ensure_result_matches_year(report.year, extraction_result)
-            self._logger.info(
-                "Normalizing metrics for report year %s",
-                report.year,
-                extra={
-                    "company_name": context.company_name,
-                    "year": report.year,
-                },
-            )
-            context.normalization_results[report.year] = self.normalize_tables(
-                extraction_result
-            )
+                self._ensure_result_matches_year(report.year, extraction_result)
+                self._logger.info(
+                    "Normalizing metrics for report year %s",
+                    report.year,
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                    },
+                )
+                context.normalization_results[report.year] = self.normalize_tables(
+                    extraction_result
+                )
+            except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed metric normalization: "
+                    f"{_error_message(exc)}"
+                )
+                context.normalization_results[report.year] = NormalizationResult(
+                    tables=[],
+                    metric_values=[],
+                    mappings=[],
+                )
+                self._logger.exception(
+                    "Metric normalization failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                    },
+                )
+                continue
 
         self._logger.info(
             "Company context metric normalization complete",
@@ -84,6 +105,8 @@ class TableMetricNormalizer(ITableMetricNormalizer):
                 "result_years": sorted(context.normalization_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:
@@ -241,3 +264,9 @@ class TableMetricNormalizer(ITableMetricNormalizer):
         )
 
         return EmbeddingMetricNormalizer()
+
+
+def _error_message(exc: Exception) -> str:
+    """Return a non-empty error message for result metadata."""
+
+    return str(exc) or exc.__class__.__name__

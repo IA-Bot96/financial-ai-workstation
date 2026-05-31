@@ -263,7 +263,7 @@ class TemplateStructureValidator:
         required_metrics: set[str],
     ) -> float:
         if not required_metrics:
-            return 1.0
+            return 0.0
 
         found_metrics: set[str] = set()
         for row in worksheet.iter_rows(max_col=min(3, worksheet.max_column)):
@@ -299,7 +299,8 @@ class TemplateStructureValidator:
         remaining_missing = len(missing_metrics) - 5
         if remaining_missing > 0:
             warnings.append(
-                f"{sheet_name} sheet has {remaining_missing} additional missing metrics."
+                f"{sheet_name} sheet has {remaining_missing} additional "
+                "missing metrics."
             )
 
         missing_years = sorted(required_years - template_years)
@@ -328,7 +329,7 @@ def _metric_set(metric_values: Iterable[MetricValue]) -> set[str]:
 
 def _coverage(required: set[object], available: set[object]) -> float:
     if not required:
-        return 1.0
+        return 0.0
     return len(required & available) / len(required)
 
 

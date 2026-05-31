@@ -10,6 +10,7 @@ __all__ = [
     "IOCRPipeline",
     "LayerExecutionResult",
     "OCRPipeline",
+    "PipelineLayerPartialFailure",
     "PipelineError",
     "PipelineStatus",
 ]
@@ -30,6 +31,10 @@ def __getattr__(name: str) -> Any:
         from .ocr_pipeline import OCRPipeline
 
         return OCRPipeline
+    if name == "PipelineLayerPartialFailure":
+        from .exceptions import PipelineLayerPartialFailure
+
+        return PipelineLayerPartialFailure
     if name == "PipelineError":
         from .models.pipeline_error import PipelineError
 

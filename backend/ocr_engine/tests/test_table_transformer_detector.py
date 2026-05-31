@@ -14,6 +14,7 @@ from ocr_engine.constants.detection_constants import (
     TABLE_DETECTION_CONFIDENCE_THRESHOLD,
     TABLE_DETECTION_MODEL_NAME,
 )
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_detector import ITableDetector
 from ocr_engine.services.table_transformer_detector import TableTransformerDetector
 from shared.models.company_context import CompanyContext
@@ -348,9 +349,10 @@ def test_detect_tables_for_context_isolates_report_failures() -> None:
         ],
     )
 
-    updated_context = detector.detect_tables_for_context(context)
+    with pytest.raises(PipelineLayerPartialFailure) as exc_info:
+        detector.detect_tables_for_context(context)
 
-    assert updated_context is context
+    assert exc_info.value.context is context
     assert set(context.table_detection_results) == {2023, 2024}
     assert context.table_detection_results[2023].model_dump() == {
         "detected_pages": [],
@@ -368,11 +370,10 @@ def test_detect_tables_for_context_isolates_report_failures() -> None:
         "failed_pages": [],
         "total_pages_processed": 1,
     }
-    assert len(context.pipeline_errors) == 1
-    assert context.pipeline_errors[0].layer_name == "Table Detection"
     assert "Report year 2023 failed table detection" in (
-        context.pipeline_errors[0].error_message
+        exc_info.value.error_messages[0]
     )
+    assert context.pipeline_errors == []
     assert documents["reports/MLCF_2024.pdf"].closed is True
 
 

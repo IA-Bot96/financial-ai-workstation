@@ -18,6 +18,7 @@ from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
 )
 from ocr_engine.models.table_detection_result import DetectedPage, TableDetectionResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.openai_table_classifier import OpenAITableClassifier
 from shared.models.company_context import CompanyContext
@@ -274,8 +275,20 @@ def test_classify_tables_for_context_requires_detection_result_per_year() -> Non
         ],
     )
 
-    with pytest.raises(ValueError, match="Missing table detection result"):
+    with pytest.raises(
+        PipelineLayerPartialFailure,
+        match="Missing table detection result",
+    ) as exc_info:
         classifier.classify_tables_for_context(context)
+
+    assert context.classification_results[2024].model_dump() == {
+        "page_table_types": [],
+        "failed_pages": [],
+    }
+    assert context.pipeline_errors == []
+    assert "Report year 2024 failed table classification" in (
+        exc_info.value.error_messages[0]
+    )
 
 
 def test_classify_tables_retries_openai_request() -> None:

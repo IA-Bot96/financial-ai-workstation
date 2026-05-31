@@ -27,6 +27,7 @@ from ocr_engine.models.financial_table_classification import (
     TableType,
 )
 from ocr_engine.models.table_detection_result import FailedPage, TableDetectionResult
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.prompt_builders.table_classification_prompt_builder import (
     TableClassificationPromptBuilder,
@@ -122,27 +123,51 @@ class OpenAITableClassifier(ITableClassifier):
             },
         )
 
+        failures: list[str] = []
         for report in context.reports:
-            table_detection_result = context.table_detection_results.get(report.year)
-            if table_detection_result is None:
-                raise ValueError(
-                    "Missing table detection result for report year "
-                    f"{report.year}."
+            try:
+                table_detection_result = context.table_detection_results.get(
+                    report.year
                 )
+                if table_detection_result is None:
+                    raise ValueError(
+                        "Missing table detection result for report year "
+                        f"{report.year}."
+                    )
 
-            self._logger.info(
-                "Classifying detected tables for report year %s",
-                report.year,
-                extra={
-                    "company_name": context.company_name,
-                    "year": report.year,
-                    "file_path": report.file_path,
-                },
-            )
-            context.classification_results[report.year] = self.classify_tables(
-                pdf_path=report.file_path,
-                table_detection_result=table_detection_result,
-            )
+                self._logger.info(
+                    "Classifying detected tables for report year %s",
+                    report.year,
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                context.classification_results[report.year] = self.classify_tables(
+                    pdf_path=report.file_path,
+                    table_detection_result=table_detection_result,
+                )
+            except Exception as exc:
+                failures.append(
+                    f"Report year {report.year} failed table classification: "
+                    f"{_error_message(exc)}"
+                )
+                context.classification_results[report.year] = (
+                    FinancialTableClassificationResult(
+                        page_table_types=[],
+                        failed_pages=[],
+                    )
+                )
+                self._logger.exception(
+                    "Table classification failed for report; continuing",
+                    extra={
+                        "company_name": context.company_name,
+                        "year": report.year,
+                        "file_path": report.file_path,
+                    },
+                )
+                continue
 
         self._logger.info(
             "Company context financial table classification complete",
@@ -151,6 +176,8 @@ class OpenAITableClassifier(ITableClassifier):
                 "result_years": sorted(context.classification_results),
             },
         )
+        if failures:
+            raise PipelineLayerPartialFailure(failures, context=context)
         return context
 
     def process(self, context: CompanyContext) -> CompanyContext:

@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.pipeline.interfaces.ocr_pipeline import IOCRPipeline
 from ocr_engine.pipeline.models.layer_execution_result import LayerExecutionResult
 from ocr_engine.pipeline.models.pipeline_error import PipelineError
@@ -149,12 +150,36 @@ class OCRPipeline(IOCRPipeline):
                 },
             )
             return updated_context
+        except PipelineLayerPartialFailure as exc:
+            execution_time_seconds = time.perf_counter() - start_time
+            updated_context = exc.context
+            for error_message in exc.error_messages:
+                updated_context.pipeline_errors.append(
+                    self._pipeline_error(layer.name, error_message)
+                )
+            updated_context.execution_results.append(
+                LayerExecutionResult(
+                    layer_name=layer.name,
+                    execution_time_seconds=execution_time_seconds,
+                    success=False,
+                )
+            )
+            self._logger.warning(
+                "Layer Partially Failed: %s",
+                layer.name,
+                extra={
+                    "layer_name": layer.name,
+                    "execution_time_seconds": execution_time_seconds,
+                    "error_count": len(exc.error_messages),
+                },
+            )
+            return updated_context
         except Exception as exc:
             execution_time_seconds = time.perf_counter() - start_time
             context.pipeline_errors.append(
-                PipelineError(
-                    layer_name=layer.name,
-                    error_message=str(exc) or exc.__class__.__name__,
+                self._pipeline_error(
+                    layer.name,
+                    str(exc) or exc.__class__.__name__,
                 )
             )
             context.execution_results.append(
@@ -189,4 +214,13 @@ class OCRPipeline(IOCRPipeline):
         raise TypeError(
             f"{layer.name} service must expose process(context) or "
             f"{layer.fallback_method_name}(context)."
+        )
+
+    @staticmethod
+    def _pipeline_error(layer_name: str, error_message: str) -> PipelineError:
+        """Create the pipeline error model in one orchestration-owned place."""
+
+        return PipelineError(
+            layer_name=layer_name,
+            error_message=error_message or "Unknown pipeline error.",
         )

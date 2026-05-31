@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
 from ocr_engine.models.financial_table_classification import (
@@ -19,6 +20,16 @@ from shared.models.metric_value import MetricValue
 logger = logging.getLogger(__name__)
 
 RawTable = list[list[str]]
+UNCLASSIFIED_TABLE_TYPE = "unclassified_table"
+
+
+@dataclass(frozen=True)
+class _TableTypeCandidate:
+    """A deterministic raw-table to classified-table candidate match."""
+
+    score: int
+    raw_table_index: int
+    classified_type_index: int
 
 
 class CamelotTableExtractor(ITableExtractor):
@@ -221,7 +232,15 @@ class CamelotTableExtractor(ITableExtractor):
     ) -> list[ExtractedTable]:
         """Build output models from raw extracted tables and page classifications."""
 
-        if not raw_tables or not page_table_type.table_types:
+        if not raw_tables:
+            if page_table_type.table_types:
+                self._logger.warning(
+                    "Classified table types had no extracted tables",
+                    extra={
+                        "page": page_table_type.page_number,
+                        "table_types": page_table_type.table_types,
+                    },
+                )
             return []
 
         if len(raw_tables) != len(page_table_type.table_types):
@@ -234,9 +253,13 @@ class CamelotTableExtractor(ITableExtractor):
                 },
             )
 
+        table_type_by_raw_index = self._map_table_types_to_raw_tables(
+            page_table_type=page_table_type,
+            raw_tables=raw_tables,
+        )
         extracted_tables: list[ExtractedTable] = []
-        for index, rows in enumerate(raw_tables[: len(page_table_type.table_types)]):
-            table_type = page_table_type.table_types[index]
+        for index, rows in enumerate(raw_tables):
+            table_type = table_type_by_raw_index.get(index, UNCLASSIFIED_TABLE_TYPE)
             extracted_tables.append(
                 ExtractedTable(
                     source_report_year=page_table_type.year,
@@ -253,6 +276,143 @@ class CamelotTableExtractor(ITableExtractor):
                 )
             )
         return extracted_tables
+
+    def _map_table_types_to_raw_tables(
+        self,
+        *,
+        page_table_type: PageTableType,
+        raw_tables: list[RawTable],
+    ) -> dict[int, str]:
+        """Match classified table types to raw tables without positional guessing."""
+
+        if not page_table_type.table_types:
+            for raw_table_index in range(len(raw_tables)):
+                self._logger.warning(
+                    "Extracted table has no classified table type",
+                    extra={
+                        "page": page_table_type.page_number,
+                        "table_index": raw_table_index,
+                    },
+                )
+            return {}
+
+        candidates = self._table_type_candidates(
+            raw_tables=raw_tables,
+            table_types=page_table_type.table_types,
+        )
+        assigned_raw_tables: set[int] = set()
+        assigned_classified_types: set[int] = set()
+        table_type_by_raw_index: dict[int, str] = {}
+
+        for candidate in candidates:
+            if candidate.raw_table_index in assigned_raw_tables:
+                continue
+            if candidate.classified_type_index in assigned_classified_types:
+                continue
+
+            assigned_raw_tables.add(candidate.raw_table_index)
+            assigned_classified_types.add(candidate.classified_type_index)
+            table_type = page_table_type.table_types[candidate.classified_type_index]
+            table_type_by_raw_index[candidate.raw_table_index] = table_type
+            self._log_order_correction_if_needed(
+                page_table_type=page_table_type,
+                raw_table_index=candidate.raw_table_index,
+                assigned_table_type=table_type,
+            )
+
+        self._log_unmatched_tables(
+            page_table_type=page_table_type,
+            raw_tables=raw_tables,
+            table_type_by_raw_index=table_type_by_raw_index,
+            assigned_classified_types=assigned_classified_types,
+        )
+        return table_type_by_raw_index
+
+    def _table_type_candidates(
+        self,
+        *,
+        raw_tables: list[RawTable],
+        table_types: list[str],
+    ) -> list[_TableTypeCandidate]:
+        candidates: list[_TableTypeCandidate] = []
+        for raw_table_index, rows in enumerate(raw_tables):
+            for classified_type_index, table_type in enumerate(table_types):
+                score = _table_type_match_score(rows, table_type)
+                if score <= 0:
+                    continue
+                candidates.append(
+                    _TableTypeCandidate(
+                        score=score,
+                        raw_table_index=raw_table_index,
+                        classified_type_index=classified_type_index,
+                    )
+                )
+
+        return sorted(
+            candidates,
+            key=lambda candidate: (
+                -candidate.score,
+                candidate.raw_table_index,
+                candidate.classified_type_index,
+            ),
+        )
+
+    def _log_order_correction_if_needed(
+        self,
+        *,
+        page_table_type: PageTableType,
+        raw_table_index: int,
+        assigned_table_type: str,
+    ) -> None:
+        if raw_table_index >= len(page_table_type.table_types):
+            return
+
+        positional_table_type = page_table_type.table_types[raw_table_index]
+        if positional_table_type == assigned_table_type:
+            return
+
+        self._logger.warning(
+            "Table classification ordering mismatch corrected",
+            extra={
+                "page": page_table_type.page_number,
+                "table_index": raw_table_index,
+                "positional_table_type": positional_table_type,
+                "assigned_table_type": assigned_table_type,
+            },
+        )
+
+    def _log_unmatched_tables(
+        self,
+        *,
+        page_table_type: PageTableType,
+        raw_tables: list[RawTable],
+        table_type_by_raw_index: dict[int, str],
+        assigned_classified_types: set[int],
+    ) -> None:
+        for raw_table_index in range(len(raw_tables)):
+            if raw_table_index in table_type_by_raw_index:
+                continue
+            self._logger.warning(
+                "Extracted table could not be matched to a classified table type",
+                extra={
+                    "page": page_table_type.page_number,
+                    "table_index": raw_table_index,
+                    "assigned_table_type": UNCLASSIFIED_TABLE_TYPE,
+                    "classified_table_types": page_table_type.table_types,
+                },
+            )
+
+        for classified_type_index, table_type in enumerate(page_table_type.table_types):
+            if classified_type_index in assigned_classified_types:
+                continue
+            self._logger.warning(
+                "Classified table type did not match an extracted table",
+                extra={
+                    "page": page_table_type.page_number,
+                    "classified_type_index": classified_type_index,
+                    "table_type": table_type,
+                },
+            )
 
     def _extract_metric_values(
         self,
@@ -466,7 +626,234 @@ def _scale_multiplier_from_text(text: str) -> int | None:
     return None
 
 
+def _table_type_match_score(rows: RawTable, table_type: str) -> int:
+    """Score how strongly raw table text supports a classified table type."""
+
+    table_text = _normalized_table_text(rows)
+    if not table_text:
+        return 0
+
+    score = 0
+    keywords = _keywords_for_table_type(table_type)
+    for keyword in keywords:
+        if _contains_phrase(table_text, keyword):
+            score += max(1, len(keyword.split()))
+
+    if not keywords:
+        for token in _table_type_tokens(table_type):
+            if _contains_phrase(table_text, token):
+                score += 1
+
+    return score
+
+
+def _normalized_table_text(rows: RawTable) -> str:
+    values = [
+        str(cell)
+        for row in rows
+        for cell in row
+        if str(cell).strip()
+    ]
+    return _normalize_text(" ".join(values))
+
+
+def _normalize_text(value: str) -> str:
+    normalized = value.lower().replace("&", " and ")
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return " ".join(normalized.split())
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    normalized_phrase = _normalize_text(phrase)
+    if not normalized_phrase:
+        return False
+    return re.search(rf"\b{re.escape(normalized_phrase)}\b", text) is not None
+
+
+def _keywords_for_table_type(table_type: str) -> tuple[str, ...]:
+    normalized_table_type = _normalize_key(table_type)
+    return _TABLE_TYPE_KEYWORDS.get(normalized_table_type, ())
+
+
+def _table_type_tokens(table_type: str) -> tuple[str, ...]:
+    ignored_tokens = {
+        "and",
+        "financial",
+        "note",
+        "notes",
+        "of",
+        "schedule",
+        "statement",
+        "table",
+    }
+    tokens = tuple(
+        token
+        for token in _normalize_key(table_type).split("_")
+        if len(token) > 2 and token not in ignored_tokens
+    )
+    return tokens
+
+
+def _normalize_key(value: str) -> str:
+    normalized = str(value).lower().replace("&", " and ")
+    normalized = re.sub(r"[^a-z0-9]+", "_", normalized)
+    return normalized.strip("_")
+
+
 def _error_message(exc: Exception) -> str:
     """Return a non-empty error message for result metadata."""
 
     return str(exc) or exc.__class__.__name__
+
+
+_TABLE_TYPE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "balance_sheet": (
+        "statement of financial position",
+        "total assets",
+        "non current assets",
+        "current assets",
+        "total liabilities",
+        "share capital",
+        "reserves",
+        "equity",
+        "inventory",
+        "inventories",
+        "trade receivables",
+        "trade payables",
+        "cash and bank",
+        "cash",
+        "bank balances",
+        "property plant and equipment",
+    ),
+    "statement_of_financial_position": (
+        "statement of financial position",
+        "total assets",
+        "total liabilities",
+        "equity",
+        "current assets",
+        "current liabilities",
+    ),
+    "income_statement": (
+        "statement of profit or loss",
+        "profit and loss",
+        "revenue",
+        "sales",
+        "turnover",
+        "cost of sales",
+        "gross profit",
+        "ebitda",
+        "operating profit",
+        "finance cost",
+        "profit before tax",
+        "profit after tax",
+        "earnings per share",
+    ),
+    "profit_and_loss": (
+        "profit and loss",
+        "revenue",
+        "sales",
+        "cost of sales",
+        "gross profit",
+        "profit before tax",
+        "profit after tax",
+    ),
+    "statement_of_profit_or_loss": (
+        "statement of profit or loss",
+        "revenue",
+        "cost of sales",
+        "gross profit",
+        "profit after tax",
+        "earnings per share",
+    ),
+    "cash_flow_statement": (
+        "statement of cash flows",
+        "cash flows",
+        "operating activities",
+        "investing activities",
+        "financing activities",
+        "cash generated from operations",
+        "net cash",
+        "cash and cash equivalents",
+    ),
+    "cash_flow": (
+        "cash flows",
+        "operating activities",
+        "investing activities",
+        "financing activities",
+        "net cash",
+    ),
+    "statement_of_cash_flows": (
+        "statement of cash flows",
+        "operating activities",
+        "investing activities",
+        "financing activities",
+        "cash and cash equivalents",
+    ),
+    "statement_of_changes_in_equity": (
+        "statement of changes in equity",
+        "share capital",
+        "reserves",
+        "unappropriated profit",
+        "total comprehensive income",
+        "dividend",
+    ),
+    "debt_schedule": (
+        "debt schedule",
+        "borrowings",
+        "long term debt",
+        "short term debt",
+        "long term financing",
+        "short term borrowings",
+        "loans and borrowings",
+        "lease liabilities",
+        "markup accrued",
+        "debt",
+    ),
+    "borrowings_note": (
+        "borrowings",
+        "long term financing",
+        "short term borrowings",
+        "loans and borrowings",
+        "lease liabilities",
+    ),
+    "loans_and_borrowings": (
+        "loans and borrowings",
+        "borrowings",
+        "long term financing",
+        "short term borrowings",
+        "lease liabilities",
+    ),
+    "segment_information": (
+        "segment information",
+        "reportable segment",
+        "segment revenue",
+        "segment assets",
+        "segment liabilities",
+        "geographical segment",
+    ),
+    "taxation_note": (
+        "taxation",
+        "tax expense",
+        "current tax",
+        "deferred tax",
+        "income tax",
+        "tax charge",
+    ),
+    "inventory_note": (
+        "inventories",
+        "inventory",
+        "raw materials",
+        "work in process",
+        "finished goods",
+        "stores spares",
+        "stock in trade",
+    ),
+    "property_plant_equipment_note": (
+        "property plant and equipment",
+        "operating fixed assets",
+        "additions",
+        "depreciation",
+        "written down value",
+        "capital work in progress",
+    ),
+}

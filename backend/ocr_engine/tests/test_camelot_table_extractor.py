@@ -252,13 +252,13 @@ def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:
     ]
 
 
-def test_extract_tables_logs_type_count_mismatch_and_skips_untyped_tables(
+def test_extract_tables_logs_type_count_mismatch_and_preserves_extra_tables(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [
             FakeCamelotTable([["Metric", "2024"], ["Cash", "1000"]]),
-            FakeCamelotTable([["Metric", "2024"], ["Debt", "500"]]),
+            FakeCamelotTable([["Metric", "2024"], ["Revenue", "500"]]),
         ],
         pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
     )
@@ -277,11 +277,80 @@ def test_extract_tables_logs_type_count_mismatch_and_skips_untyped_tables(
             ),
         )
 
-    assert len(result.tables) == 1
+    assert len(result.tables) == 2
     assert result.tables[0].table_type == "balance_sheet"
     assert result.tables[0].rows == [["Metric", "2024"], ["Cash", "1000"]]
+    assert result.tables[1].table_type == "unclassified_table"
+    assert result.tables[1].rows == [["Metric", "2024"], ["Revenue", "500"]]
     assert result.metric_values[0].metric == "Cash"
+    assert result.metric_values[1].metric == "Revenue"
     assert "Table count and classification type count mismatch" in caplog.text
+    assert "could not be matched to a classified table type" in caplog.text
+
+
+def test_extract_tables_corrects_classification_ordering_mismatch(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Revenue", "1000"]]),
+            FakeCamelotTable([["Metric", "2024"], ["Cash", "600"]]),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = extractor.extract_tables(
+            pdf_path="annual_report.pdf",
+            classification_result=FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["balance_sheet", "income_statement"],
+                    )
+                ]
+            ),
+        )
+
+    assert [
+        (table.table_index, table.table_type, table.rows[1][0])
+        for table in result.tables
+    ] == [
+        (0, "income_statement", "Revenue"),
+        (1, "balance_sheet", "Cash"),
+    ]
+    assert "Table classification ordering mismatch corrected" in caplog.text
+
+
+def test_extract_tables_logs_extra_classified_tables(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2024"], ["Cash", "1000"]]),
+        ],
+        pdfplumber_open=lambda _: pytest.fail("pdfplumber should not be used"),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = extractor.extract_tables(
+            pdf_path="annual_report.pdf",
+            classification_result=FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2024,
+                        page_number=20,
+                        table_types=["balance_sheet", "income_statement"],
+                    )
+                ]
+            ),
+        )
+
+    assert len(result.tables) == 1
+    assert result.tables[0].table_type == "balance_sheet"
+    assert "Table count and classification type count mismatch" in caplog.text
+    assert "Classified table type did not match an extracted table" in caplog.text
 
 
 def test_extract_tables_for_context_stores_results_by_report_year() -> None:

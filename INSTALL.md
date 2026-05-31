@@ -89,7 +89,27 @@ Windows PowerShell:
 $env:PYTHONPATH = "backend"
 ```
 
-Run the pipeline from a serialized `CompanyContext` JSON file:
+Run the pipeline directly from a PDF and write a mapped workbook:
+
+```bash
+python backend/run_pipeline.py --pdf-path data/annual_report_2024.pdf --output-xlsx output/mapped_model.xlsx
+```
+
+If the PDF filename does not contain a year, pass it explicitly:
+
+```bash
+python backend/run_pipeline.py --pdf-path data/report.pdf --report-year 2024 --output-xlsx output/mapped_model.xlsx
+```
+
+To populate an accountant-built template:
+
+```bash
+python backend/run_pipeline.py --pdf-path data/annual_report_2024.pdf --template-xlsx templates/model.xlsx --output-xlsx output/mapped_model.xlsx
+```
+
+The PDF mode prints the generated workbook path to stdout.
+
+You can still run the pipeline from a serialized `CompanyContext` JSON file:
 
 ```bash
 python backend/run_pipeline.py --context-json data/context.json --output-json output/context_result.json

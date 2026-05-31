@@ -35,3 +35,5 @@ Thumbs.db
 workspace/temp/
 workspace/uploads/
 workspace/generated/
+
+data/

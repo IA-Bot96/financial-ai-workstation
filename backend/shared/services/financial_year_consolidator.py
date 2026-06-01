@@ -255,7 +255,7 @@ def _tie_break_key(metric_value: MetricValue) -> tuple[int, str, str]:
     """Return a stable same-source tie-break key independent of input order."""
 
     return (
-        metric_value.page_number,
+        -metric_value.page_number,
         metric_value.table_type.strip().lower(),
         _stable_value_text(metric_value.value),
     )

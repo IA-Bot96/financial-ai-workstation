@@ -2141,9 +2141,12 @@ _FRAGMENTATION_CLEANUP_WORDS = tuple(
             "decrease",
             "employed",
             "employee",
+            "earnings",
             "equivalent",
+            "equivalents",
             "expenditures",
             "flow",
+            "generated",
             "increase",
             "investment",
             "june",
@@ -2151,6 +2154,7 @@ _FRAGMENTATION_CLEANUP_WORDS = tuple(
             "operations",
             "outflow",
             "particulars",
+            "per",
             "plant",
             "position",
             "property",
@@ -2346,7 +2350,7 @@ def _repair_remaining_fragment_spacing(label: str) -> str:
     repaired = _normalize_label_text(label)
     for word in _FRAGMENTATION_CLEANUP_WORDS:
         for split_index in range(1, len(word)):
-            if len(word) <= 3 and word != "and":
+            if len(word) <= 3 and word not in {"and", "per"}:
                 continue
             left = re.escape(word[:split_index])
             right = re.escape(word[split_index:])
@@ -2966,6 +2970,22 @@ def _inherit_header_context(
             original_label=normalized_label,
             inherited_label=normalized_label,
         )
+    if reason == "current_assets_excluding_cash_completion":
+        if not _contains_phrase(
+            _normalize_text(inherited_header),
+            "current assets excluding cash",
+        ):
+            return _HeaderInheritedLabel(
+                original_label=normalized_label,
+                inherited_label=normalized_label,
+            )
+        return _HeaderInheritedLabel(
+            original_label=normalized_label,
+            inherited_label="Current assets excluding cash and cash equivalents",
+            inherited_header=inherited_header,
+            inheritance_source=inheritance_source,
+            reconstruction_reason=reason,
+        )
     if _context_already_present(
         label=normalized_label,
         inherited_context=inherited_header,
@@ -2990,6 +3010,7 @@ def _header_inheritance_reason(label: str) -> str | None:
     """Return why a fragmented label should inherit header context."""
 
     normalized = _normalize_text(label)
+    compacted = normalized.replace(" ", "")
     if not normalized:
         return None
     if re.search(r"\(\s*\d+\s*%\)", label):
@@ -2998,6 +3019,8 @@ def _header_inheritance_reason(label: str) -> str | None:
         return "truncated_label_completion"
     if normalized.startswith("current portion"):
         return "section_context_inheritance"
+    if compacted == "cashequivalents":
+        return "current_assets_excluding_cash_completion"
     if "ordinary shares" in normalized and "each" in normalized:
         return "security_header_inheritance"
     if normalized == "investment at cost":
@@ -3013,7 +3036,12 @@ def _select_header_context(
 ) -> tuple[str | None, str | None]:
     """Return the best available header context for a fragmented label."""
 
-    if reason == "unit_context_inheritance":
+    if reason == "current_assets_excluding_cash_completion":
+        candidates = (
+            ("table_section_context", context_stack.active_section),
+            ("table_header_context", context_stack.active_header),
+        )
+    elif reason == "unit_context_inheritance":
         candidates = (
             ("table_section_context", context_stack.active_section),
             ("table_header_context", context_stack.active_header),
@@ -4667,7 +4695,24 @@ def _effective_scale_multiplier(
 def _metric_exempts_table_scale(metric_label: str, cell_text: str) -> bool:
     """Return whether table currency scaling must not apply to this metric."""
 
-    text = f"{metric_label} {cell_text}".lower()
+    text = _normalize_text(
+        _repair_remaining_fragment_spacing(f"{metric_label} {cell_text}")
+    )
+    compact_text = text.replace(" ", "")
+    if any(
+        phrase in compact_text
+        for phrase in (
+            "earningspershare",
+            "earningpershare",
+            "basicanddilutedearningspershare",
+            "cashdividendpershare",
+            "dividendpershare",
+            "bookvaluepershare",
+            "netassetspershare",
+            "pershare",
+        )
+    ):
+        return True
     patterns = [
         r"%",
         r"\bpercent(?:age)?\b",

@@ -106,7 +106,7 @@ def test_consolidator_prefers_latest_source_report_for_value_year(
     assert "Metric value superseded" in caplog.text
 
 
-def test_consolidator_tie_breaks_duplicate_metrics_in_same_report() -> None:
+def test_consolidator_tie_breaks_same_quality_duplicates_by_later_page() -> None:
     values = [
         _metric_value("revenue", 2024, 1500, 2025, page_number=120),
         _metric_value("revenue", 2024, 1400, 2025, page_number=20),
@@ -115,8 +115,8 @@ def test_consolidator_tie_breaks_duplicate_metrics_in_same_report() -> None:
     result = FinancialYearConsolidator().consolidate(values)
 
     assert len(result) == 1
-    assert result[0].value == 1400
-    assert result[0].page_number == 20
+    assert result[0].value == 1500
+    assert result[0].page_number == 120
 
 
 def test_consolidator_tie_breaks_equal_source_report_year_conflicts() -> None:
@@ -129,6 +129,108 @@ def test_consolidator_tie_breaks_equal_source_report_year_conflicts() -> None:
 
     assert len(result) == 1
     assert result[0].value == 1400
+
+
+def test_consolidator_prefers_later_consolidated_lucky_statement_pages() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "earnings_per_share",
+                2025,
+                22.59,
+                2025,
+                page_number=241,
+                table_type="income_statement",
+            ),
+            _metric_value(
+                "earnings_per_share",
+                2025,
+                52.53,
+                2025,
+                page_number=292,
+                table_type="income_statement",
+            ),
+            _metric_value(
+                "cash_at_beginning_of_period",
+                2025,
+                32_382_131,
+                2025,
+                page_number=243,
+                table_type="cash_flow_statement",
+            ),
+            _metric_value(
+                "cash_at_beginning_of_period",
+                2025,
+                77_623_341,
+                2025,
+                page_number=294,
+                table_type="cash_flow_statement",
+            ),
+            _metric_value(
+                "finance_cost",
+                2025,
+                1_370,
+                2025,
+                page_number=164,
+                table_type="income_statement",
+            ),
+            _metric_value(
+                "finance_cost",
+                2025,
+                -25_498_349,
+                2025,
+                page_number=292,
+                table_type="income_statement",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "Earnings per share - basic and diluted",
+                "earnings_per_share",
+                2025,
+                2025,
+                0.96,
+            ),
+            _mapping(
+                "Earnings per share - basic and diluted",
+                "earnings_per_share",
+                2025,
+                2025,
+                0.96,
+            ),
+            _mapping(
+                "Cash and cash equivalents at beginning of year",
+                "cash_at_beginning_of_period",
+                2025,
+                2025,
+                0.96,
+            ),
+            _mapping(
+                "Cash and cash equivalents at beginning of year",
+                "cash_at_beginning_of_period",
+                2025,
+                2025,
+                0.96,
+            ),
+            _mapping("Finance Cost", "finance_cost", 2025, 2025, 0.96),
+            _mapping("Finance Cost", "finance_cost", 2025, 2025, 0.96),
+        ],
+    )
+
+    consolidated = FinancialYearConsolidator().consolidate_normalization_result(result)
+
+    assert {
+        (metric_value.metric, metric_value.value_year): (
+            metric_value.value,
+            metric_value.page_number,
+        )
+        for metric_value in consolidated
+    } == {
+        ("cash_at_beginning_of_period", 2025): (77_623_341, 294),
+        ("earnings_per_share", 2025): (52.53, 292),
+        ("finance_cost", 2025): (-25_498_349, 292),
+    }
 
 
 def test_consolidator_prefers_higher_normalization_confidence_for_lucky_duplicate(

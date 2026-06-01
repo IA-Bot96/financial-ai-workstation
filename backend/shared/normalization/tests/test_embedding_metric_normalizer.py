@@ -288,8 +288,11 @@ def test_default_registry_normalizes_lucky_final_coverage_labels(
         ("Cash and cash equivale nts", "cash_and_cash_equivalents"),
         ("Cash and cash eq uivalents", "cash_and_cash_equivalents"),
         ("ash and cash e quivalents at the b eginning of the year", "cash_at_beginning_of_period"),
+        ("cash and cash equivalent at the beginning of the", "cash_at_beginning_of_period"),
         ("ash and cash e quivalents at the e nd of the year", "cash_at_end_of_period"),
-        ("ash genera ted f rom operations", "operating_cash_flow"),
+        ("cash and cash equivalent at the end of the", "cash_at_end_of_period"),
+        ("ash genera ted f rom operations", "cash_generated_from_operations"),
+        ("et cash gen erat ed from operating activities", "operating_cash_flow"),
         ("OTAL ASSETS", "total_assets"),
         ("OTAL EQUITY AND LIABILITIES", "total_equity_and_liabilities"),
         ("Operating exp ense s", "operating_expenses"),
@@ -300,6 +303,7 @@ def test_default_registry_normalizes_lucky_final_coverage_labels(
         ("Note 2025 2024 - Net profit (100%", "share_of_net_profit"),
         ("Accretion of intere st o n lease liabilities", "finance_cost"),
         ("Advances fro m cust omers / cont ract liabilities", "contract_liabilities"),
+        ("Transfer from capital work i n pr ogress", "transfer_from_capital_work_in_progress"),
     ],
 )
 def test_default_registry_normalizes_dirty_ocr_aliases(

@@ -1192,6 +1192,7 @@ def test_extract_tables_does_not_scale_non_currency_unit_rows() -> None:
                     ["Metric", "2025", "2024"],
                     ["Revenue", "1.5", "1.2"],
                     ["Earnings per share", "24.50", "20.10"],
+                    ["Basic and diluted ear nings pe r share – PKR", "52.53", "44.10"],
                     ["Gross margin %", "34.5%", "35.0%"],
                     ["Cash flow coverage ratio times", "2.5", "2.2"],
                     ["Number of employees", "120", "115"],
@@ -1222,6 +1223,8 @@ def test_extract_tables_does_not_scale_non_currency_unit_rows() -> None:
         ("Revenue", 2024, 1200),
         ("Earnings per share", 2025, 24.5),
         ("Earnings per share", 2024, 20.1),
+        ("Basic and diluted earnings per share – PKR", 2025, 52.53),
+        ("Basic and diluted earnings per share – PKR", 2024, 44.1),
         ("Gross margin %", 2025, 34.5),
         ("Gross margin %", 2024, 35),
         ("Cash flow coverage ratio times", 2025, 2.5),
@@ -1231,8 +1234,56 @@ def test_extract_tables_does_not_scale_non_currency_unit_rows() -> None:
     ]
 
     quality_report = result.extraction_summary.quality_report
-    assert quality_report.scale_exempt_values == 8
-    assert quality_report.scale_corrections_applied == 8
+    assert quality_report.scale_exempt_values == 10
+    assert quality_report.scale_corrections_applied == 10
+
+
+def test_extract_tables_repairs_lucky_current_assets_excluding_cash_continuation(
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["", "", "", "", "2025", "2024"],
+                    ["Current assets", "excluding", "cash a", "nd", "", ""],
+                    ["cash equival", "ents", "", "", "3,757,591", "4,704,970"],
+                    ["Cash and cash", "equivalen", "ts", "", "772,774", "1,644,596"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=323,
+                    table_types=["balance_sheet"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        (
+            "Current assets excluding cash and cash equivalents",
+            2025,
+            3_757_591,
+        ),
+        (
+            "Current assets excluding cash and cash equivalents",
+            2024,
+            4_704_970,
+        ),
+        ("Cash and cash equivalents", 2025, 772_774),
+        ("Cash and cash equivalents", 2024, 1_644_596),
+    ]
 
 
 def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:

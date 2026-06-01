@@ -517,10 +517,6 @@
       "total cash and cash equivalents",
       "reported cash and cash equivalents",
       "cash and cash equivalents amount",
-      "cash and cash equivalent at the beginning of the year",
-      "cash and cash equivalent at the end of the year",
-      "cash and cash equivalents at the beginning of the year",
-      "cash and cash equivalents at the end of the year",
       "Cash and cash equivalen ts",
       "Cash and cash equ ivalents",
       "Cash and cash equivale nts",
@@ -716,9 +712,16 @@
       "projects in progress",
       "total capital work in progress",
       "reported capital work in progress",
-      "Capital work in p rogress",
-      "Transfer from capital work-in-progress",
-      "Transfer from capital work i n pr ogress"
+      "Capital work in p rogress"
+    ],
+    "category": "balance_sheet"
+  },
+  "transfer_from_capital_work_in_progress": {
+    "display_name": "Transfer From Capital Work In Progress",
+    "aliases": [
+      "transfer from capital work-in-progress",
+      "Transfer from capital work i n pr ogress",
+      "transferred from capital work-in-progress"
     ],
     "category": "balance_sheet"
   },
@@ -1141,12 +1144,9 @@
       "total operating cash flow",
       "reported operating cash flow",
       "net cash from operating activities",
-      "ash generated from operations",
-      "cash generated f rom operations",
-      "ash genera ted f rom operations",
-      "cash genera ted f rom operations",
       "et cash generated from operating activities",
       "et cash gener ated from operating activities",
+      "et cash gen erat ed from operating activities",
       "net cash generated from operating activities"
     ],
     "category": "cash_flow"
@@ -1194,7 +1194,11 @@
       "cash generated from operations",
       "total cash generated from operations",
       "reported cash generated from operations",
-      "cash generated from operations amount"
+      "cash generated from operations amount",
+      "ash generated from operations",
+      "cash generated f rom operations",
+      "ash genera ted f rom operations",
+      "cash genera ted f rom operations"
     ],
     "category": "cash_flow"
   },
@@ -1361,7 +1365,11 @@
       "cash at beginning of period amount",
       "ash and cash e quivalents at the b eginning of the year",
       "ash and cash eq uivalents at the beginning of the year",
-      "cash and cash e quivalents at the b eginning of the year"
+      "cash and cash e quivalents at the b eginning of the year",
+      "cash and cash equivalent at the beginning of the year",
+      "cash and cash equivalents at the beginning of the year",
+      "cash and cash equivalent at the beginning of the",
+      "cash and cash equivalents at the beginning of the"
     ],
     "category": "cash_flow"
   },
@@ -1374,7 +1382,11 @@
       "cash at end of period amount",
       "ash and cash e quivalents at the e nd of the year",
       "ash and cash eq uivalents at the e nd of the year",
-      "cash and cash e quivalents at the e nd of the year"
+      "cash and cash e quivalents at the e nd of the year",
+      "cash and cash equivalent at the end of the year",
+      "cash and cash equivalents at the end of the year",
+      "cash and cash equivalent at the end of the",
+      "cash and cash equivalents at the end of the"
     ],
     "category": "cash_flow"
   },

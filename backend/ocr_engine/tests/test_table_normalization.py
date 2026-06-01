@@ -63,6 +63,9 @@ def test_normalization_result_serializes_expected_output() -> None:
                 "page_number": 20,
                 "table_type": "income_statement",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["revenue", "1200000"]],
                 "metric_values": [],
             }

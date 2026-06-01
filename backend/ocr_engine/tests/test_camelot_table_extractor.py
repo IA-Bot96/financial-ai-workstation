@@ -137,6 +137,9 @@ def test_extract_tables_uses_camelot_first() -> None:
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
                 "metric_values": [],
             },
@@ -145,6 +148,9 @@ def test_extract_tables_uses_camelot_first() -> None:
                 "page_number": 20,
                 "table_type": "debt_schedule",
                 "table_index": 1,
+                "source_table_index": 1,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Debt", "450"]],
                 "metric_values": [],
             },
@@ -506,6 +512,128 @@ def test_extract_tables_logs_extra_classified_tables(
     assert "Classified table type did not match an extracted table" in caplog.text
 
 
+def test_extract_tables_splits_balance_sheet_analysis_table() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["PKR in '000", "2020", "2021"],
+                    ["Share Capital & Reserves", "100", "110"],
+                    ["Total Assets", "200", "220"],
+                    ["Vertical Analysis - (%)", "2020", "2021"],
+                    ["Share Capital & Reserves", "50", "50"],
+                    ["Total Assets", "100", "100"],
+                    ["Horizontal Analysis", "2020", "2021"],
+                    ["Share Capital & Reserves", "10", "20"],
+                    ["Total Assets", "0", "10"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=163,
+                    table_types=[
+                        "balance_sheet",
+                        "vertical_analysis",
+                        "horizontal_analysis",
+                    ],
+                )
+            ]
+        ),
+        table_detection_result=TableDetectionResult(
+            detected_pages=[
+                DetectedPage(year=2025, page_number=163, tables_detected=1),
+            ],
+            total_pages_processed=400,
+        ),
+    )
+
+    assert [table.table_type for table in result.tables] == [
+        "balance_sheet",
+        "vertical_analysis",
+        "horizontal_analysis",
+    ]
+    assert [
+        (table.table_index, table.source_table_index, table.split_table_index)
+        for table in result.tables
+    ] == [(0, 0, 0), (1, 0, 1), (2, 0, 2)]
+    assert result.extraction_summary.total_extracted_tables == 3
+    assert result.extraction_summary.total_matched_tables == 3
+    assert result.extraction_summary.unmatched_classifications == []
+    assert result.extraction_summary.tables_split == 2
+    assert result.extraction_summary.logical_types_created == [
+        "balance_sheet",
+        "vertical_analysis",
+        "horizontal_analysis",
+    ]
+    assert result.extraction_summary.split_reasons == [
+        "analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"
+    ]
+    assert result.extraction_summary.page_diagnostics[0].tables_split == 2
+    assert len(result.metric_values) == 12
+
+
+def test_extract_tables_splits_income_statement_analysis_table() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["OF", "PROFIT", "OR", "LOSS"],
+                    ["PKR in '000", "2020", "2021"],
+                    ["Turnover", "1000", "1100"],
+                    ["Gross Profit", "300", "350"],
+                    ["Profit after taxation", "120", "150"],
+                    ["Vertical Analysis - (%)", "2020", "2021"],
+                    ["Turnover", "100", "100"],
+                    ["Gross Profit", "30", "32"],
+                    ["Profit after taxation", "12", "14"],
+                    ["Horizontal Analysis", "2020", "2021"],
+                    ["Turnover", "0", "10"],
+                    ["Gross Profit", "0", "16.7"],
+                    ["Profit after taxation", "0", "25"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=164,
+                    table_types=[
+                        "income_statement",
+                        "vertical_analysis",
+                        "horizontal_analysis",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert [table.table_type for table in result.tables] == [
+        "income_statement",
+        "vertical_analysis",
+        "horizontal_analysis",
+    ]
+    assert all(table.source_table_index == 0 for table in result.tables)
+    assert [table.split_table_index for table in result.tables] == [0, 1, 2]
+    assert result.extraction_summary.total_matched_tables == 3
+    assert result.extraction_summary.unmatched_classifications == []
+    assert result.extraction_summary.tables_split == 2
+    assert len(result.metric_values) == 18
+
+
 def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -559,6 +687,9 @@ def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
         "numeric_only_table_count": 0,
         "unmatched_classifications": [],
         "unmatched_extractions": [1],
+        "tables_split": 0,
+        "split_reason": None,
+        "logical_types_created": [],
     }
     assert "Extraction page diagnostics" in caplog.text
 
@@ -696,6 +827,9 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
                 "page_number": 10,
                 "table_type": "balance_sheet",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Cash", "800"]],
                 "metric_values": [],
             }
@@ -711,6 +845,9 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Cash", "1000"]],
                 "metric_values": [],
             },
@@ -719,6 +856,9 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
                 "page_number": 20,
                 "table_type": "debt_schedule",
                 "table_index": 1,
+                "source_table_index": 1,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Debt", "450"]],
                 "metric_values": [],
             },
@@ -827,6 +967,9 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
                 "page_number": 1,
                 "table_type": "balance_sheet",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Cash", "1000"], ["Inventory", ""]],
                 "metric_values": [],
             }
@@ -1164,6 +1307,9 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
                 "page_number": 25,
                 "table_type": "income_statement",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [["Revenue", "1000"]],
                 "metric_values": [],
             }

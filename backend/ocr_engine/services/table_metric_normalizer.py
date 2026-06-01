@@ -146,6 +146,9 @@ class TableMetricNormalizer(ITableMetricNormalizer):
                     page_number=table.page_number,
                     table_type=table.table_type,
                     table_index=table.table_index,
+                    source_table_index=table.source_table_index,
+                    split_table_index=table.split_table_index,
+                    split_reason=table.split_reason,
                     rows=normalized_rows,
                     metric_values=table_metric_values,
                 )

@@ -18,6 +18,9 @@ class NormalizedTable(BaseModel):
                     "page_number": 20,
                     "table_type": "income_statement",
                     "table_index": 0,
+                    "source_table_index": 0,
+                    "split_table_index": None,
+                    "split_reason": None,
                     "rows": [
                         ["revenue", "1200000", "1100000"],
                         ["cost_of_sales", "800000", "760000"],
@@ -61,6 +64,28 @@ class NormalizedTable(BaseModel):
         ge=0,
         description="Zero-based table index on the source PDF page.",
         examples=[0],
+    )
+    source_table_index: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Zero-based physical table index before any scoped logical splitting."
+        ),
+        examples=[0],
+    )
+    split_table_index: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Zero-based logical split index within the source table, when scoped "
+            "table splitting created this table."
+        ),
+        examples=[1],
+    )
+    split_reason: str | None = Field(
+        default=None,
+        description="Reason code for scoped logical table splitting.",
+        examples=["analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"],
     )
     rows: list[list[str]] = Field(
         default_factory=list,

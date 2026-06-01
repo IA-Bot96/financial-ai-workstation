@@ -93,6 +93,22 @@ class PageExtractionDiagnostic(BaseModel):
         description="Extracted table indexes that did not match a classification.",
         examples=[[1]],
     )
+    tables_split: int = Field(
+        default=0,
+        ge=0,
+        description="Number of additional logical tables created by scoped splitting.",
+        examples=[2],
+    )
+    split_reason: str | None = Field(
+        default=None,
+        description="Reason code for scoped table splitting on this page.",
+        examples=["analysis_section_markers_with_repeated_year_headers"],
+    )
+    logical_types_created: list[str] = Field(
+        default_factory=list,
+        description="Logical table types created by scoped table splitting.",
+        examples=[["balance_sheet", "vertical_analysis", "horizontal_analysis"]],
+    )
 
 
 class SuspiciousTableFinding(BaseModel):
@@ -484,6 +500,22 @@ class ExtractionSummary(BaseModel):
         default_factory=list,
         description="Detailed per-page extraction linkage diagnostics.",
     )
+    tables_split: int = Field(
+        default=0,
+        ge=0,
+        description="Total additional logical tables created by scoped splitting.",
+        examples=[4],
+    )
+    split_reasons: list[str] = Field(
+        default_factory=list,
+        description="Unique reason codes for scoped table splitting.",
+        examples=[["analysis_section_markers_with_repeated_year_headers"]],
+    )
+    logical_types_created: list[str] = Field(
+        default_factory=list,
+        description="Logical table types created by scoped table splitting.",
+        examples=[["balance_sheet", "vertical_analysis", "horizontal_analysis"]],
+    )
     quality_report: ExtractionQualityReport = Field(
         default_factory=ExtractionQualityReport,
         description="Post-extraction quality validation report.",
@@ -508,6 +540,9 @@ class ExtractedTable(BaseModel):
                     "page_number": 20,
                     "table_type": "balance_sheet",
                     "table_index": 0,
+                    "source_table_index": 0,
+                    "split_table_index": None,
+                    "split_reason": None,
                     "rows": [
                         ["Cash", "1000"],
                         ["Inventory", "500"],
@@ -570,6 +605,28 @@ class ExtractedTable(BaseModel):
         ge=0,
         description="Zero-based table index on the source PDF page.",
         examples=[0],
+    )
+    source_table_index: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Zero-based physical table index before any scoped logical splitting."
+        ),
+        examples=[0],
+    )
+    split_table_index: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Zero-based logical split index within the source table, when scoped "
+            "table splitting created this table."
+        ),
+        examples=[1],
+    )
+    split_reason: str | None = Field(
+        default=None,
+        description="Reason code for scoped logical table splitting.",
+        examples=["analysis_section_markers_with_repeated_year_headers"],
     )
     rows: list[list[str]] = Field(
         default_factory=list,

@@ -89,6 +89,27 @@ class _RawExtractionResult:
 
 
 @dataclass(frozen=True)
+class _RawTableProvenance:
+    """Provenance for a raw table after optional scoped logical splitting."""
+
+    source_table_index: int
+    split_table_index: int | None = None
+    split_reason: str | None = None
+    logical_type_hint: str | None = None
+
+
+@dataclass(frozen=True)
+class _PreparedRawTables:
+    """Raw tables prepared for matching, plus split diagnostics."""
+
+    raw_tables: list[RawTable]
+    provenance: list[_RawTableProvenance]
+    tables_split: int = 0
+    split_reason: str | None = None
+    logical_types_created: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class _ReconstructedLabel:
     """Metric label reconstructed from adjacent table cells."""
 
@@ -266,12 +287,28 @@ class CamelotTableExtractor(ITableExtractor):
             )
 
             raw_extraction = self._extract_page_tables(pdf_path, page_number)
-            page_tables, page_diagnostic = self._build_extracted_tables(
+            prepared_tables = self._prepare_raw_tables_for_matching(
                 page_table_type=page_table_type,
                 raw_tables=raw_extraction.raw_tables,
+            )
+            extraction_quality = (
+                self._evaluate_extraction_quality(prepared_tables.raw_tables)
+                if prepared_tables.tables_split
+                else raw_extraction.quality
+            )
+            extraction_strategy = raw_extraction.strategy
+            if prepared_tables.tables_split:
+                extraction_strategy = f"{extraction_strategy}+analysis_table_split"
+            page_tables, page_diagnostic = self._build_extracted_tables(
+                page_table_type=page_table_type,
+                raw_tables=prepared_tables.raw_tables,
+                raw_table_provenance=prepared_tables.provenance,
                 detected_table_count=detected_counts_by_page.get(page_number, 0),
-                extraction_strategy=raw_extraction.strategy,
-                extraction_quality=raw_extraction.quality,
+                extraction_strategy=extraction_strategy,
+                extraction_quality=extraction_quality,
+                tables_split=prepared_tables.tables_split,
+                split_reason=prepared_tables.split_reason,
+                logical_types_created=list(prepared_tables.logical_types_created),
             )
             extracted_tables.extend(page_tables)
             page_diagnostics.append(page_diagnostic)
@@ -440,6 +477,90 @@ class CamelotTableExtractor(ITableExtractor):
         )
         return selected
 
+    def _prepare_raw_tables_for_matching(
+        self,
+        *,
+        page_table_type: PageTableType,
+        raw_tables: list[RawTable],
+    ) -> _PreparedRawTables:
+        """Apply narrowly scoped logical splitting before table-type matching."""
+
+        default_provenance = [
+            _RawTableProvenance(source_table_index=index)
+            for index in range(len(raw_tables))
+        ]
+        if not raw_tables or not _is_analysis_style_classification(
+            page_table_type.table_types
+        ):
+            return _PreparedRawTables(
+                raw_tables=raw_tables,
+                provenance=default_provenance,
+            )
+
+        if len(raw_tables) >= len(page_table_type.table_types):
+            return _PreparedRawTables(
+                raw_tables=raw_tables,
+                provenance=default_provenance,
+            )
+
+        primary_table_type = _primary_analysis_table_type(page_table_type.table_types)
+        if primary_table_type is None:
+            return _PreparedRawTables(
+                raw_tables=raw_tables,
+                provenance=default_provenance,
+            )
+
+        prepared_tables: list[RawTable] = []
+        provenance: list[_RawTableProvenance] = []
+        logical_types_created: list[str] = []
+        tables_split = 0
+        for source_table_index, rows in enumerate(raw_tables):
+            split_tables = _split_analysis_style_table(
+                rows=rows,
+                primary_table_type=primary_table_type,
+            )
+            if len(split_tables) < 3:
+                prepared_tables.append(rows)
+                provenance.append(
+                    _RawTableProvenance(source_table_index=source_table_index)
+                )
+                continue
+
+            tables_split += len(split_tables) - 1
+            for split_table_index, split_table in enumerate(split_tables):
+                prepared_tables.append(split_table.rows)
+                logical_types_created.append(split_table.logical_type)
+                provenance.append(
+                    _RawTableProvenance(
+                        source_table_index=source_table_index,
+                        split_table_index=split_table_index,
+                        split_reason=split_table.split_reason,
+                        logical_type_hint=split_table.logical_type,
+                    )
+                )
+
+        if tables_split == 0:
+            return _PreparedRawTables(
+                raw_tables=raw_tables,
+                provenance=default_provenance,
+            )
+
+        self._logger.info(
+            "Analysis-style table split into logical subtables",
+            extra={
+                "page": page_table_type.page_number,
+                "tables_split": tables_split,
+                "logical_types_created": logical_types_created,
+            },
+        )
+        return _PreparedRawTables(
+            raw_tables=prepared_tables,
+            provenance=provenance,
+            tables_split=tables_split,
+            split_reason=_ANALYSIS_SPLIT_REASON,
+            logical_types_created=tuple(logical_types_created),
+        )
+
     def _extract_with_camelot(self, pdf_path: str, page_number: int) -> list[RawTable]:
         """Extract tables from a PDF page using Camelot."""
 
@@ -491,9 +612,14 @@ class CamelotTableExtractor(ITableExtractor):
         detected_table_count: int,
         extraction_strategy: str,
         extraction_quality: _ExtractionQuality,
+        raw_table_provenance: Sequence[_RawTableProvenance] | None = None,
+        tables_split: int = 0,
+        split_reason: str | None = None,
+        logical_types_created: list[str] | None = None,
     ) -> tuple[list[ExtractedTable], PageExtractionDiagnostic]:
         """Build output models from raw extracted tables and page classifications."""
 
+        logical_types_created = logical_types_created or []
         if not raw_tables:
             if page_table_type.table_types:
                 self._logger.warning(
@@ -518,6 +644,9 @@ class CamelotTableExtractor(ITableExtractor):
                 numeric_only_table_count=extraction_quality.numeric_only_table_count,
                 unmatched_classifications=page_table_type.table_types,
                 unmatched_extractions=[],
+                tables_split=tables_split,
+                split_reason=split_reason,
+                logical_types_created=logical_types_created,
             )
 
         if len(raw_tables) != len(page_table_type.table_types):
@@ -546,6 +675,10 @@ class CamelotTableExtractor(ITableExtractor):
         ]
         extracted_tables: list[ExtractedTable] = []
         for index, rows in enumerate(raw_tables):
+            provenance = _raw_table_provenance_for_index(
+                raw_table_provenance,
+                index,
+            )
             table_type = table_type_by_raw_index.table_type_by_raw_index.get(
                 index,
                 UNCLASSIFIED_TABLE_TYPE,
@@ -556,6 +689,9 @@ class CamelotTableExtractor(ITableExtractor):
                     page_number=page_table_type.page_number,
                     table_type=table_type,
                     table_index=index,
+                    source_table_index=provenance.source_table_index,
+                    split_table_index=provenance.split_table_index,
+                    split_reason=provenance.split_reason,
                     rows=rows,
                     metric_values=self._extract_metric_values(
                         rows=rows,
@@ -584,6 +720,9 @@ class CamelotTableExtractor(ITableExtractor):
             numeric_only_table_count=extraction_quality.numeric_only_table_count,
             unmatched_classifications=unmatched_classifications,
             unmatched_extractions=unmatched_extractions,
+            tables_split=tables_split,
+            split_reason=split_reason,
+            logical_types_created=logical_types_created,
         )
 
     def _map_table_types_to_raw_tables(
@@ -758,6 +897,9 @@ class CamelotTableExtractor(ITableExtractor):
                 "numeric_only_table_count": diagnostic.numeric_only_table_count,
                 "unmatched_classifications": diagnostic.unmatched_classifications,
                 "unmatched_extractions": diagnostic.unmatched_extractions,
+                "tables_split": diagnostic.tables_split,
+                "split_reason": diagnostic.split_reason,
+                "logical_types_created": diagnostic.logical_types_created,
             },
         )
 
@@ -1279,6 +1421,177 @@ def _strategy_rank(strategy: str) -> int:
     return ranks.get(strategy, 99)
 
 
+@dataclass(frozen=True)
+class _AnalysisStyleSplit:
+    """Logical table split identified inside an analysis-style physical table."""
+
+    rows: RawTable
+    logical_type: str
+    split_reason: str
+
+
+_ANALYSIS_SPLIT_REASON = (
+    "analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"
+)
+_ANALYSIS_PRIMARY_TABLE_TYPES = {
+    "balance_sheet",
+    "statement_of_financial_position",
+    "income_statement",
+    "profit_and_loss",
+    "statement_of_profit_or_loss",
+}
+
+
+def _is_analysis_style_classification(table_types: Sequence[str]) -> bool:
+    """Return whether a page classification matches the proven split pattern."""
+
+    normalized_types = {_normalize_key(table_type) for table_type in table_types}
+    return (
+        bool(normalized_types & _ANALYSIS_PRIMARY_TABLE_TYPES)
+        and "vertical_analysis" in normalized_types
+        and "horizontal_analysis" in normalized_types
+    )
+
+
+def _primary_analysis_table_type(table_types: Sequence[str]) -> str | None:
+    """Return the primary statement type in an analysis-style classification."""
+
+    for table_type in table_types:
+        if _normalize_key(table_type) in _ANALYSIS_PRIMARY_TABLE_TYPES:
+            return table_type
+    return None
+
+
+def _split_analysis_style_table(
+    *,
+    rows: RawTable,
+    primary_table_type: str,
+) -> list[_AnalysisStyleSplit]:
+    """Split only proven primary + vertical/horizontal analysis tables."""
+
+    if not rows or not _analysis_subtotal_row_indexes(rows):
+        return []
+
+    markers: list[tuple[int, str]] = [(0, primary_table_type)]
+    vertical_seen = False
+    horizontal_seen = False
+    for row_index, row in enumerate(rows):
+        compact_text = _compact_text(_row_text(row))
+        if len(_years_in_row(row)) < 2:
+            continue
+
+        if "verticalanalysis" in compact_text and not vertical_seen:
+            markers.append((row_index, "vertical_analysis"))
+            vertical_seen = True
+        if "horizontalanalysis" in compact_text and not horizontal_seen:
+            markers.append((row_index, "horizontal_analysis"))
+            horizontal_seen = True
+
+    if not vertical_seen or not horizontal_seen:
+        return []
+
+    markers = _dedupe_markers(markers)
+    splits: list[_AnalysisStyleSplit] = []
+    for marker_index, (start_row, logical_type) in enumerate(markers):
+        end_row = (
+            markers[marker_index + 1][0] - 1
+            if marker_index + 1 < len(markers)
+            else len(rows) - 1
+        )
+        split_rows = rows[start_row : end_row + 1]
+        if not any(_row_text(row) for row in split_rows):
+            continue
+        splits.append(
+            _AnalysisStyleSplit(
+                rows=split_rows,
+                logical_type=logical_type,
+                split_reason=_ANALYSIS_SPLIT_REASON,
+            )
+        )
+    return splits if len(splits) >= 3 else []
+
+
+def _analysis_subtotal_row_indexes(rows: RawTable) -> list[int]:
+    """Return subtotal rows used as a confidence signal for analysis splitting."""
+
+    subtotal_phrases = (
+        "total assets",
+        "total equity",
+        "total equity and liabilities",
+        "total funds invested",
+        "gross profit",
+        "operating profit",
+        "profit before taxation",
+        "profit after taxation",
+        "total comprehensive income",
+    )
+    indexes: list[int] = []
+    for row_index, row in enumerate(rows):
+        normalized = _normalize_text(_row_text(row))
+        if any(_contains_phrase(normalized, phrase) for phrase in subtotal_phrases):
+            indexes.append(row_index)
+    return indexes
+
+
+def _years_in_row(row: Sequence[str]) -> list[int]:
+    """Return value years found in a row."""
+
+    years: list[int] = []
+    for cell in row:
+        for match in re.findall(r"\b(?:19|20)\d{2}\b", str(cell)):
+            years.append(int(match))
+    return years
+
+
+def _dedupe_markers(markers: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Deduplicate split markers by row while preserving first type."""
+
+    result: list[tuple[int, str]] = []
+    seen_rows: set[int] = set()
+    for row_index, logical_type in sorted(markers, key=lambda marker: marker[0]):
+        if row_index in seen_rows:
+            continue
+        seen_rows.add(row_index)
+        result.append((row_index, logical_type))
+    return result
+
+
+def _raw_table_provenance_for_index(
+    provenance: Sequence[_RawTableProvenance] | None,
+    index: int,
+) -> _RawTableProvenance:
+    """Return provenance for a prepared raw table index."""
+
+    if provenance is not None and index < len(provenance):
+        return provenance[index]
+    return _RawTableProvenance(source_table_index=index)
+
+
+def _row_text(row: Sequence[str]) -> str:
+    """Return non-empty row cells joined for boundary detection."""
+
+    return " ".join(str(cell).strip() for cell in row if str(cell).strip())
+
+
+def _compact_text(value: str) -> str:
+    """Return compact lower-case alphanumeric text for fragmented headings."""
+
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
+def _dedupe_preserve_order(values: Sequence[str]) -> list[str]:
+    """Return unique strings while preserving first occurrence order."""
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
 def _build_extraction_quality_report(
     tables: list[ExtractedTable],
 ) -> ExtractionQualityReport:
@@ -1683,6 +1996,21 @@ def _build_extraction_summary(
         unmatched_classifications=unmatched_classifications,
         unmatched_extractions=unmatched_extractions,
         page_diagnostics=page_diagnostics,
+        tables_split=sum(diagnostic.tables_split for diagnostic in page_diagnostics),
+        split_reasons=_dedupe_preserve_order(
+            [
+                diagnostic.split_reason
+                for diagnostic in page_diagnostics
+                if diagnostic.split_reason
+            ]
+        ),
+        logical_types_created=_dedupe_preserve_order(
+            [
+                table_type
+                for diagnostic in page_diagnostics
+                for table_type in diagnostic.logical_types_created
+            ]
+        ),
     )
 
 

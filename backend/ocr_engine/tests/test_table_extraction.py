@@ -124,6 +124,9 @@ def test_table_extraction_result_serializes_expected_output() -> None:
                 "page_number": 20,
                 "table_type": "balance_sheet",
                 "table_index": 0,
+                "source_table_index": 0,
+                "split_table_index": None,
+                "split_reason": None,
                 "rows": [
                     ["Cash", "1000"],
                     ["Inventory", "500"],
@@ -140,6 +143,9 @@ def test_table_extraction_result_serializes_expected_output() -> None:
             "unmatched_classifications": [],
             "unmatched_extractions": [],
             "page_diagnostics": [],
+            "tables_split": 0,
+            "split_reasons": [],
+            "logical_types_created": [],
             "quality_report": {
                 "tables_extracted": 0,
                 "tables_rejected": 0,
@@ -199,6 +205,9 @@ def test_extraction_summary_serializes_page_diagnostics() -> None:
         "numeric_only_table_count": 0,
         "unmatched_classifications": ["balance_sheet"],
         "unmatched_extractions": [],
+        "tables_split": 0,
+        "split_reason": None,
+        "logical_types_created": [],
     }
 
 

@@ -60,6 +60,12 @@ def _extraction_result(year: int, page_number: int) -> TableExtractionResult:
                 page_number=page_number,
                 table_type="income_statement",
                 table_index=0,
+                source_table_index=2,
+                split_table_index=1,
+                split_reason=(
+                    "analysis_section_markers_with_repeated_year_headers_and_"
+                    "subtotal_rows"
+                ),
                 rows=[
                     ["Metric", str(year), str(year - 1)],
                     ["Net Sales", "1200000", "1100000"],
@@ -109,6 +115,11 @@ def test_normalize_tables_preserves_year_on_tables_and_mappings() -> None:
     result = service.normalize_tables(_extraction_result(year=2024, page_number=20))
 
     assert result.tables[0].source_report_year == 2024
+    assert result.tables[0].source_table_index == 2
+    assert result.tables[0].split_table_index == 1
+    assert result.tables[0].split_reason == (
+        "analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"
+    )
     assert result.tables[0].rows == [
         ["Metric", "2024", "2023"],
         ["revenue", "1200000", "1100000"],

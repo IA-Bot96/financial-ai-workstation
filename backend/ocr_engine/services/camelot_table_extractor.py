@@ -216,6 +216,20 @@ class _HeaderInheritedLabel:
         return self.inherited_label != self.original_label
 
 
+@dataclass(frozen=True)
+class _ParsedMetricValue:
+    """Parsed metric value plus numeric-correctness repair diagnostics."""
+
+    column_index: int
+    value_year: int
+    value: float | int
+    source: str = "direct"
+    scale_exempt: bool = False
+    scale_correction_applied: bool = False
+    negative_recovered: bool = False
+    shifted_row_repaired: bool = False
+
+
 class CamelotTableExtractor(ITableExtractor):
     """Extract raw table rows from classified PDF pages.
 
@@ -1099,22 +1113,19 @@ class CamelotTableExtractor(ITableExtractor):
             )
             metric = header_inherited_label.inherited_label
 
-            for column_index, value_year in year_columns.items():
-                if column_index >= len(row) or column_index == label_index:
-                    continue
-
-                value = self._parse_metric_value(
-                    row[column_index],
-                    default_scale_multiplier=scale_multiplier,
-                )
-                if value is None:
-                    continue
-
+            parsed_values = _parsed_metric_values_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                metric_label=metric,
+                scale_multiplier=scale_multiplier,
+            )
+            for parsed_value in parsed_values:
                 metric_values.append(
                     MetricValue(
                         metric=metric,
-                        value_year=value_year,
-                        value=value,
+                        value_year=parsed_value.value_year,
+                        value=parsed_value.value,
                         source_report_year=source_report_year,
                         page_number=page_number,
                         table_type=table_type,
@@ -1191,9 +1202,15 @@ class CamelotTableExtractor(ITableExtractor):
         for row_index, row in enumerate(rows):
             year_columns: dict[int, int] = {}
             for column_index, cell in enumerate(row):
-                match = re.fullmatch(r"(?:19|20)\d{2}", str(cell).strip())
+                text = str(cell).strip()
+                match = re.fullmatch(r"(?:19|20)\d{2}", text)
                 if match is not None:
                     year_columns[column_index] = int(match.group(0))
+                    continue
+                year_matches = re.findall(r"\b(?:19|20)\d{2}\b", text)
+                if len(year_matches) > 1 and not year_columns:
+                    for offset, year in enumerate(year_matches):
+                        year_columns[column_index + offset] = int(year)
 
             if len(year_columns) > len(best_match):
                 best_row_index = row_index
@@ -1376,6 +1393,9 @@ class CamelotTableExtractor(ITableExtractor):
         multiplier = cell_scale_multiplier or default_scale_multiplier
         cleaned = text.replace("\u2212", "-").replace(",", "")
         cleaned = cls._remove_allowed_financial_tokens(cleaned)
+        cleaned = _normalize_accounting_negative_noise(cleaned)
+        if ")" in cleaned and "(" not in cleaned:
+            return None
         if re.search(r"[A-Za-z]", cleaned):
             return None
 
@@ -3078,6 +3098,7 @@ def _build_extraction_quality_report(
         tables,
     )
     header_inheritance_diagnostics = _header_inheritance_diagnostics(tables)
+    numeric_correctness_diagnostics = _numeric_correctness_diagnostics(tables)
     top_suspicious_tables = sorted(
         table_findings,
         key=lambda finding: (
@@ -3148,6 +3169,17 @@ def _build_extraction_quality_report(
             diagnostic.metric_values_affected
             for diagnostic in header_inheritance_diagnostics
         ),
+        scale_exempt_values=numeric_correctness_diagnostics["scale_exempt_values"],
+        scale_corrections_applied=numeric_correctness_diagnostics[
+            "scale_corrections_applied"
+        ],
+        negative_values_recovered=numeric_correctness_diagnostics[
+            "negative_values_recovered"
+        ],
+        shifted_rows_repaired=numeric_correctness_diagnostics[
+            "shifted_rows_repaired"
+        ],
+        values_recovered=numeric_correctness_diagnostics["values_recovered"],
         confidence_distribution=confidence_distribution,
         top_suspicious_tables=top_suspicious_tables,
         top_suspicious_metrics=top_suspicious_metrics,
@@ -3727,28 +3759,464 @@ def _header_inheritance_diagnostics(
     return diagnostics
 
 
+def _numeric_correctness_diagnostics(
+    tables: list[ExtractedTable],
+) -> dict[str, int]:
+    """Return counts for numeric-correctness repairs applied during parsing."""
+
+    scale_exempt_values = 0
+    scale_corrections_applied = 0
+    negative_values_recovered = 0
+    shifted_rows_repaired = 0
+    values_recovered = 0
+
+    for table in tables:
+        _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+        if not year_columns:
+            continue
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        for row in table.rows:
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+            metric_label = _final_metric_label_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            if _note_row_filtering_reason(metric_label) is not None:
+                continue
+            parsed_values = _parsed_metric_values_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                metric_label=metric_label,
+                scale_multiplier=scale_multiplier,
+            )
+            if any(value.shifted_row_repaired for value in parsed_values):
+                shifted_rows_repaired += 1
+            for parsed_value in parsed_values:
+                if parsed_value.scale_exempt:
+                    scale_exempt_values += 1
+                if parsed_value.scale_correction_applied:
+                    scale_corrections_applied += 1
+                if parsed_value.negative_recovered:
+                    negative_values_recovered += 1
+                if parsed_value.shifted_row_repaired:
+                    values_recovered += 1
+
+    return {
+        "scale_exempt_values": scale_exempt_values,
+        "scale_corrections_applied": scale_corrections_applied,
+        "negative_values_recovered": negative_values_recovered,
+        "shifted_rows_repaired": shifted_rows_repaired,
+        "values_recovered": values_recovered,
+    }
+
+
+def _final_metric_label_for_row(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+) -> str:
+    """Return the reconstructed/deglued/completed label for numeric diagnostics."""
+
+    reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+    )
+    deglued = _deglue_label_text(reconstructed.reconstructed_label)
+    return _cleanup_fragmented_label(
+        deglued.deglued_label,
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+    ).completed_label
+
+
 def _metric_value_count_for_row(
     *,
     row: Sequence[str],
     label_index: int,
     year_columns: dict[int, int],
     scale_multiplier: int,
+    metric_label: str | None = None,
 ) -> int:
     """Return how many MetricValues a row can emit."""
 
-    count = 0
-    for column_index in year_columns:
+    return len(
+        _parsed_metric_values_for_row(
+            row=row,
+            label_index=label_index,
+            year_columns=year_columns,
+            metric_label=metric_label or str(row[label_index]).strip(),
+            scale_multiplier=scale_multiplier,
+        )
+    )
+
+
+def _parsed_metric_values_for_row(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    metric_label: str,
+    scale_multiplier: int,
+) -> list[_ParsedMetricValue]:
+    """Parse MetricValues from a row with conservative numeric repair."""
+
+    if not year_columns:
+        return []
+
+    direct_values = _direct_year_column_values(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+        metric_label=metric_label,
+        scale_multiplier=scale_multiplier,
+    )
+    if len(direct_values) == len(year_columns):
+        return direct_values
+
+    shifted_values = _shifted_row_values(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+        metric_label=metric_label,
+        scale_multiplier=scale_multiplier,
+    )
+    if shifted_values:
+        return shifted_values
+
+    if not direct_values:
+        merged_values = _merged_numeric_cell_values(
+            row=row,
+            label_index=label_index,
+            year_columns=year_columns,
+            metric_label=metric_label,
+            scale_multiplier=scale_multiplier,
+        )
+        if merged_values:
+            return merged_values
+
+    return direct_values
+
+
+def _direct_year_column_values(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    metric_label: str,
+    scale_multiplier: int,
+) -> list[_ParsedMetricValue]:
+    """Parse values located directly below detected year columns."""
+
+    values: list[_ParsedMetricValue] = []
+    for column_index, value_year in year_columns.items():
         if column_index >= len(row) or column_index == label_index:
             continue
-        if (
-            CamelotTableExtractor._parse_metric_value(
-                row[column_index],
-                default_scale_multiplier=scale_multiplier,
+        parsed = _parse_row_cell_value(
+            row=row,
+            column_index=column_index,
+            metric_label=metric_label,
+            scale_multiplier=scale_multiplier,
+        )
+        if parsed is None:
+            continue
+        values.append(
+            _ParsedMetricValue(
+                column_index=column_index,
+                value_year=value_year,
+                value=parsed["value"],
+                source=parsed["source"],
+                scale_exempt=parsed["scale_exempt"],
+                scale_correction_applied=parsed["scale_correction_applied"],
+                negative_recovered=parsed["negative_recovered"],
             )
-            is not None
-        ):
-            count += 1
-    return count
+        )
+    return values
+
+
+def _shifted_row_values(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    metric_label: str,
+    scale_multiplier: int,
+) -> list[_ParsedMetricValue]:
+    """Recover values shifted by a consistent small column offset."""
+
+    numeric_candidates: list[tuple[int, dict[str, Any]]] = []
+    for column_index in range(label_index + 1, len(row)):
+        if column_index == label_index:
+            continue
+        if _is_non_value_alignment_cell(row[column_index]):
+            continue
+        parsed = _parse_row_cell_value(
+            row=row,
+            column_index=column_index,
+            metric_label=metric_label,
+            scale_multiplier=scale_multiplier,
+        )
+        if parsed is None:
+            continue
+        numeric_candidates.append((column_index, parsed))
+
+    year_items = sorted(year_columns.items())
+    if len(numeric_candidates) != len(year_items) or not numeric_candidates:
+        return []
+
+    candidate_columns = [column for column, _ in numeric_candidates]
+    year_columns_sorted = [column for column, _ in year_items]
+    if candidate_columns == year_columns_sorted:
+        return []
+
+    offsets = {
+        candidate_column - year_column
+        for candidate_column, year_column in zip(
+            candidate_columns,
+            year_columns_sorted,
+        )
+    }
+    if len(offsets) != 1:
+        return []
+    offset = offsets.pop()
+    if offset == 0 or abs(offset) > 2:
+        return []
+
+    return [
+        _ParsedMetricValue(
+            column_index=column_index,
+            value_year=value_year,
+            value=parsed["value"],
+            source="shifted_row_repair",
+            scale_exempt=parsed["scale_exempt"],
+            scale_correction_applied=parsed["scale_correction_applied"],
+            negative_recovered=parsed["negative_recovered"],
+            shifted_row_repaired=True,
+        )
+        for (column_index, parsed), (_, value_year) in zip(
+            numeric_candidates,
+            year_items,
+        )
+    ]
+
+
+def _merged_numeric_cell_values(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    metric_label: str,
+    scale_multiplier: int,
+) -> list[_ParsedMetricValue]:
+    """Split a single merged numeric cell only when it maps cleanly to years."""
+
+    year_items = sorted(year_columns.items())
+    for column_index in range(label_index + 1, len(row)):
+        cell = str(row[column_index]).strip()
+        if not cell or re.search(r"[A-Za-z]", cell):
+            continue
+        tokens = re.findall(r"\(?\s*[+-]?\d[\d,]*(?:\.\d+)?\s*\)?%?", cell)
+        if len(tokens) != len(year_items) or len(tokens) <= 1:
+            continue
+        parsed_tokens: list[dict[str, Any]] = []
+        for token in tokens:
+            parsed = _parse_cell_value_for_metric(
+                token,
+                metric_label=metric_label,
+                scale_multiplier=scale_multiplier,
+            )
+            if parsed is None:
+                break
+            parsed_tokens.append(parsed)
+        if len(parsed_tokens) != len(year_items):
+            continue
+        return [
+            _ParsedMetricValue(
+                column_index=column_index,
+                value_year=value_year,
+                value=parsed["value"],
+                source="merged_numeric_cell_split",
+                scale_exempt=parsed["scale_exempt"],
+                scale_correction_applied=parsed["scale_correction_applied"],
+                negative_recovered=parsed["negative_recovered"],
+                shifted_row_repaired=True,
+            )
+            for (_, value_year), parsed in zip(year_items, parsed_tokens)
+        ]
+    return []
+
+
+def _parse_row_cell_value(
+    *,
+    row: Sequence[str],
+    column_index: int,
+    metric_label: str,
+    scale_multiplier: int,
+) -> dict[str, Any] | None:
+    """Parse a cell, repairing split accounting negatives when safe."""
+
+    cell = str(row[column_index]).strip()
+    parsed = _parse_cell_value_for_metric(
+        cell,
+        metric_label=metric_label,
+        scale_multiplier=scale_multiplier,
+    )
+    if parsed is not None:
+        if _has_accounting_negative_noise(cell) and parsed["value"] < 0:
+            parsed = {**parsed, "source": "reconstructed_negative", "negative_recovered": True}
+        return parsed
+
+    previous_cells = [
+        str(row[index]).strip()
+        for index in range(max(0, column_index - 2), column_index)
+    ]
+    if not _has_split_open_parenthesis(previous_cells):
+        return None
+
+    reconstructed_cell = f"({cell}"
+    parsed = _parse_cell_value_for_metric(
+        reconstructed_cell,
+        metric_label=metric_label,
+        scale_multiplier=scale_multiplier,
+    )
+    if parsed is None or parsed["value"] >= 0:
+        return None
+    return {
+        **parsed,
+        "source": "reconstructed_negative",
+        "negative_recovered": True,
+    }
+
+
+def _parse_cell_value_for_metric(
+    cell: str,
+    *,
+    metric_label: str,
+    scale_multiplier: int,
+) -> dict[str, Any] | None:
+    """Parse one cell using table scale only for currency-like metrics."""
+
+    effective_scale, scale_exempt, scale_correction = _effective_scale_multiplier(
+        metric_label=metric_label,
+        cell_text=cell,
+        table_scale_multiplier=scale_multiplier,
+    )
+    value = CamelotTableExtractor._parse_metric_value(
+        cell,
+        default_scale_multiplier=effective_scale,
+    )
+    if value is None:
+        return None
+    return {
+        "value": value,
+        "source": "direct",
+        "scale_exempt": scale_exempt,
+        "scale_correction_applied": scale_correction,
+        "negative_recovered": False,
+    }
+
+
+def _effective_scale_multiplier(
+    *,
+    metric_label: str,
+    cell_text: str,
+    table_scale_multiplier: int,
+) -> tuple[int, bool, bool]:
+    """Return the default scale multiplier for a metric value cell."""
+
+    if table_scale_multiplier <= 1:
+        return table_scale_multiplier, False, False
+    if not _metric_exempts_table_scale(metric_label, cell_text):
+        return table_scale_multiplier, False, False
+    cell_scale = CamelotTableExtractor._cell_scale_multiplier(cell_text)
+    if cell_scale is not None:
+        return 1, True, False
+    return 1, True, True
+
+
+def _metric_exempts_table_scale(metric_label: str, cell_text: str) -> bool:
+    """Return whether table currency scaling must not apply to this metric."""
+
+    text = f"{metric_label} {cell_text}".lower()
+    patterns = [
+        r"%",
+        r"\bpercent(?:age)?\b",
+        r"\bmargin\b",
+        r"\brate\b",
+        r"\byield\b",
+        r"\beps\b",
+        r"\bearnings?\s+per\s+share\b",
+        r"\bper\s+share\b",
+        r"\bratio\b",
+        r"\btimes\b",
+        r"\bdays\b",
+        r"\bcoverage\b",
+        r"\bhead\s*count\b",
+        r"\bnumber\s+of\b",
+        r"\bpersons?\b",
+        r"\bemployees?\b",
+        r"\bworkers?\b",
+        r"\bstaff\b",
+        r"\bnumber\s+of\s+shares?\b",
+        r"\bordinary\s+shares?\b",
+        r"\bweighted\s+average\s+shares?\b",
+        r"\bshares?\s+outstanding\b",
+        r"\bplant availability\b",
+        r"\bcapacity utilization\b",
+    ]
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def _has_accounting_negative_noise(cell: str) -> bool:
+    """Return whether OCR noise inside parentheses needed normalization."""
+
+    text = str(cell).strip()
+    return bool(
+        text.startswith("(")
+        and ")" in text
+        and re.search(r"\(\s*[|Il]\s*(?=[+-]?\d)", text.replace(",", ""))
+    )
+
+
+def _normalize_accounting_negative_noise(text: str) -> str:
+    """Normalize OCR artifacts inside accounting-negative parentheses."""
+
+    normalized = text.replace("|", " ")
+    normalized = re.sub(r"\(\s*[Il]\s*(?=[+-]?\d)", "(", normalized)
+    return normalized
+
+
+def _has_split_open_parenthesis(cells: Sequence[str]) -> bool:
+    """Return whether adjacent cells carry a split accounting-negative opener."""
+
+    return any(
+        bool(cell)
+        and "(" in cell
+        and ")" not in cell
+        and not re.search(r"\d", cell)
+        for cell in cells
+    )
+
+
+def _is_non_value_alignment_cell(cell: str) -> bool:
+    """Return whether a cell should be ignored during alignment repair."""
+
+    text = str(cell).strip()
+    if not text:
+        return True
+    if CamelotTableExtractor._is_year_cell(text):
+        return True
+    if CamelotTableExtractor._is_note_number_cell(text):
+        return True
+    if CamelotTableExtractor._is_rating_cell(text):
+        return True
+    return False
 
 
 def _metric_quality_findings(

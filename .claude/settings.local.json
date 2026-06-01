@@ -6,7 +6,9 @@
       "Bash(python -c \"import pydantic; print\\(pydantic.VERSION\\)\")",
       "Bash(xargs wc -l)",
       "Bash(python -m pytest workbook_population/tests/test_template_structure_validator.py -q)",
-      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")"
+      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c *)"
     ]
   }
 }

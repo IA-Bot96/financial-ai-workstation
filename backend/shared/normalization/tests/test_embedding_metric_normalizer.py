@@ -199,6 +199,9 @@ def test_normalizer_rejects_empty_metric_names() -> None:
             "Investment Valuation Ratios - Market Value Per Share as on 30th June rupees",
             "market_value_per_share",
         ),
+        ("Total Net Sales", "revenue"),
+        ("Reported Net Sales", "revenue"),
+        ("Net Sales Amount", "revenue"),
         (
             "Employee Productivity Ratios - Revenue per Employee rupees in MN",
             "revenue_per_employee",

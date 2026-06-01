@@ -185,6 +185,32 @@ def test_consolidator_prefers_higher_normalization_confidence_for_lucky_duplicat
     )
 
 
+def test_consolidator_quality_overrides_newer_report_when_confidence_is_lower(
+) -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value("revenue", 2024, 1500, 2024, page_number=20),
+            _metric_value("revenue", 2024, 9999, 2025, page_number=220),
+        ],
+        mappings=[
+            _mapping("Revenue", "revenue", 2024, 2024, 0.98),
+            _mapping("Reven ue", "revenue", 2024, 2025, 0.61, requires_review=True),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert len(consolidated) == 1
+    assert consolidated[0].value == 1500
+    assert consolidated[0].source_report_year == 2024
+    assert consolidator.last_diagnostics.quality_overrode_recency == 1
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "higher_normalization_confidence"
+    )
+
+
 def test_consolidator_prefers_cleaner_reconstructed_label_for_lucky_conflict(
 ) -> None:
     result = NormalizationResult(

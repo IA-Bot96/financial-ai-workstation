@@ -838,6 +838,42 @@ class ExtractionQualityReport(BaseModel):
         description="Number of MetricValues receiving inherited header context.",
         examples=[36],
     )
+    scale_exempt_values: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of MetricValues where table-level currency scaling was "
+            "intentionally suppressed for non-currency units."
+        ),
+        examples=[12],
+    )
+    scale_corrections_applied: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of MetricValues whose numeric value would have been "
+            "corrupted by table-level currency scaling."
+        ),
+        examples=[12],
+    )
+    negative_values_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="Number of OCR-split accounting negatives recovered.",
+        examples=[4],
+    )
+    shifted_rows_repaired: int = Field(
+        default=0,
+        ge=0,
+        description="Number of rows whose values were conservatively realigned.",
+        examples=[3],
+    )
+    values_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues recovered by row-alignment repair.",
+        examples=[6],
+    )
     confidence_distribution: dict[str, int] = Field(
         default_factory=dict,
         description="Distribution of table quality scores by score bucket.",

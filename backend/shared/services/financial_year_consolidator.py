@@ -49,6 +49,7 @@ class ConsolidationDiagnostics:
     duplicate_groups_resolved: int = 0
     conflict_groups_resolved: int = 0
     unresolved_conflict_groups: int = 0
+    quality_overrode_recency: int = 0
     metric_values_removed: int = 0
     review_mappings_reduced: int = 0
     groups: list[_ConsolidationGroupDiagnostic] = field(default_factory=list)
@@ -63,9 +64,9 @@ class FinancialYearConsolidator:
     """Select the best available metric value for each metric/value year.
 
     Annual reports include comparative historical values. For any
-    ``(metric, value_year)`` pair, the latest available ``source_report_year``
-    is treated as the source of truth because it may contain restatements,
-    corrections, reclassifications, or audited comparative values.
+    ``(metric, value_year)`` pair, candidate quality is evaluated before
+    report recency. Newer reports are preferred only after normalization
+    confidence, label quality, source context, and table-source quality tie.
     """
 
     def __init__(self) -> None:
@@ -211,15 +212,15 @@ class FinancialYearConsolidator:
         existing_value = existing.metric_value
         candidate_value = candidate.metric_value
 
-        if candidate_value.source_report_year > existing_value.source_report_year:
-            return True
-        if candidate_value.source_report_year < existing_value.source_report_year:
-            return False
-
         candidate_key = _candidate_quality_key(candidate)
         existing_key = _candidate_quality_key(existing)
         if candidate_key != existing_key:
             return candidate_key > existing_key
+
+        if candidate_value.source_report_year > existing_value.source_report_year:
+            return True
+        if candidate_value.source_report_year < existing_value.source_report_year:
+            return False
 
         return _tie_break_key(candidate.metric_value) < _tie_break_key(
             existing.metric_value
@@ -305,7 +306,7 @@ def _mapping_original_metric(
 
 def _candidate_quality_key(
     candidate: _MetricValueCandidate,
-) -> tuple[float, int, int, int, int]:
+) -> tuple[float, int, int, int]:
     """Return quality rank for same-report duplicate/conflict resolution."""
 
     metric_value = candidate.metric_value
@@ -314,7 +315,6 @@ def _candidate_quality_key(
         _label_cleanliness_score(candidate.original_metric),
         _source_context_score(candidate),
         _table_type_priority(metric_value.table_type),
-        -metric_value.page_number,
     )
 
 
@@ -469,6 +469,22 @@ def _build_consolidation_diagnostics(
         unresolved_conflict_groups=sum(
             1 for diagnostic in group_diagnostics if diagnostic.unresolved_conflict
         ),
+        quality_overrode_recency=sum(
+            1
+            for diagnostic in group_diagnostics
+            if diagnostic.resolution_reason
+            in {
+                "higher_normalization_confidence",
+                "cleaner_reconstructed_label",
+                "more_complete_source_context",
+                "preferred_financial_statement_source",
+            }
+            and any(
+                removed_candidate.get("source_report_year", 0)
+                > diagnostic.selected.get("source_report_year", 0)
+                for removed_candidate in diagnostic.removed
+            )
+        ),
         metric_values_removed=metric_values_removed,
         review_mappings_reduced=review_mappings_reduced,
         groups=sorted(
@@ -516,11 +532,6 @@ def _resolution_reason(
 
     selected_value = selected_candidate.metric_value
     if any(
-        candidate.metric_value.source_report_year < selected_value.source_report_year
-        for candidate in candidates
-    ):
-        return "latest_source_report_year"
-    if any(
         candidate.source_confidence < selected_candidate.source_confidence
         for candidate in candidates
     ):
@@ -544,6 +555,11 @@ def _resolution_reason(
         for candidate in candidates
     ):
         return "preferred_financial_statement_source"
+    if any(
+        candidate.metric_value.source_report_year < selected_value.source_report_year
+        for candidate in candidates
+    ):
+        return "latest_source_report_year"
     return "stable_tie_break"
 
 

@@ -9,7 +9,10 @@
       "revenue",
       "total revenue",
       "turnover - net",
-      "net revenue"
+      "net revenue",
+      "total net sales",
+      "reported net sales",
+      "net sales amount"
     ],
     "category": "income_statement"
   },

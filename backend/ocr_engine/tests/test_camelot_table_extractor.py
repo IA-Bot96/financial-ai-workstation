@@ -844,6 +844,58 @@ def test_extract_tables_applies_financial_scale_conversion() -> None:
     ]
 
 
+def test_extract_tables_does_not_scale_non_currency_unit_rows() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["PKR in '000"],
+                    ["Metric", "2025", "2024"],
+                    ["Revenue", "1.5", "1.2"],
+                    ["Earnings per share", "24.50", "20.10"],
+                    ["Gross margin %", "34.5%", "35.0%"],
+                    ["Cash flow coverage ratio times", "2.5", "2.2"],
+                    ["Number of employees", "120", "115"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=164,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Revenue", 2025, 1500),
+        ("Revenue", 2024, 1200),
+        ("Earnings per share", 2025, 24.5),
+        ("Earnings per share", 2024, 20.1),
+        ("Gross margin %", 2025, 34.5),
+        ("Gross margin %", 2024, 35),
+        ("Cash flow coverage ratio times", 2025, 2.5),
+        ("Cash flow coverage ratio times", 2024, 2.2),
+        ("Number of employees", 2025, 120),
+        ("Number of employees", 2024, 115),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.scale_exempt_values == 8
+    assert quality_report.scale_corrections_applied == 8
+
+
 def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [
@@ -880,6 +932,86 @@ def test_extract_tables_parses_accounting_negatives_only_when_numeric() -> None:
         ("Profit", -1250),
         ("Expense", -25),
     ]
+
+
+def test_extract_tables_recovers_ocr_split_accounting_negatives() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "", "2025", "2024"],
+                    ["Loss before tax", "", "( | 24,849,793)", "(I1,250)"],
+                    ["Exchange loss", "(", "24,849,793)", "( 2,500)"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=225,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Loss before tax", 2025, -24849793),
+        ("Loss before tax", 2024, -1250),
+        ("Exchange loss", 2025, -24849793),
+        ("Exchange loss", 2024, -2500),
+    ]
+    assert result.extraction_summary.quality_report.negative_values_recovered == 3
+
+
+def test_extract_tables_repairs_consistently_shifted_numeric_rows() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "", "2025", "2024"],
+                    ["Cash and bank balances", "1,000", "800", ""],
+                    ["Inventory", "500", "450", ""],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=225,
+                    table_types=["balance_sheet"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Cash and bank balances", 2025, 1000),
+        ("Cash and bank balances", 2024, 800),
+        ("Inventory", 2025, 500),
+        ("Inventory", 2024, 450),
+    ]
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.shifted_rows_repaired == 2
+    assert quality_report.values_recovered == 4
 
 
 def test_extract_tables_logs_type_count_mismatch_and_preserves_extra_tables(

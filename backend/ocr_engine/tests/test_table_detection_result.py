@@ -12,9 +12,58 @@ if str(BACKEND_DIR) not in sys.path:
 
 from ocr_engine.models.table_detection_result import (
     DetectedPage,
+    DetectedTable,
     FailedPage,
     TableDetectionResult,
 )
+
+
+def test_detected_table_accepts_identity_metadata() -> None:
+    detected_table = DetectedTable(
+        year=2024,
+        page_number=20,
+        detected_table_id="2024:20:0",
+        page_table_index=0,
+        bbox=[72.0, 144.0, 540.0, 320.0],
+        detection_confidence=0.97,
+        label="table",
+    )
+
+    assert detected_table.detected_table_id == "2024:20:0"
+    assert detected_table.page_table_index == 0
+    assert detected_table.bbox == [72.0, 144.0, 540.0, 320.0]
+    assert detected_table.detection_confidence == 0.97
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value", "error_type"),
+    [
+        ("page_number", 0, "greater_than"),
+        ("page_table_index", -1, "greater_than_equal"),
+        ("detected_table_id", "", "string_too_short"),
+        ("bbox", [72.0, 144.0, 540.0], "too_short"),
+        ("detection_confidence", 1.1, "less_than_equal"),
+    ],
+)
+def test_detected_table_requires_valid_identity_metadata(
+    field_name: str,
+    value: object,
+    error_type: str,
+) -> None:
+    payload = {
+        "year": 2024,
+        "page_number": 20,
+        "detected_table_id": "2024:20:0",
+        "page_table_index": 0,
+        "bbox": [72.0, 144.0, 540.0, 320.0],
+        "detection_confidence": 0.97,
+    }
+    payload[field_name] = value
+
+    with pytest.raises(ValidationError) as exc_info:
+        DetectedTable(**payload)
+
+    assert exc_info.value.errors()[0]["type"] == error_type
 
 
 def test_detected_page_accepts_valid_payload() -> None:
@@ -22,11 +71,20 @@ def test_detected_page_accepts_valid_payload() -> None:
         year=2024,
         page_number=20,
         tables_detected=3,
+        detected_tables=[
+            DetectedTable(
+                year=2024,
+                page_number=20,
+                detected_table_id="2024:20:0",
+                page_table_index=0,
+            )
+        ],
     )
 
     assert detected_page.year == 2024
     assert detected_page.page_number == 20
     assert detected_page.tables_detected == 3
+    assert detected_page.detected_tables[0].detected_table_id == "2024:20:0"
 
 
 @pytest.mark.parametrize(
@@ -180,16 +238,19 @@ def test_table_detection_result_serializes_to_expected_output() -> None:
                 "year": 2024,
                 "page_number": 20,
                 "tables_detected": 3,
+                "detected_tables": [],
             },
             {
                 "year": 2024,
                 "page_number": 25,
                 "tables_detected": 1,
+                "detected_tables": [],
             },
             {
                 "year": 2024,
                 "page_number": 42,
                 "tables_detected": 2,
+                "detected_tables": [],
             },
         ],
         "failed_pages": [],

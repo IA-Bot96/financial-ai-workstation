@@ -22,6 +22,7 @@ from ocr_engine.exceptions.openai_exceptions import (
     OpenAIResponseValidationError,
 )
 from ocr_engine.models.financial_table_classification import (
+    ClassifiedTable,
     FinancialTableClassificationResult,
     PageTableType,
     TableType,
@@ -229,6 +230,10 @@ class OpenAITableClassifier(ITableClassifier):
                             year=detected_page.year,
                             page_number=page_number,
                             table_types=table_types,
+                            classified_tables=_classified_tables_for_page(
+                                detected_page=detected_page,
+                                table_types=table_types,
+                            ),
                         )
                     )
                 except Exception as exc:
@@ -455,3 +460,34 @@ def _error_message(exc: Exception) -> str:
     """Return a non-empty error message for page failure metadata."""
 
     return str(exc) or exc.__class__.__name__
+
+
+def _classified_tables_for_page(
+    *,
+    detected_page: Any,
+    table_types: list[str],
+) -> list[ClassifiedTable]:
+    """Attach detected table identities to page-level table classifications."""
+
+    detected_tables = list(getattr(detected_page, "detected_tables", []) or [])
+    classified_tables: list[ClassifiedTable] = []
+    for index, table_type in enumerate(table_types):
+        detected_table = detected_tables[index] if index < len(detected_tables) else None
+        classified_tables.append(
+            ClassifiedTable(
+                year=detected_page.year,
+                page_number=detected_page.page_number,
+                table_type=table_type,
+                detected_table_id=(
+                    detected_table.detected_table_id if detected_table else None
+                ),
+                page_table_index=(
+                    detected_table.page_table_index if detected_table else index
+                ),
+                bbox=detected_table.bbox if detected_table else None,
+                detection_confidence=(
+                    detected_table.detection_confidence if detected_table else None
+                ),
+            )
+        )
+    return classified_tables

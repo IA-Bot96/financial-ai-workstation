@@ -11,6 +11,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ocr_engine.models.financial_table_classification import (
+    ClassifiedTable,
     FinancialTableClassificationResult,
     PageTableType,
 )
@@ -22,10 +23,42 @@ def test_page_table_type_accepts_valid_payload() -> None:
         year=2024,
         page_number=20,
         table_types=["balance_sheet", "debt_schedule"],
+        classified_tables=[
+            ClassifiedTable(
+                year=2024,
+                page_number=20,
+                table_type="balance_sheet",
+                detected_table_id="2024:20:0",
+                page_table_index=0,
+                bbox=[72.0, 144.0, 540.0, 320.0],
+                detection_confidence=0.97,
+            )
+        ],
     )
 
     assert page_table_type.page_number == 20
     assert page_table_type.table_types == ["balance_sheet", "debt_schedule"]
+    assert page_table_type.classified_tables[0].detected_table_id == "2024:20:0"
+
+
+def test_page_table_type_backfills_legacy_classified_tables_without_identity() -> None:
+    page_table_type = PageTableType(
+        year=2024,
+        page_number=20,
+        table_types=["balance_sheet", "debt_schedule"],
+    )
+
+    assert [
+        (
+            classified_table.table_type,
+            classified_table.detected_table_id,
+            classified_table.page_table_index,
+        )
+        for classified_table in page_table_type.classified_tables
+    ] == [
+        ("balance_sheet", None, None),
+        ("debt_schedule", None, None),
+    ]
 
 
 def test_page_table_type_accepts_unknown_table_types() -> None:
@@ -94,11 +127,42 @@ def test_financial_table_classification_result_serializes_expected_output() -> N
                 "year": 2024,
                 "page_number": 20,
                 "table_types": ["balance_sheet", "debt_schedule"],
+                "classified_tables": [
+                    {
+                        "year": 2024,
+                        "page_number": 20,
+                        "table_type": "balance_sheet",
+                        "detected_table_id": None,
+                        "page_table_index": None,
+                        "bbox": None,
+                        "detection_confidence": None,
+                    },
+                    {
+                        "year": 2024,
+                        "page_number": 20,
+                        "table_type": "debt_schedule",
+                        "detected_table_id": None,
+                        "page_table_index": None,
+                        "bbox": None,
+                        "detection_confidence": None,
+                    },
+                ],
             },
             {
                 "year": 2024,
                 "page_number": 25,
                 "table_types": ["income_statement"],
+                "classified_tables": [
+                    {
+                        "year": 2024,
+                        "page_number": 25,
+                        "table_type": "income_statement",
+                        "detected_table_id": None,
+                        "page_table_index": None,
+                        "bbox": None,
+                        "detection_confidence": None,
+                    }
+                ],
             },
         ],
         "failed_pages": [],

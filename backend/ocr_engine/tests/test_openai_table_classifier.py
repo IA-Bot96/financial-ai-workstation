@@ -17,7 +17,11 @@ from ocr_engine.exceptions.openai_exceptions import (
 from ocr_engine.models.financial_table_classification import (
     FinancialTableClassificationResult,
 )
-from ocr_engine.models.table_detection_result import DetectedPage, TableDetectionResult
+from ocr_engine.models.table_detection_result import (
+    DetectedPage,
+    DetectedTable,
+    TableDetectionResult,
+)
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.interfaces.table_classifier import ITableClassifier
 from ocr_engine.services.openai_table_classifier import OpenAITableClassifier
@@ -84,11 +88,55 @@ class FakeOpenAIClient:
 def _detection_result() -> TableDetectionResult:
     return TableDetectionResult(
         detected_pages=[
-            DetectedPage(year=2024, page_number=20, tables_detected=2),
-            DetectedPage(year=2024, page_number=25, tables_detected=1),
+            DetectedPage(
+                year=2024,
+                page_number=20,
+                tables_detected=2,
+                detected_tables=[
+                    DetectedTable(
+                        year=2024,
+                        page_number=20,
+                        detected_table_id="2024:20:0",
+                        page_table_index=0,
+                        bbox=[72.0, 144.0, 540.0, 320.0],
+                        detection_confidence=0.97,
+                    ),
+                    DetectedTable(
+                        year=2024,
+                        page_number=20,
+                        detected_table_id="2024:20:1",
+                        page_table_index=1,
+                        bbox=[72.0, 340.0, 540.0, 460.0],
+                        detection_confidence=0.94,
+                    ),
+                ],
+            ),
+            DetectedPage(
+                year=2024,
+                page_number=25,
+                tables_detected=1,
+                detected_tables=[
+                    DetectedTable(
+                        year=2024,
+                        page_number=25,
+                        detected_table_id="2024:25:0",
+                        page_table_index=0,
+                        bbox=[72.0, 144.0, 540.0, 320.0],
+                        detection_confidence=0.96,
+                    )
+                ],
+            ),
         ],
         failed_pages=[],
         total_pages_processed=132,
+    )
+
+
+def _legacy_classification_payload(
+    result: FinancialTableClassificationResult,
+) -> dict[str, object]:
+    return result.model_dump(
+        exclude={"page_table_types": {"__all__": {"classified_tables"}}}
     )
 
 
@@ -136,7 +184,7 @@ def test_classify_tables_uses_structured_outputs_and_returns_page_types() -> Non
     )
 
     assert isinstance(result, FinancialTableClassificationResult)
-    assert result.model_dump() == {
+    assert _legacy_classification_payload(result) == {
         "page_table_types": [
             {
                 "year": 2024,
@@ -151,6 +199,31 @@ def test_classify_tables_uses_structured_outputs_and_returns_page_types() -> Non
         ],
         "failed_pages": [],
     }
+    assert [
+        (
+            classified_table.table_type,
+            classified_table.detected_table_id,
+            classified_table.page_table_index,
+            classified_table.bbox,
+            classified_table.detection_confidence,
+        )
+        for classified_table in result.page_table_types[0].classified_tables
+    ] == [
+        (
+            "balance_sheet",
+            "2024:20:0",
+            0,
+            [72.0, 144.0, 540.0, 320.0],
+            0.97,
+        ),
+        (
+            "debt_schedule",
+            "2024:20:1",
+            1,
+            [72.0, 340.0, 540.0, 460.0],
+            0.94,
+        ),
+    ]
     assert document.closed is True
     assert client.responses.calls[0]["model"] == "gpt-5"
     assert client.responses.calls[0]["text"] == {
@@ -223,7 +296,7 @@ def test_classify_tables_for_context_stores_results_by_report_year() -> None:
 
     assert updated_context is context
     assert set(context.classification_results) == {2023, 2024}
-    assert context.classification_results[2023].model_dump() == {
+    assert _legacy_classification_payload(context.classification_results[2023]) == {
         "page_table_types": [
             {
                 "year": 2023,
@@ -233,7 +306,7 @@ def test_classify_tables_for_context_stores_results_by_report_year() -> None:
         ],
         "failed_pages": [],
     }
-    assert context.classification_results[2024].model_dump() == {
+    assert _legacy_classification_payload(context.classification_results[2024]) == {
         "page_table_types": [
             {
                 "year": 2024,
@@ -460,7 +533,7 @@ def test_classify_tables_skips_unreadable_pages_and_continues(
             table_detection_result=_detection_result(),
         )
 
-    assert result.model_dump() == {
+    assert _legacy_classification_payload(result) == {
         "page_table_types": [
             {
                 "year": 2024,
@@ -505,7 +578,7 @@ def test_classify_tables_isolates_page_level_openai_failures() -> None:
         table_detection_result=_detection_result(),
     )
 
-    assert result.model_dump() == {
+    assert _legacy_classification_payload(result) == {
         "page_table_types": [
             {
                 "year": 2024,

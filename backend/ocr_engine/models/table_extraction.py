@@ -2,6 +2,7 @@
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from ocr_engine.models.table_detection_result import BBox
 from shared.models.metric_value import MetricValue
 
 
@@ -108,6 +109,45 @@ class PageExtractionDiagnostic(BaseModel):
         default_factory=list,
         description="Logical table types created by scoped table splitting.",
         examples=[["balance_sheet", "vertical_analysis", "horizontal_analysis"]],
+    )
+    id_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Number of matches made by detected_table_id equality.",
+        examples=[2],
+    )
+    bbox_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Number of matches made by bounding-box IoU or containment.",
+        examples=[1],
+    )
+    order_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Number of matches made by page-level extraction order.",
+        examples=[1],
+    )
+    fallback_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Number of matches made by text-similarity fallback.",
+        examples=[1],
+    )
+    previously_unclassified_tables_recovered: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Tables assigned a classification by identity/bbox/order matching "
+            "that would otherwise have remained unclassified by text fallback."
+        ),
+        examples=[1],
+    )
+    metric_values_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="MetricValues carried by recovered table assignments.",
+        examples=[24],
     )
 
 
@@ -976,6 +1016,42 @@ class ExtractionSummary(BaseModel):
         description="Logical table types created by scoped table splitting.",
         examples=[["balance_sheet", "vertical_analysis", "horizontal_analysis"]],
     )
+    id_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Total matches made by detected_table_id equality.",
+        examples=[4],
+    )
+    bbox_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Total matches made by bounding-box IoU or containment.",
+        examples=[2],
+    )
+    order_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Total matches made by page-level extraction order.",
+        examples=[3],
+    )
+    fallback_matches: int = Field(
+        default=0,
+        ge=0,
+        description="Total matches made by text-similarity fallback.",
+        examples=[5],
+    )
+    previously_unclassified_tables_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="Total tables recovered before text-similarity fallback.",
+        examples=[3],
+    )
+    metric_values_recovered: int = Field(
+        default=0,
+        ge=0,
+        description="Total MetricValues carried by recovered table assignments.",
+        examples=[72],
+    )
     quality_report: ExtractionQualityReport = Field(
         default_factory=ExtractionQualityReport,
         description="Post-extraction quality validation report.",
@@ -1087,6 +1163,36 @@ class ExtractedTable(BaseModel):
         default=None,
         description="Reason code for scoped logical table splitting.",
         examples=["analysis_section_markers_with_repeated_year_headers"],
+    )
+    detected_table_id: str | None = Field(
+        default=None,
+        description="Detected table identity propagated from detection/classification.",
+        examples=["2025:20:0"],
+    )
+    page_table_index: int | None = Field(
+        default=None,
+        ge=0,
+        description="Zero-based table index on the source page from detection order.",
+        examples=[0],
+    )
+    bbox: BBox | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description="Detected table bounding box as [x0, y0, x1, y1].",
+        examples=[[72.0, 144.0, 540.0, 320.0]],
+    )
+    detection_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Detector confidence propagated with the table.",
+        examples=[0.97],
+    )
+    match_method: str | None = Field(
+        default=None,
+        description="Matching strategy used to assign table_type to this extraction.",
+        examples=["detected_table_id"],
     )
     rows: list[list[str]] = Field(
         default_factory=list,

@@ -36,6 +36,26 @@ def test_extracted_table_accepts_valid_payload() -> None:
     assert table.rows[0] == ["Cash", "1000"]
 
 
+def test_extracted_table_accepts_detection_identity_metadata() -> None:
+    table = ExtractedTable(
+        year=2024,
+        page_number=20,
+        table_type="balance_sheet",
+        table_index=0,
+        detected_table_id="2024:20:0",
+        page_table_index=0,
+        bbox=[72.0, 144.0, 540.0, 320.0],
+        detection_confidence=0.97,
+        match_method="detected_table_id",
+        rows=[["Cash", "1000"]],
+    )
+
+    assert table.detected_table_id == "2024:20:0"
+    assert table.page_table_index == 0
+    assert table.bbox == [72.0, 144.0, 540.0, 320.0]
+    assert table.match_method == "detected_table_id"
+
+
 def test_extracted_table_allows_empty_rows() -> None:
     table = ExtractedTable(
         year=2024,
@@ -127,6 +147,11 @@ def test_table_extraction_result_serializes_expected_output() -> None:
                 "source_table_index": 0,
                 "split_table_index": None,
                 "split_reason": None,
+                "detected_table_id": None,
+                "page_table_index": None,
+                "bbox": None,
+                "detection_confidence": None,
+                "match_method": None,
                 "rows": [
                     ["Cash", "1000"],
                     ["Inventory", "500"],
@@ -146,6 +171,12 @@ def test_table_extraction_result_serializes_expected_output() -> None:
             "tables_split": 0,
             "split_reasons": [],
             "logical_types_created": [],
+            "id_matches": 0,
+            "bbox_matches": 0,
+            "order_matches": 0,
+            "fallback_matches": 0,
+            "previously_unclassified_tables_recovered": 0,
+            "metric_values_recovered": 0,
             "quality_report": {
                 "tables_extracted": 0,
                 "tables_rejected": 0,
@@ -223,6 +254,12 @@ def test_extraction_summary_serializes_page_diagnostics() -> None:
         "tables_split": 0,
         "split_reason": None,
         "logical_types_created": [],
+        "id_matches": 0,
+        "bbox_matches": 0,
+        "order_matches": 0,
+        "fallback_matches": 0,
+        "previously_unclassified_tables_recovered": 0,
+        "metric_values_recovered": 0,
     }
 
 

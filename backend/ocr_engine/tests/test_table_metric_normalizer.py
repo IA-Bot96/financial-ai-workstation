@@ -66,6 +66,11 @@ def _extraction_result(year: int, page_number: int) -> TableExtractionResult:
                     "analysis_section_markers_with_repeated_year_headers_and_"
                     "subtotal_rows"
                 ),
+                detected_table_id=f"{year}:{page_number}:0",
+                page_table_index=0,
+                bbox=[72.0, 144.0, 540.0, 320.0],
+                detection_confidence=0.97,
+                match_method="detected_table_id",
                 rows=[
                     ["Metric", str(year), str(year - 1)],
                     ["Net Sales", "1200000", "1100000"],
@@ -120,6 +125,11 @@ def test_normalize_tables_preserves_year_on_tables_and_mappings() -> None:
     assert result.tables[0].split_reason == (
         "analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"
     )
+    assert result.tables[0].detected_table_id == "2024:20:0"
+    assert result.tables[0].page_table_index == 0
+    assert result.tables[0].bbox == [72.0, 144.0, 540.0, 320.0]
+    assert result.tables[0].detection_confidence == 0.97
+    assert result.tables[0].match_method == "detected_table_id"
     assert result.tables[0].rows == [
         ["Metric", "2024", "2023"],
         ["revenue", "1200000", "1100000"],
@@ -133,6 +143,20 @@ def test_normalize_tables_preserves_year_on_tables_and_mappings() -> None:
         ("revenue", 2023, 2024),
         ("gross_profit", 2024, 2024),
     ]
+    assert {
+        (
+            mapping.original_metric,
+            mapping.page_number,
+            mapping.table_type,
+            mapping.table_index,
+            mapping.detected_table_id,
+            mapping.match_method,
+        )
+        for mapping in result.mappings
+    } == {
+        ("Net Sales", 20, "income_statement", 0, "2024:20:0", "detected_table_id"),
+        ("Gross Profit", 20, "income_statement", 0, "2024:20:0", "detected_table_id"),
+    }
     assert [
         (mapping.normalized_metric, mapping.value_year, mapping.source_report_year)
         for mapping in result.mappings

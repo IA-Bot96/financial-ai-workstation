@@ -87,6 +87,12 @@ class FakeTorch:
         return {"value": value, "device": device}
 
 
+def _legacy_detection_payload(result: object) -> dict[str, object]:
+    return result.model_dump(
+        exclude={"detected_pages": {"__all__": {"detected_tables"}}}
+    )
+
+
 def test_detection_constants_are_configurable_defaults() -> None:
     assert TABLE_DETECTION_CONFIDENCE_THRESHOLD == 0.90
     assert TABLE_DETECTION_MODEL_NAME == "microsoft/table-transformer-detection"
@@ -144,7 +150,7 @@ def test_detect_tables_returns_pages_with_detections_without_duplicates() -> Non
 
     result = detector.detect_tables("annual_report.pdf", year=2024)
 
-    assert result.model_dump() == {
+    assert _legacy_detection_payload(result) == {
         "detected_pages": [
             {
                 "year": 2024,
@@ -160,6 +166,19 @@ def test_detect_tables_returns_pages_with_detections_without_duplicates() -> Non
         "failed_pages": [],
         "total_pages_processed": 3,
     }
+    assert [
+        (
+            table.detected_table_id,
+            table.page_table_index,
+            table.detection_confidence,
+        )
+        for page in result.detected_pages
+        for table in page.detected_tables
+    ] == [
+        ("2024:1:0", 0, 0.96),
+        ("2024:3:0", 0, 0.91),
+        ("2024:3:1", 1, 0.92),
+    ]
     assert processor.thresholds == [0.93, 0.93, 0.93]
     assert document.closed is True
 
@@ -208,7 +227,7 @@ def test_detect_tables_for_context_stores_results_by_report_year() -> None:
 
     assert updated_context is context
     assert set(context.table_detection_results) == {2023, 2024}
-    assert context.table_detection_results[2023].model_dump() == {
+    assert _legacy_detection_payload(context.table_detection_results[2023]) == {
         "detected_pages": [
             {
                 "year": 2023,
@@ -219,7 +238,7 @@ def test_detect_tables_for_context_stores_results_by_report_year() -> None:
         "failed_pages": [],
         "total_pages_processed": 2,
     }
-    assert context.table_detection_results[2024].model_dump() == {
+    assert _legacy_detection_payload(context.table_detection_results[2024]) == {
         "detected_pages": [
             {
                 "year": 2024,
@@ -264,7 +283,7 @@ def test_detect_tables_skips_corrupted_pages_and_continues(
     with caplog.at_level(logging.DEBUG):
         result = detector.detect_tables("annual_report.pdf", year=2024)
 
-    assert result.model_dump() == {
+    assert _legacy_detection_payload(result) == {
         "detected_pages": [
             {
                 "year": 2024,
@@ -354,12 +373,12 @@ def test_detect_tables_for_context_isolates_report_failures() -> None:
 
     assert exc_info.value.context is context
     assert set(context.table_detection_results) == {2023, 2024}
-    assert context.table_detection_results[2023].model_dump() == {
+    assert _legacy_detection_payload(context.table_detection_results[2023]) == {
         "detected_pages": [],
         "failed_pages": [],
         "total_pages_processed": 0,
     }
-    assert context.table_detection_results[2024].model_dump() == {
+    assert _legacy_detection_payload(context.table_detection_results[2024]) == {
         "detected_pages": [
             {
                 "year": 2024,

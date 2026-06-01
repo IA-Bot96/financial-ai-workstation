@@ -23,11 +23,18 @@ def test_normalized_table_accepts_valid_payload() -> None:
         page_number=20,
         table_type="income_statement",
         table_index=0,
+        detected_table_id="2024:20:0",
+        page_table_index=0,
+        bbox=[72.0, 144.0, 540.0, 320.0],
+        detection_confidence=0.97,
+        match_method="detected_table_id",
         rows=[["revenue", "1200000"]],
     )
 
     assert table.page_number == 20
     assert table.rows == [["revenue", "1200000"]]
+    assert table.detected_table_id == "2024:20:0"
+    assert table.match_method == "detected_table_id"
 
 
 def test_normalized_table_requires_positive_page_number() -> None:
@@ -66,6 +73,11 @@ def test_normalization_result_serializes_expected_output() -> None:
                 "source_table_index": 0,
                 "split_table_index": None,
                 "split_reason": None,
+                "detected_table_id": None,
+                "page_table_index": None,
+                "bbox": None,
+                "detection_confidence": None,
+                "match_method": None,
                 "rows": [["revenue", "1200000"]],
                 "metric_values": [],
             }
@@ -92,6 +104,11 @@ def test_metric_mapping_preserves_year_and_review_state() -> None:
         "normalized_metric": "revenue",
         "confidence": 0.96,
         "requires_review": False,
+        "page_number": None,
+        "table_type": None,
+        "table_index": None,
+        "detected_table_id": None,
+        "match_method": None,
     }
 
 

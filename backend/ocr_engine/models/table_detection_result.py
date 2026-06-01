@@ -3,6 +3,74 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
+BBox = list[float]
+
+
+class DetectedTable(BaseModel):
+    """Metadata for one table detected on a PDF page."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "year": 2024,
+                    "page_number": 20,
+                    "detected_table_id": "2024:20:0",
+                    "page_table_index": 0,
+                    "bbox": [72.0, 144.0, 540.0, 320.0],
+                    "detection_confidence": 0.97,
+                    "label": "table",
+                }
+            ]
+        },
+    )
+
+    year: int = Field(
+        ...,
+        ge=1900,
+        description="Financial reporting year for the source annual report.",
+        examples=[2024],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the table was detected.",
+        examples=[20],
+    )
+    detected_table_id: str = Field(
+        ...,
+        min_length=1,
+        description="Stable table identity within the source report.",
+        examples=["2024:20:0"],
+    )
+    page_table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the PDF page from detection order.",
+        examples=[0],
+    )
+    bbox: BBox | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description="Detected table bounding box as [x0, y0, x1, y1].",
+        examples=[[72.0, 144.0, 540.0, 320.0]],
+    )
+    detection_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Detector confidence score for this table.",
+        examples=[0.97],
+    )
+    label: str | None = Field(
+        default=None,
+        description="Raw detector label, when available.",
+        examples=["table"],
+    )
+
+
 class DetectedPage(BaseModel):
     """Metadata for a PDF page where at least one table was detected."""
 
@@ -14,6 +82,17 @@ class DetectedPage(BaseModel):
                     "year": 2024,
                     "page_number": 20,
                     "tables_detected": 3,
+                    "detected_tables": [
+                        {
+                            "year": 2024,
+                            "page_number": 20,
+                            "detected_table_id": "2024:20:0",
+                            "page_table_index": 0,
+                            "bbox": [72.0, 144.0, 540.0, 320.0],
+                            "detection_confidence": 0.97,
+                            "label": "table",
+                        }
+                    ],
                 }
             ]
         },
@@ -36,6 +115,10 @@ class DetectedPage(BaseModel):
         gt=0,
         description="Number of tables detected on the page.",
         examples=[3],
+    )
+    detected_tables: list[DetectedTable] = Field(
+        default_factory=list,
+        description="Individual table detections on the page with identity metadata.",
     )
 
 

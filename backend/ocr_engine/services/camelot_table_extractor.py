@@ -8,10 +8,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
 from ocr_engine.models.financial_table_classification import (
+    ClassifiedTable,
     FinancialTableClassificationResult,
     PageTableType,
 )
-from ocr_engine.models.table_detection_result import TableDetectionResult
+from ocr_engine.models.table_detection_result import DetectedTable, TableDetectionResult
 from ocr_engine.models.table_extraction import (
     ExtractedTable,
     ExtractionQualityReport,
@@ -60,6 +61,8 @@ class _TableMappingResult:
     """Raw table to classified type mapping plus unmatched details."""
 
     table_type_by_raw_index: dict[int, str]
+    classified_table_by_raw_index: dict[int, ClassifiedTable]
+    match_method_by_raw_index: dict[int, str]
     assigned_classified_type_indexes: set[int]
 
 
@@ -101,6 +104,7 @@ class _RawTableProvenance:
     split_table_index: int | None = None
     split_reason: str | None = None
     logical_type_hint: str | None = None
+    detected_table: DetectedTable | None = None
 
 
 @dataclass(frozen=True)
@@ -381,6 +385,7 @@ class CamelotTableExtractor(ITableExtractor):
         extracted_tables: list[ExtractedTable] = []
         page_diagnostics: list[PageExtractionDiagnostic] = []
         detected_counts_by_page = _detected_counts_by_page(table_detection_result)
+        detected_tables_by_page = _detected_tables_by_page(table_detection_result)
 
         for page_table_type in classification_result.page_table_types:
             page_number = page_table_type.page_number
@@ -407,6 +412,7 @@ class CamelotTableExtractor(ITableExtractor):
                 page_table_type=page_table_type,
                 raw_tables=prepared_tables.raw_tables,
                 raw_table_provenance=prepared_tables.provenance,
+                detected_tables=detected_tables_by_page.get(page_number, []),
                 detected_table_count=detected_counts_by_page.get(page_number, 0),
                 extraction_strategy=extraction_strategy,
                 extraction_quality=extraction_quality,
@@ -717,6 +723,7 @@ class CamelotTableExtractor(ITableExtractor):
         extraction_strategy: str,
         extraction_quality: _ExtractionQuality,
         raw_table_provenance: Sequence[_RawTableProvenance] | None = None,
+        detected_tables: Sequence[DetectedTable] | None = None,
         tables_split: int = 0,
         split_reason: str | None = None,
         logical_types_created: list[str] | None = None,
@@ -766,6 +773,8 @@ class CamelotTableExtractor(ITableExtractor):
         table_type_by_raw_index = self._map_table_types_to_raw_tables(
             page_table_type=page_table_type,
             raw_tables=raw_tables,
+            raw_table_provenance=raw_table_provenance,
+            detected_tables=detected_tables or [],
         )
         unmatched_classifications = [
             table_type
@@ -787,6 +796,15 @@ class CamelotTableExtractor(ITableExtractor):
                 index,
                 UNCLASSIFIED_TABLE_TYPE,
             )
+            classified_table = (
+                table_type_by_raw_index.classified_table_by_raw_index.get(index)
+            )
+            detected_table = _detected_table_for_raw_index(
+                raw_table_provenance=raw_table_provenance,
+                detected_tables=detected_tables or [],
+                raw_table_index=index,
+            )
+            identity_source = classified_table or detected_table
             extracted_tables.append(
                 ExtractedTable(
                     source_report_year=page_table_type.year,
@@ -796,6 +814,21 @@ class CamelotTableExtractor(ITableExtractor):
                     source_table_index=provenance.source_table_index,
                     split_table_index=provenance.split_table_index,
                     split_reason=provenance.split_reason,
+                    detected_table_id=(
+                        identity_source.detected_table_id if identity_source else None
+                    ),
+                    page_table_index=(
+                        identity_source.page_table_index if identity_source else None
+                    ),
+                    bbox=identity_source.bbox if identity_source else None,
+                    detection_confidence=(
+                        identity_source.detection_confidence
+                        if identity_source
+                        else None
+                    ),
+                    match_method=table_type_by_raw_index.match_method_by_raw_index.get(
+                        index
+                    ),
                     rows=rows,
                     metric_values=self._extract_metric_values(
                         rows=rows,
@@ -827,6 +860,32 @@ class CamelotTableExtractor(ITableExtractor):
             tables_split=tables_split,
             split_reason=split_reason,
             logical_types_created=logical_types_created,
+            id_matches=_match_method_count(
+                table_type_by_raw_index.match_method_by_raw_index,
+                "detected_table_id",
+            ),
+            bbox_matches=_match_method_count(
+                table_type_by_raw_index.match_method_by_raw_index,
+                "bbox",
+            ),
+            order_matches=_match_method_count(
+                table_type_by_raw_index.match_method_by_raw_index,
+                "order",
+            ),
+            fallback_matches=_match_method_count(
+                table_type_by_raw_index.match_method_by_raw_index,
+                "fallback_text_similarity",
+            ),
+            previously_unclassified_tables_recovered=sum(
+                1
+                for method in table_type_by_raw_index.match_method_by_raw_index.values()
+                if method in {"detected_table_id", "bbox", "order"}
+            ),
+            metric_values_recovered=sum(
+                len(table.metric_values)
+                for table in extracted_tables
+                if table.match_method in {"detected_table_id", "bbox", "order"}
+            ),
         )
 
     def _map_table_types_to_raw_tables(
@@ -834,9 +893,12 @@ class CamelotTableExtractor(ITableExtractor):
         *,
         page_table_type: PageTableType,
         raw_tables: list[RawTable],
+        raw_table_provenance: Sequence[_RawTableProvenance] | None = None,
+        detected_tables: Sequence[DetectedTable] = (),
     ) -> _TableMappingResult:
         """Match classified table types to raw tables without positional guessing."""
 
+        classified_tables = _classified_tables_for_matching(page_table_type)
         if not page_table_type.table_types:
             for raw_table_index in range(len(raw_tables)):
                 self._logger.warning(
@@ -848,22 +910,71 @@ class CamelotTableExtractor(ITableExtractor):
                 )
             return _TableMappingResult(
                 table_type_by_raw_index={},
+                classified_table_by_raw_index={},
+                match_method_by_raw_index={},
                 assigned_classified_type_indexes=set(),
             )
 
-        if len(raw_tables) == 1 and len(page_table_type.table_types) == 1:
-            return _TableMappingResult(
-                table_type_by_raw_index={0: page_table_type.table_types[0]},
-                assigned_classified_type_indexes={0},
+        table_type_by_raw_index: dict[int, str] = {}
+        classified_table_by_raw_index: dict[int, ClassifiedTable] = {}
+        match_method_by_raw_index: dict[int, str] = {}
+        assigned_raw_tables: set[int] = set()
+        assigned_classified_types: set[int] = set()
+
+        raw_detected_tables = [
+            _detected_table_for_raw_index(
+                raw_table_provenance=raw_table_provenance,
+                detected_tables=detected_tables,
+                raw_table_index=index,
+            )
+            for index in range(len(raw_tables))
+        ]
+
+        self._assign_identity_matches(
+            classified_tables=classified_tables,
+            raw_detected_tables=raw_detected_tables,
+            table_type_by_raw_index=table_type_by_raw_index,
+            classified_table_by_raw_index=classified_table_by_raw_index,
+            match_method_by_raw_index=match_method_by_raw_index,
+            assigned_raw_tables=assigned_raw_tables,
+            assigned_classified_types=assigned_classified_types,
+        )
+        self._assign_bbox_matches(
+            classified_tables=classified_tables,
+            raw_detected_tables=raw_detected_tables,
+            table_type_by_raw_index=table_type_by_raw_index,
+            classified_table_by_raw_index=classified_table_by_raw_index,
+            match_method_by_raw_index=match_method_by_raw_index,
+            assigned_raw_tables=assigned_raw_tables,
+            assigned_classified_types=assigned_classified_types,
+        )
+        self._assign_order_matches(
+            classified_tables=classified_tables,
+            raw_table_count=len(raw_tables),
+            table_type_by_raw_index=table_type_by_raw_index,
+            classified_table_by_raw_index=classified_table_by_raw_index,
+            match_method_by_raw_index=match_method_by_raw_index,
+            assigned_raw_tables=assigned_raw_tables,
+            assigned_classified_types=assigned_classified_types,
+        )
+
+        if len(raw_tables) == 1 and len(classified_tables) == 1 and not assigned_raw_tables:
+            self._assign_match(
+                raw_table_index=0,
+                classified_type_index=0,
+                classified_tables=classified_tables,
+                table_type_by_raw_index=table_type_by_raw_index,
+                classified_table_by_raw_index=classified_table_by_raw_index,
+                match_method_by_raw_index=match_method_by_raw_index,
+                assigned_raw_tables=assigned_raw_tables,
+                assigned_classified_types=assigned_classified_types,
+                match_method="order",
             )
 
         candidates = self._table_type_candidates(
             raw_tables=raw_tables,
             table_types=page_table_type.table_types,
         )
-        assigned_raw_tables: set[int] = set()
-        assigned_classified_types: set[int] = set()
-        table_type_by_raw_index: dict[int, str] = {}
 
         for candidate in candidates:
             if candidate.raw_table_index in assigned_raw_tables:
@@ -873,8 +984,13 @@ class CamelotTableExtractor(ITableExtractor):
 
             assigned_raw_tables.add(candidate.raw_table_index)
             assigned_classified_types.add(candidate.classified_type_index)
-            table_type = page_table_type.table_types[candidate.classified_type_index]
+            classified_table = classified_tables[candidate.classified_type_index]
+            table_type = classified_table.table_type
             table_type_by_raw_index[candidate.raw_table_index] = table_type
+            classified_table_by_raw_index[candidate.raw_table_index] = classified_table
+            match_method_by_raw_index[candidate.raw_table_index] = (
+                "fallback_text_similarity"
+            )
             self._log_order_correction_if_needed(
                 page_table_type=page_table_type,
                 raw_table_index=candidate.raw_table_index,
@@ -889,6 +1005,8 @@ class CamelotTableExtractor(ITableExtractor):
         )
         return _TableMappingResult(
             table_type_by_raw_index=table_type_by_raw_index,
+            classified_table_by_raw_index=classified_table_by_raw_index,
+            match_method_by_raw_index=match_method_by_raw_index,
             assigned_classified_type_indexes=assigned_classified_types,
         )
 
@@ -919,6 +1037,157 @@ class CamelotTableExtractor(ITableExtractor):
                 candidate.raw_table_index,
                 candidate.classified_type_index,
             ),
+        )
+
+    def _assign_identity_matches(
+        self,
+        *,
+        classified_tables: list[ClassifiedTable],
+        raw_detected_tables: list[DetectedTable | None],
+        table_type_by_raw_index: dict[int, str],
+        classified_table_by_raw_index: dict[int, ClassifiedTable],
+        match_method_by_raw_index: dict[int, str],
+        assigned_raw_tables: set[int],
+        assigned_classified_types: set[int],
+    ) -> None:
+        """Assign raw tables to classified tables by exact detection id."""
+
+        classified_by_id = {
+            classified_table.detected_table_id: index
+            for index, classified_table in enumerate(classified_tables)
+            if classified_table.detected_table_id
+        }
+        for raw_table_index, detected_table in enumerate(raw_detected_tables):
+            if detected_table is None or not detected_table.detected_table_id:
+                continue
+            classified_type_index = classified_by_id.get(
+                detected_table.detected_table_id
+            )
+            if classified_type_index is None:
+                continue
+            self._assign_match(
+                raw_table_index=raw_table_index,
+                classified_type_index=classified_type_index,
+                classified_tables=classified_tables,
+                table_type_by_raw_index=table_type_by_raw_index,
+                classified_table_by_raw_index=classified_table_by_raw_index,
+                match_method_by_raw_index=match_method_by_raw_index,
+                assigned_raw_tables=assigned_raw_tables,
+                assigned_classified_types=assigned_classified_types,
+                match_method="detected_table_id",
+            )
+
+    def _assign_bbox_matches(
+        self,
+        *,
+        classified_tables: list[ClassifiedTable],
+        raw_detected_tables: list[DetectedTable | None],
+        table_type_by_raw_index: dict[int, str],
+        classified_table_by_raw_index: dict[int, ClassifiedTable],
+        match_method_by_raw_index: dict[int, str],
+        assigned_raw_tables: set[int],
+        assigned_classified_types: set[int],
+    ) -> None:
+        """Assign raw tables to classified tables by bbox overlap."""
+
+        candidates: list[tuple[float, int, int]] = []
+        for raw_table_index, detected_table in enumerate(raw_detected_tables):
+            if raw_table_index in assigned_raw_tables:
+                continue
+            if detected_table is None or detected_table.bbox is None:
+                continue
+            for classified_type_index, classified_table in enumerate(classified_tables):
+                if classified_type_index in assigned_classified_types:
+                    continue
+                if classified_table.bbox is None:
+                    continue
+                score = _bbox_match_score(detected_table.bbox, classified_table.bbox)
+                if score >= 0.80:
+                    candidates.append((score, raw_table_index, classified_type_index))
+
+        for _, raw_table_index, classified_type_index in sorted(
+            candidates,
+            key=lambda item: (-item[0], item[1], item[2]),
+        ):
+            self._assign_match(
+                raw_table_index=raw_table_index,
+                classified_type_index=classified_type_index,
+                classified_tables=classified_tables,
+                table_type_by_raw_index=table_type_by_raw_index,
+                classified_table_by_raw_index=classified_table_by_raw_index,
+                match_method_by_raw_index=match_method_by_raw_index,
+                assigned_raw_tables=assigned_raw_tables,
+                assigned_classified_types=assigned_classified_types,
+                match_method="bbox",
+            )
+
+    def _assign_order_matches(
+        self,
+        *,
+        classified_tables: list[ClassifiedTable],
+        raw_table_count: int,
+        table_type_by_raw_index: dict[int, str],
+        classified_table_by_raw_index: dict[int, ClassifiedTable],
+        match_method_by_raw_index: dict[int, str],
+        assigned_raw_tables: set[int],
+        assigned_classified_types: set[int],
+    ) -> None:
+        """Assign remaining raw/classified tables by page-level order."""
+
+        for classified_type_index, classified_table in enumerate(classified_tables):
+            if classified_type_index in assigned_classified_types:
+                continue
+            raw_table_index = classified_table.page_table_index
+            if raw_table_index is None or raw_table_index >= raw_table_count:
+                continue
+            if raw_table_index in assigned_raw_tables:
+                continue
+            self._assign_match(
+                raw_table_index=raw_table_index,
+                classified_type_index=classified_type_index,
+                classified_tables=classified_tables,
+                table_type_by_raw_index=table_type_by_raw_index,
+                classified_table_by_raw_index=classified_table_by_raw_index,
+                match_method_by_raw_index=match_method_by_raw_index,
+                assigned_raw_tables=assigned_raw_tables,
+                assigned_classified_types=assigned_classified_types,
+                match_method="order",
+            )
+
+    def _assign_match(
+        self,
+        *,
+        raw_table_index: int,
+        classified_type_index: int,
+        classified_tables: list[ClassifiedTable],
+        table_type_by_raw_index: dict[int, str],
+        classified_table_by_raw_index: dict[int, ClassifiedTable],
+        match_method_by_raw_index: dict[int, str],
+        assigned_raw_tables: set[int],
+        assigned_classified_types: set[int],
+        match_method: str,
+    ) -> None:
+        """Record one raw-table to classified-table assignment."""
+
+        if raw_table_index in assigned_raw_tables:
+            return
+        if classified_type_index in assigned_classified_types:
+            return
+        classified_table = classified_tables[classified_type_index]
+        assigned_raw_tables.add(raw_table_index)
+        assigned_classified_types.add(classified_type_index)
+        table_type_by_raw_index[raw_table_index] = classified_table.table_type
+        classified_table_by_raw_index[raw_table_index] = classified_table
+        match_method_by_raw_index[raw_table_index] = match_method
+        self._log_order_correction_if_needed(
+            page_table_type=PageTableType(
+                year=classified_table.year,
+                page_number=classified_table.page_number,
+                table_types=[table.table_type for table in classified_tables],
+                classified_tables=classified_tables,
+            ),
+            raw_table_index=raw_table_index,
+            assigned_table_type=classified_table.table_type,
         )
 
     def _log_order_correction_if_needed(
@@ -1004,6 +1273,14 @@ class CamelotTableExtractor(ITableExtractor):
                 "tables_split": diagnostic.tables_split,
                 "split_reason": diagnostic.split_reason,
                 "logical_types_created": diagnostic.logical_types_created,
+                "id_matches": diagnostic.id_matches,
+                "bbox_matches": diagnostic.bbox_matches,
+                "order_matches": diagnostic.order_matches,
+                "fallback_matches": diagnostic.fallback_matches,
+                "previously_unclassified_tables_recovered": (
+                    diagnostic.previously_unclassified_tables_recovered
+                ),
+                "metric_values_recovered": diagnostic.metric_values_recovered,
             },
         )
 
@@ -2813,6 +3090,19 @@ def _detected_counts_by_page(
     }
 
 
+def _detected_tables_by_page(
+    table_detection_result: TableDetectionResult | None,
+) -> dict[int, list[DetectedTable]]:
+    """Return detected table metadata grouped by page."""
+
+    if table_detection_result is None:
+        return {}
+    return {
+        detected_page.page_number: list(detected_page.detected_tables)
+        for detected_page in table_detection_result.detected_pages
+    }
+
+
 def _metric_labels(rows: RawTable) -> list[str]:
     """Return detected metric label cells from raw rows."""
 
@@ -3029,6 +3319,102 @@ def _raw_table_provenance_for_index(
     if provenance is not None and index < len(provenance):
         return provenance[index]
     return _RawTableProvenance(source_table_index=index)
+
+
+def _detected_table_for_raw_index(
+    *,
+    raw_table_provenance: Sequence[_RawTableProvenance] | None,
+    detected_tables: Sequence[DetectedTable],
+    raw_table_index: int,
+) -> DetectedTable | None:
+    """Return detected table identity for a prepared raw table when available."""
+
+    provenance = _raw_table_provenance_for_index(
+        raw_table_provenance,
+        raw_table_index,
+    )
+    if provenance.detected_table is not None:
+        return provenance.detected_table
+    source_index = provenance.source_table_index
+    if source_index < len(detected_tables):
+        return detected_tables[source_index]
+    if raw_table_index < len(detected_tables):
+        return detected_tables[raw_table_index]
+    return None
+
+
+def _classified_tables_for_matching(
+    page_table_type: PageTableType,
+) -> list[ClassifiedTable]:
+    """Return table-level classifications, backfilling from legacy table_types."""
+
+    if page_table_type.classified_tables:
+        return list(page_table_type.classified_tables)
+    return [
+        ClassifiedTable(
+            year=page_table_type.year,
+            page_number=page_table_type.page_number,
+            table_type=table_type,
+            page_table_index=index,
+        )
+        for index, table_type in enumerate(page_table_type.table_types)
+    ]
+
+
+def _match_method_count(methods: dict[int, str], method: str) -> int:
+    """Count table assignments using one matching method."""
+
+    return sum(1 for value in methods.values() if value == method)
+
+
+def _bbox_match_score(left: Sequence[float], right: Sequence[float]) -> float:
+    """Return the best bbox overlap score from IoU and containment."""
+
+    iou = _bbox_iou(left, right)
+    containment = max(_bbox_containment(left, right), _bbox_containment(right, left))
+    return max(iou, containment)
+
+
+def _bbox_iou(left: Sequence[float], right: Sequence[float]) -> float:
+    """Return intersection-over-union for two bboxes."""
+
+    intersection = _bbox_intersection_area(left, right)
+    if intersection <= 0:
+        return 0.0
+    union = _bbox_area(left) + _bbox_area(right) - intersection
+    if union <= 0:
+        return 0.0
+    return intersection / union
+
+
+def _bbox_containment(inner: Sequence[float], outer: Sequence[float]) -> float:
+    """Return how much of inner bbox is contained inside outer bbox."""
+
+    area = _bbox_area(inner)
+    if area <= 0:
+        return 0.0
+    return _bbox_intersection_area(inner, outer) / area
+
+
+def _bbox_intersection_area(left: Sequence[float], right: Sequence[float]) -> float:
+    """Return intersection area for two bboxes."""
+
+    x0 = max(float(left[0]), float(right[0]))
+    y0 = max(float(left[1]), float(right[1]))
+    x1 = min(float(left[2]), float(right[2]))
+    y1 = min(float(left[3]), float(right[3]))
+    return max(0.0, x1 - x0) * max(0.0, y1 - y0)
+
+
+def _bbox_area(bbox: Sequence[float]) -> float:
+    """Return bbox area."""
+
+    if len(bbox) != 4:
+        return 0.0
+    return max(0.0, float(bbox[2]) - float(bbox[0])) * max(
+        0.0,
+        float(bbox[3]) - float(bbox[1]),
+    )
 
 
 def _row_text(row: Sequence[str]) -> str:
@@ -4390,6 +4776,19 @@ def _build_extraction_summary(
                 for diagnostic in page_diagnostics
                 for table_type in diagnostic.logical_types_created
             ]
+        ),
+        id_matches=sum(diagnostic.id_matches for diagnostic in page_diagnostics),
+        bbox_matches=sum(diagnostic.bbox_matches for diagnostic in page_diagnostics),
+        order_matches=sum(diagnostic.order_matches for diagnostic in page_diagnostics),
+        fallback_matches=sum(
+            diagnostic.fallback_matches for diagnostic in page_diagnostics
+        ),
+        previously_unclassified_tables_recovered=sum(
+            diagnostic.previously_unclassified_tables_recovered
+            for diagnostic in page_diagnostics
+        ),
+        metric_values_recovered=sum(
+            diagnostic.metric_values_recovered for diagnostic in page_diagnostics
         ),
     )
 

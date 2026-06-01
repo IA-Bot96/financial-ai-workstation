@@ -11,11 +11,13 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ocr_engine.models.financial_table_classification import (
+    ClassifiedTable,
     FinancialTableClassificationResult,
     PageTableType,
 )
 from ocr_engine.models.table_detection_result import (
     DetectedPage,
+    DetectedTable,
     TableDetectionResult,
 )
 import ocr_engine.services.camelot_table_extractor as extractor_module
@@ -95,6 +97,23 @@ class FakeMetricNormalizer(IMetricNormalizer):
         )
 
 
+def _dump_legacy_extraction_payload(result: object) -> dict[str, object]:
+    return result.model_dump(
+        exclude={
+            "extraction_summary": True,
+            "tables": {
+                "__all__": {
+                    "detected_table_id",
+                    "page_table_index",
+                    "bbox",
+                    "detection_confidence",
+                    "match_method",
+                }
+            },
+        }
+    )
+
+
 def _classification_result() -> FinancialTableClassificationResult:
     return FinancialTableClassificationResult(
         page_table_types=[
@@ -130,7 +149,7 @@ def test_extract_tables_uses_camelot_first() -> None:
         classification_result=_classification_result(),
     )
 
-    assert result.model_dump(exclude={"extraction_summary"}) == {
+    assert _dump_legacy_extraction_payload(result) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -157,6 +176,228 @@ def test_extract_tables_uses_camelot_first() -> None:
         ],
         "metric_values": [],
     }
+
+
+def test_extract_tables_matches_by_detected_table_id_before_order() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2025"], ["Revenue", "100"]]),
+            FakeCamelotTable([["Metric", "2025"], ["Cash", "50"]]),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=20,
+                    table_types=["balance_sheet", "income_statement"],
+                    classified_tables=[
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="balance_sheet",
+                            detected_table_id="2025:20:1",
+                            page_table_index=1,
+                        ),
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="income_statement",
+                            detected_table_id="2025:20:0",
+                            page_table_index=0,
+                        ),
+                    ],
+                )
+            ]
+        ),
+        table_detection_result=TableDetectionResult(
+            detected_pages=[
+                DetectedPage(
+                    year=2025,
+                    page_number=20,
+                    tables_detected=2,
+                    detected_tables=[
+                        DetectedTable(
+                            year=2025,
+                            page_number=20,
+                            detected_table_id="2025:20:0",
+                            page_table_index=0,
+                        ),
+                        DetectedTable(
+                            year=2025,
+                            page_number=20,
+                            detected_table_id="2025:20:1",
+                            page_table_index=1,
+                        ),
+                    ],
+                )
+            ],
+            total_pages_processed=30,
+        ),
+    )
+
+    assert [(table.table_index, table.table_type) for table in result.tables] == [
+        (0, "income_statement"),
+        (1, "balance_sheet"),
+    ]
+    assert [table.match_method for table in result.tables] == [
+        "detected_table_id",
+        "detected_table_id",
+    ]
+    assert result.extraction_summary.id_matches == 2
+    assert result.extraction_summary.order_matches == 0
+
+
+def test_extract_tables_matches_by_bbox_when_ids_are_absent() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2025"], ["Revenue", "100"]]),
+            FakeCamelotTable([["Metric", "2025"], ["Cash", "50"]]),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=20,
+                    table_types=["balance_sheet", "income_statement"],
+                    classified_tables=[
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="balance_sheet",
+                            bbox=[10.0, 110.0, 200.0, 190.0],
+                        ),
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="income_statement",
+                            bbox=[10.0, 10.0, 200.0, 90.0],
+                        ),
+                    ],
+                )
+            ]
+        ),
+        table_detection_result=TableDetectionResult(
+            detected_pages=[
+                DetectedPage(
+                    year=2025,
+                    page_number=20,
+                    tables_detected=2,
+                    detected_tables=[
+                        DetectedTable(
+                            year=2025,
+                            page_number=20,
+                            detected_table_id="2025:20:0",
+                            page_table_index=0,
+                            bbox=[10.0, 10.0, 200.0, 90.0],
+                        ),
+                        DetectedTable(
+                            year=2025,
+                            page_number=20,
+                            detected_table_id="2025:20:1",
+                            page_table_index=1,
+                            bbox=[10.0, 110.0, 200.0, 190.0],
+                        ),
+                    ],
+                )
+            ],
+            total_pages_processed=30,
+        ),
+    )
+
+    assert [(table.table_index, table.table_type) for table in result.tables] == [
+        (0, "income_statement"),
+        (1, "balance_sheet"),
+    ]
+    assert [table.match_method for table in result.tables] == ["bbox", "bbox"]
+    assert result.extraction_summary.bbox_matches == 2
+
+
+def test_extract_tables_uses_order_only_when_classifier_preserves_page_index() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2025"], ["Unmapped A", "100"]]),
+            FakeCamelotTable([["Metric", "2025"], ["Unmapped B", "50"]]),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=20,
+                    table_types=["balance_sheet", "debt_schedule"],
+                    classified_tables=[
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="balance_sheet",
+                            page_table_index=0,
+                        ),
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=20,
+                            table_type="debt_schedule",
+                            page_table_index=1,
+                        ),
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert [table.table_type for table in result.tables] == [
+        "balance_sheet",
+        "debt_schedule",
+    ]
+    assert [table.match_method for table in result.tables] == ["order", "order"]
+    assert result.extraction_summary.order_matches == 2
+    assert result.extraction_summary.fallback_matches == 0
+
+
+def test_extract_tables_keeps_text_similarity_fallback_for_legacy_payloads() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2025"], ["Cash", "50"]]),
+            FakeCamelotTable([["Metric", "2025"], ["Revenue", "100"]]),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=20,
+                    table_types=["income_statement", "balance_sheet"],
+                )
+            ]
+        ),
+    )
+
+    assert [(table.table_index, table.table_type) for table in result.tables] == [
+        (0, "balance_sheet"),
+        (1, "income_statement"),
+    ]
+    assert [table.match_method for table in result.tables] == [
+        "fallback_text_similarity",
+        "fallback_text_similarity",
+    ]
+    assert result.extraction_summary.fallback_matches == 2
 
 
 def test_extract_tables_identifies_metric_value_years() -> None:
@@ -1293,6 +1534,12 @@ def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
         "tables_split": 0,
         "split_reason": None,
         "logical_types_created": [],
+        "id_matches": 0,
+        "bbox_matches": 0,
+        "order_matches": 0,
+        "fallback_matches": 1,
+        "previously_unclassified_tables_recovered": 0,
+        "metric_values_recovered": 0,
     }
     assert "Extraction page diagnostics" in caplog.text
 
@@ -1421,9 +1668,7 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
 
     assert updated_context is context
     assert set(context.extraction_results) == {2023, 2024}
-    assert context.extraction_results[2023].model_dump(
-        exclude={"extraction_summary"}
-    ) == {
+    assert _dump_legacy_extraction_payload(context.extraction_results[2023]) == {
         "tables": [
             {
                 "source_report_year": 2023,
@@ -1439,9 +1684,7 @@ def test_extract_tables_for_context_stores_results_by_report_year() -> None:
         ],
         "metric_values": [],
     }
-    assert context.extraction_results[2024].model_dump(
-        exclude={"extraction_summary"}
-    ) == {
+    assert _dump_legacy_extraction_payload(context.extraction_results[2024]) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -1522,9 +1765,7 @@ def test_extract_tables_for_context_isolates_year_failures() -> None:
 
     assert exc_info.value.context is context
     assert set(context.extraction_results) == {2023, 2024}
-    assert context.extraction_results[2023].model_dump(
-        exclude={"extraction_summary"}
-    ) == {
+    assert _dump_legacy_extraction_payload(context.extraction_results[2023]) == {
         "tables": [],
         "metric_values": [],
     }
@@ -1563,7 +1804,7 @@ def test_extract_tables_falls_back_to_pdfplumber_when_camelot_returns_no_tables(
         ),
     )
 
-    assert result.model_dump(exclude={"extraction_summary"}) == {
+    assert _dump_legacy_extraction_payload(result) == {
         "tables": [
             {
                 "source_report_year": 2024,
@@ -1903,7 +2144,7 @@ def test_extract_tables_continues_processing_remaining_pages() -> None:
         ),
     )
 
-    assert result.model_dump(exclude={"extraction_summary"}) == {
+    assert _dump_legacy_extraction_payload(result) == {
         "tables": [
             {
                 "source_report_year": 2024,

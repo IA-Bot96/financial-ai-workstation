@@ -1,6 +1,7 @@
 """Pydantic models for OCR engine layers."""
 
 from .financial_table_classification import (
+    ClassifiedTable,
     FinancialTableClassificationResult,
     PageTableType,
 )
@@ -35,11 +36,18 @@ from .table_extraction import (
     TableExtractionResult,
 )
 from .table_normalization import MetricMapping, NormalizationResult, NormalizedTable
-from .table_detection_result import DetectedPage, FailedPage, TableDetectionResult
+from .table_detection_result import (
+    DetectedPage,
+    DetectedTable,
+    FailedPage,
+    TableDetectionResult,
+)
 from .validation_result import ValidationIssue, ValidationResult, ValidationSeverity
 
 __all__ = [
     "DetectedPage",
+    "DetectedTable",
+    "ClassifiedTable",
     "ExtractedTable",
     "ExtractionQualityReport",
     "ExtractionSummary",

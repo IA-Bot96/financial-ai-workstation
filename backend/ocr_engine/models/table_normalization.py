@@ -2,6 +2,7 @@
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from ocr_engine.models.table_detection_result import BBox
 from shared.models.metric_value import MetricValue
 
 
@@ -86,6 +87,36 @@ class NormalizedTable(BaseModel):
         default=None,
         description="Reason code for scoped logical table splitting.",
         examples=["analysis_section_markers_with_repeated_year_headers_and_subtotal_rows"],
+    )
+    detected_table_id: str | None = Field(
+        default=None,
+        description="Detected table identity propagated from extraction.",
+        examples=["2025:20:0"],
+    )
+    page_table_index: int | None = Field(
+        default=None,
+        ge=0,
+        description="Zero-based table index on the source page from detection order.",
+        examples=[0],
+    )
+    bbox: BBox | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description="Detected table bounding box as [x0, y0, x1, y1].",
+        examples=[[72.0, 144.0, 540.0, 320.0]],
+    )
+    detection_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Detector confidence propagated with the table.",
+        examples=[0.97],
+    )
+    match_method: str | None = Field(
+        default=None,
+        description="Matching strategy used to assign table_type.",
+        examples=["detected_table_id"],
     )
     rows: list[list[str]] = Field(
         default_factory=list,
@@ -227,6 +258,33 @@ class MetricMapping(BaseModel):
         ...,
         description="Whether this metric mapping should be reviewed manually.",
         examples=[False],
+    )
+    page_number: int | None = Field(
+        default=None,
+        gt=0,
+        description="Source page for the mapped metric value.",
+        examples=[20],
+    )
+    table_type: str | None = Field(
+        default=None,
+        description="Source table type for the mapped metric value.",
+        examples=["income_statement"],
+    )
+    table_index: int | None = Field(
+        default=None,
+        ge=0,
+        description="Source extracted table index for the mapped metric value.",
+        examples=[0],
+    )
+    detected_table_id: str | None = Field(
+        default=None,
+        description="Detected table identity for the mapped metric value.",
+        examples=["2025:20:0"],
+    )
+    match_method: str | None = Field(
+        default=None,
+        description="Matching strategy used for the source table.",
+        examples=["detected_table_id"],
     )
 
     @property

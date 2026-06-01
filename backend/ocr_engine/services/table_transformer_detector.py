@@ -12,6 +12,7 @@ from ocr_engine.constants.detection_constants import (
 )
 from ocr_engine.models.table_detection_result import (
     DetectedPage,
+    DetectedTable,
     FailedPage,
     TableDetectionResult,
 )
@@ -136,7 +137,7 @@ class TableTransformerDetector(ITableDetector):
     def detect_tables(self, pdf_path: str, year: int) -> TableDetectionResult:
         """Return page-level table detection metadata for a PDF."""
 
-        detected_pages: dict[int, int] = {}
+        detected_pages: dict[int, list[DetectedTable]] = {}
         failed_pages: list[FailedPage] = []
         document = None
         total_pages_processed = 0
@@ -166,15 +167,19 @@ class TableTransformerDetector(ITableDetector):
 
                 try:
                     image = self._page_renderer(document, page_index)
-                    tables_detected = self._count_tables_in_image(image)
-                    if tables_detected > 0:
-                        detected_pages[page_number] = tables_detected
+                    detected_tables = self._detect_tables_in_image(
+                        image=image,
+                        year=year,
+                        page_number=page_number,
+                    )
+                    if detected_tables:
+                        detected_pages[page_number] = detected_tables
                         self._logger.debug(
                             "Tables detected on page %s",
                             page_number,
                             extra={
                                 "page": page_number,
-                                "tables_detected": tables_detected,
+                                "tables_detected": len(detected_tables),
                             },
                         )
                 except Exception as exc:
@@ -200,9 +205,10 @@ class TableTransformerDetector(ITableDetector):
                 DetectedPage(
                     year=year,
                     page_number=page_number,
-                    tables_detected=tables_detected,
+                    tables_detected=len(detected_tables),
+                    detected_tables=detected_tables,
                 )
-                for page_number, tables_detected in sorted(detected_pages.items())
+                for page_number, detected_tables in sorted(detected_pages.items())
             ],
             failed_pages=failed_pages,
             total_pages_processed=total_pages_processed,
@@ -225,6 +231,23 @@ class TableTransformerDetector(ITableDetector):
     def _count_tables_in_image(self, image: Any) -> int:
         """Run the detection model for a rendered page image."""
 
+        return len(
+            self._detect_tables_in_image(
+                image=image,
+                year=1900,
+                page_number=1,
+            )
+        )
+
+    def _detect_tables_in_image(
+        self,
+        *,
+        image: Any,
+        year: int,
+        page_number: int,
+    ) -> list[DetectedTable]:
+        """Run the detection model and return table-level detections."""
+
         inputs = self._processor(images=image, return_tensors="pt")
         inputs = self._move_to_device(inputs)
 
@@ -237,7 +260,11 @@ class TableTransformerDetector(ITableDetector):
             threshold=self._confidence_threshold,
             target_sizes=self._target_sizes_for(image),
         )
-        return self._count_detections(detections)
+        return self._detected_tables_from_model_output(
+            detections=detections,
+            year=year,
+            page_number=page_number,
+        )
 
     def _move_to_device(self, inputs: Any) -> Any:
         """Move processor tensors to the configured torch device when possible."""
@@ -277,6 +304,63 @@ class TableTransformerDetector(ITableDetector):
             return 0
 
         return len(first_result)
+
+    def _detected_tables_from_model_output(
+        self,
+        *,
+        detections: Any,
+        year: int,
+        page_number: int,
+    ) -> list[DetectedTable]:
+        """Convert model post-processing output to detection models."""
+
+        if not detections:
+            return []
+
+        first_result = detections[0]
+        if not isinstance(first_result, dict):
+            return [
+                DetectedTable(
+                    year=year,
+                    page_number=page_number,
+                    detected_table_id=_detected_table_id(year, page_number, index),
+                    page_table_index=index,
+                )
+                for index, _ in enumerate(first_result)
+            ]
+
+        scores = _to_list(first_result.get("scores"))
+        labels = _to_list(first_result.get("labels"))
+        boxes = _to_list(first_result.get("boxes"))
+        count = max(len(scores), len(labels), len(boxes))
+        detected_tables: list[DetectedTable] = []
+        for index in range(count):
+            detected_tables.append(
+                DetectedTable(
+                    year=year,
+                    page_number=page_number,
+                    detected_table_id=_detected_table_id(year, page_number, index),
+                    page_table_index=index,
+                    bbox=_bbox_at(boxes, index),
+                    detection_confidence=_score_at(scores, index),
+                    label=self._label_at(labels, index),
+                )
+            )
+        return detected_tables
+
+    def _label_at(self, labels: list[Any], index: int) -> str | None:
+        """Return a detector label name when available."""
+
+        if index >= len(labels):
+            return None
+        raw_label = labels[index]
+        label_id = _scalar(raw_label)
+        if isinstance(label_id, float) and label_id.is_integer():
+            label_id = int(label_id)
+        id2label = getattr(getattr(self._model, "config", None), "id2label", None)
+        if isinstance(id2label, dict) and label_id in id2label:
+            return str(id2label[label_id])
+        return str(label_id) if label_id is not None else None
 
     def _prepare_model(self) -> None:
         """Move model to device and set evaluation mode when supported."""
@@ -359,3 +443,62 @@ def _error_message(exc: Exception) -> str:
     """Return a non-empty error message for logging and result metadata."""
 
     return str(exc) or exc.__class__.__name__
+
+
+def _detected_table_id(year: int, page_number: int, page_table_index: int) -> str:
+    """Return a stable detected table identity."""
+
+    return f"{year}:{page_number}:{page_table_index}"
+
+
+def _to_list(value: Any) -> list[Any]:
+    """Convert tensors/arrays/lists from model output to a Python list."""
+
+    if value is None:
+        return []
+    detach = getattr(value, "detach", None)
+    if callable(detach):
+        value = detach()
+    cpu = getattr(value, "cpu", None)
+    if callable(cpu):
+        value = cpu()
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return tolist()
+    if isinstance(value, list):
+        return value
+    try:
+        return list(value)
+    except TypeError:
+        return [value]
+
+
+def _bbox_at(boxes: list[Any], index: int) -> list[float] | None:
+    """Return a normalized bbox at index when present."""
+
+    if index >= len(boxes):
+        return None
+    box = boxes[index]
+    if not isinstance(box, list):
+        box = _to_list(box)
+    if len(box) != 4:
+        return None
+    return [float(value) for value in box]
+
+
+def _score_at(scores: list[Any], index: int) -> float | None:
+    """Return a confidence score at index when present."""
+
+    if index >= len(scores):
+        return None
+    value = _scalar(scores[index])
+    return float(value) if value is not None else None
+
+
+def _scalar(value: Any) -> Any:
+    """Return a scalar value from tensor-like objects."""
+
+    item = getattr(value, "item", None)
+    if callable(item):
+        return item()
+    return value

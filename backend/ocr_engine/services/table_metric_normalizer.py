@@ -134,7 +134,8 @@ class TableMetricNormalizer(ITableMetricNormalizer):
             table_metric_values: list[MetricValue] = []
             for metric_value in table.metric_values:
                 normalized_metric_value, mapping = self._normalize_metric_value(
-                    metric_value
+                    metric_value,
+                    table=table,
                 )
                 table_metric_values.append(normalized_metric_value)
                 all_metric_values.append(normalized_metric_value)
@@ -149,6 +150,11 @@ class TableMetricNormalizer(ITableMetricNormalizer):
                     source_table_index=table.source_table_index,
                     split_table_index=table.split_table_index,
                     split_reason=table.split_reason,
+                    detected_table_id=table.detected_table_id,
+                    page_table_index=table.page_table_index,
+                    bbox=table.bbox,
+                    detection_confidence=table.detection_confidence,
+                    match_method=table.match_method,
                     rows=normalized_rows,
                     metric_values=table_metric_values,
                 )
@@ -186,6 +192,8 @@ class TableMetricNormalizer(ITableMetricNormalizer):
     def _normalize_metric_value(
         self,
         metric_value: MetricValue,
+        *,
+        table: object | None = None,
     ) -> tuple[MetricValue, MetricMapping]:
         """Normalize one extracted metric value while preserving year provenance."""
 
@@ -203,6 +211,11 @@ class TableMetricNormalizer(ITableMetricNormalizer):
             normalized_metric=normalized_metric.normalized_metric,
             confidence=normalized_metric.confidence,
             requires_review=normalized_metric.requires_review,
+            page_number=metric_value.page_number,
+            table_type=metric_value.table_type,
+            table_index=getattr(table, "table_index", None),
+            detected_table_id=getattr(table, "detected_table_id", None),
+            match_method=getattr(table, "match_method", None),
         )
         return normalized_metric_value, mapping
 

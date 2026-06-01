@@ -18,11 +18,19 @@ from ocr_engine.models.table_detection_result import (
     DetectedPage,
     TableDetectionResult,
 )
+import ocr_engine.services.camelot_table_extractor as extractor_module
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.services.camelot_table_extractor import CamelotTableExtractor
 from ocr_engine.services.interfaces.table_extractor import ITableExtractor
+from ocr_engine.services.table_metric_normalizer import TableMetricNormalizer
 from shared.models.company_context import CompanyContext
 from shared.models.report import Report
+from shared.normalization.interfaces.metric_normalizer import IMetricNormalizer
+from shared.normalization.models.normalized_metric import NormalizedMetric
+from shared.services.financial_year_consolidator import FinancialYearConsolidator
+from workbook_population.services.workbook_population_service import (
+    OpenPyXLWorkbookPopulationService,
+)
 
 
 class FakeValues:
@@ -70,6 +78,21 @@ class FakePdfplumberDocument:
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         return None
+
+
+class FakeMetricNormalizer(IMetricNormalizer):
+    def normalize_metric(self, metric_name: str) -> NormalizedMetric:
+        lookup = {
+            "Revenue": "revenue",
+            "Cash": "cash",
+        }
+        normalized_metric = lookup.get(metric_name, metric_name)
+        return NormalizedMetric(
+            original_metric=metric_name,
+            normalized_metric=normalized_metric,
+            confidence=0.96,
+            requires_review=False,
+        )
 
 
 def _classification_result() -> FinancialTableClassificationResult:
@@ -972,6 +995,117 @@ def test_extraction_quality_report_flags_numeric_only_tables() -> None:
         "numeric_only_table",
         "no_metric_values",
     ]
+
+
+def test_label_reconstruction_diagnostic_failure_preserves_downstream_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_label_diagnostic_failure(tables: object) -> object:
+        raise ValueError("LabelReconstructionDiagnostic stop_reason failure")
+
+    monkeypatch.setattr(
+        extractor_module,
+        "_label_reconstruction_diagnostics",
+        raise_label_diagnostic_failure,
+    )
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Revenue", "1000"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    extraction_result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=143,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+    normalization_result = TableMetricNormalizer(
+        metric_normalizer=FakeMetricNormalizer()
+    ).normalize_tables(extraction_result)
+    consolidated_metric_values = FinancialYearConsolidator().consolidate(
+        normalization_result.metric_values
+    )
+    workbook_output_dir = Path("output") / "test_extraction_persistence"
+    workbook_output_dir.mkdir(parents=True, exist_ok=True)
+    workbook_result = OpenPyXLWorkbookPopulationService(
+        output_dir=workbook_output_dir
+    ).generate_workbook(
+        metric_values=consolidated_metric_values,
+        insights=[],
+        template_path=None,
+    )
+
+    assert len(extraction_result.tables) == 1
+    assert extraction_result.metric_values[0].metric == "Revenue"
+    assert extraction_result.extraction_summary.quality_report.tables_extracted == 1
+    assert (
+        extraction_result.extraction_summary.quality_report.metric_values_generated
+        == 1
+    )
+    assert extraction_result.extraction_summary.quality_report.tables_rejected == 0
+    assert normalization_result.metric_values[0].metric == "revenue"
+    assert consolidated_metric_values[0].metric == "revenue"
+    assert workbook_result.metrics_written == 1
+    assert "Income Statement" in workbook_result.sheets_created
+    assert Path(workbook_result.output_file_path).exists()
+
+
+def test_quality_report_exception_does_not_fail_extraction(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def raise_quality_report_failure(tables: object) -> object:
+        raise RuntimeError("quality report failure")
+
+    monkeypatch.setattr(
+        extractor_module,
+        "_build_extraction_quality_report",
+        raise_quality_report_failure,
+    )
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Cash", "500"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = extractor.extract_tables(
+            pdf_path="annual_report.pdf",
+            classification_result=FinancialTableClassificationResult(
+                page_table_types=[
+                    PageTableType(
+                        year=2025,
+                        page_number=20,
+                        table_types=["balance_sheet"],
+                    )
+                ]
+            ),
+        )
+
+    assert len(result.tables) == 1
+    assert result.metric_values[0].metric == "Cash"
+    assert result.extraction_summary.quality_report.tables_extracted == 1
+    assert result.extraction_summary.quality_report.metric_values_generated == 1
+    assert "Extraction quality diagnostics failed" in caplog.text
 
 
 def test_extract_tables_returns_empty_when_both_extractors_fail() -> None:

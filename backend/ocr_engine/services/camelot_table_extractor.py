@@ -278,13 +278,6 @@ class CamelotTableExtractor(ITableExtractor):
             self._log_page_diagnostic(page_diagnostic)
 
         extraction_summary = _build_extraction_summary(page_diagnostics)
-        extraction_summary = extraction_summary.model_copy(
-            update={
-                "quality_report": _build_extraction_quality_report(
-                    extracted_tables
-                )
-            }
-        )
         result = TableExtractionResult(
             tables=extracted_tables,
             metric_values=[
@@ -294,6 +287,7 @@ class CamelotTableExtractor(ITableExtractor):
             ],
             extraction_summary=extraction_summary,
         )
+        result = self._attach_quality_report(result)
         self._logger.info(
             "Extraction completed",
             extra={
@@ -311,6 +305,33 @@ class CamelotTableExtractor(ITableExtractor):
             ),
         )
         return result
+
+    def _attach_quality_report(
+        self,
+        result: TableExtractionResult,
+    ) -> TableExtractionResult:
+        """Attach extraction quality diagnostics without risking data loss."""
+
+        try:
+            quality_report = _build_extraction_quality_report(result.tables)
+        except Exception:
+            self._logger.warning(
+                "Extraction quality diagnostics failed; preserving extraction result",
+                extra={
+                    "tables_extracted": len(result.tables),
+                    "metric_values_extracted": len(result.metric_values),
+                },
+                exc_info=True,
+            )
+            quality_report = _build_partial_extraction_quality_report(result.tables)
+
+        return result.model_copy(
+            update={
+                "extraction_summary": result.extraction_summary.model_copy(
+                    update={"quality_report": quality_report}
+                )
+            }
+        )
 
     def _extract_page_tables(
         self,
@@ -883,12 +904,13 @@ class CamelotTableExtractor(ITableExtractor):
         for column_index in range(label_index, len(row)):
             text = str(row[column_index]).strip()
             if column_index != label_index:
-                stop_reason = cls._label_merge_stop_reason(
+                candidate_stop_reason = cls._label_merge_stop_reason(
                     text,
                     column_index=column_index,
                     year_columns=year_columns,
                 )
-                if stop_reason is not None:
+                if candidate_stop_reason is not None:
+                    stop_reason = candidate_stop_reason
                     break
 
             if not text:
@@ -1341,6 +1363,26 @@ def _build_extraction_quality_report(
         top_suspicious_tables=top_suspicious_tables,
         top_suspicious_metrics=top_suspicious_metrics,
         label_reconstruction_diagnostics=label_reconstruction_diagnostics,
+    )
+
+
+def _build_partial_extraction_quality_report(
+    tables: list[ExtractedTable],
+) -> ExtractionQualityReport:
+    """Build minimal non-failing quality metadata after diagnostics failure."""
+
+    return ExtractionQualityReport(
+        tables_extracted=len(tables),
+        metric_values_generated=sum(len(table.metric_values) for table in tables),
+        unclassified_table_count=sum(
+            1
+            for table in tables
+            if _normalize_key(table.table_type) == UNCLASSIFIED_TABLE_TYPE
+        ),
+        confidence_distribution={},
+        top_suspicious_tables=[],
+        top_suspicious_metrics=[],
+        label_reconstruction_diagnostics=[],
     )
 
 

@@ -285,6 +285,40 @@ def test_default_registry_normalizes_lucky_final_coverage_labels(
 @pytest.mark.parametrize(
     ("label", "expected_metric"),
     [
+        ("Cash and cash equivale nts", "cash_and_cash_equivalents"),
+        ("Cash and cash eq uivalents", "cash_and_cash_equivalents"),
+        ("ash and cash e quivalents at the b eginning of the year", "cash_at_beginning_of_period"),
+        ("ash and cash e quivalents at the e nd of the year", "cash_at_end_of_period"),
+        ("ash genera ted f rom operations", "operating_cash_flow"),
+        ("OTAL ASSETS", "total_assets"),
+        ("OTAL EQUITY AND LIABILITIES", "total_equity_and_liabilities"),
+        ("Operating exp ense s", "operating_expenses"),
+        ("Amortisation", "amortization_expense"),
+        ("Current assets exc luding cash and cash equivalents", "current_assets_excluding_cash_and_cash_equivalents"),
+        ("Current service cost", "defined_benefit_current_service_cost"),
+        ("Authorised capital - Ordinary shares of P KR 2/\u2013 each", "ordinary_shares"),
+        ("Note 2025 2024 - Net profit (100%", "share_of_net_profit"),
+        ("Accretion of intere st o n lease liabilities", "finance_cost"),
+        ("Advances fro m cust omers / cont ract liabilities", "contract_liabilities"),
+    ],
+)
+def test_default_registry_normalizes_dirty_ocr_aliases(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
         ("Salaries and amenities", "staff_cost"),
         ("Cash and bank balance", "cash_and_bank_balances"),
         ("Trade and other payables", "creditors_accrued_other_liabilities"),

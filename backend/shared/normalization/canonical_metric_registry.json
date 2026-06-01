@@ -101,7 +101,8 @@
       "operating expenses",
       "total operating expenses",
       "reported operating expenses",
-      "operating expenses amount"
+      "operating expenses amount",
+      "Operating exp ense s"
     ],
     "category": "income_statement"
   },
@@ -179,7 +180,9 @@
       "finance cost",
       "total finance cost",
       "Markup Interest expenses o n borrow ed fun ds",
-      "Finance costs p aid"
+      "Finance costs p aid",
+      "Accretion of in terest on leas e liabilities",
+      "Accretion of intere st o n lease liabilities"
     ],
     "category": "income_statement"
   },
@@ -287,7 +290,11 @@
       "reported earnings per share",
       "earning per share rupees",
       "earning per share",
-      "Earnings Per S"
+      "Earnings Per S",
+      "Earnings per share (EPS) and Diluted EPS rupees",
+      "Investment Valuation Ratios - Earnings per share (EPS) and Diluted EPS rupees",
+      "Basic and dil uted earnin gs per share (PKR)",
+      "Basic and diluted ear nings pe r share – PKR"
     ],
     "category": "income_statement"
   },
@@ -399,7 +406,9 @@
       "amortization expense",
       "total amortization expense",
       "reported amortization expense",
-      "amortization expense amount"
+      "amortization expense amount",
+      "Amortisation",
+      "Amortisation of in t an gible assets"
     ],
     "category": "income_statement"
   },
@@ -513,7 +522,10 @@
       "cash and cash equivalents at the beginning of the year",
       "cash and cash equivalents at the end of the year",
       "Cash and cash equivalen ts",
-      "Cash and cash equ ivalents"
+      "Cash and cash equ ivalents",
+      "Cash and cash equivale nts",
+      "Cash and cash eq uivalents",
+      "cash equival ents"
     ],
     "category": "balance_sheet"
   },
@@ -533,7 +545,9 @@
       "long term investments",
       "total long term investments",
       "reported long term investments",
-      "long term investments amount"
+      "long term investments amount",
+      "Investment at cost",
+      "Note 2025 2024 - Investment at cost"
     ],
     "category": "balance_sheet"
   },
@@ -554,7 +568,9 @@
       "trade debts",
       "total trade debts",
       "reported trade debts",
-      "trade debts amount"
+      "trade debts amount",
+      "Bills receivabl e secured",
+      "Bills receivable secured"
     ],
     "category": "balance_sheet"
   },
@@ -576,7 +592,8 @@
       "reported deposits prepayments other receivables",
       "deposits prepayments other receivables amount",
       "other receivables",
-      "other advances and deposits"
+      "other advances and deposits",
+      "Prepayments"
     ],
     "category": "balance_sheet"
   },
@@ -663,7 +680,8 @@
       "total assets",
       "total total assets",
       "reported total assets",
-      "total assets amount"
+      "total assets amount",
+      "OTAL ASSETS"
     ],
     "category": "balance_sheet"
   },
@@ -796,7 +814,8 @@
       "contract liabilities",
       "total contract liabilities",
       "reported contract liabilities",
-      "contract liabilities amount"
+      "contract liabilities amount",
+      "Advances fro m cust omers / cont ract liabilities"
     ],
     "category": "balance_sheet"
   },
@@ -1124,6 +1143,8 @@
       "net cash from operating activities",
       "ash generated from operations",
       "cash generated f rom operations",
+      "ash genera ted f rom operations",
+      "cash genera ted f rom operations",
       "et cash generated from operating activities",
       "et cash gener ated from operating activities",
       "net cash generated from operating activities"
@@ -1326,7 +1347,8 @@
       "net increase decrease in cash",
       "total net increase decrease in cash",
       "reported net increase decrease in cash",
-      "net increase decrease in cash amount"
+      "net increase decrease in cash amount",
+      "(Decrease) /Increase in Cash and Bank Balance"
     ],
     "category": "cash_flow"
   },
@@ -1336,7 +1358,10 @@
       "cash at beginning of period",
       "total cash at beginning of period",
       "reported cash at beginning of period",
-      "cash at beginning of period amount"
+      "cash at beginning of period amount",
+      "ash and cash e quivalents at the b eginning of the year",
+      "ash and cash eq uivalents at the beginning of the year",
+      "cash and cash e quivalents at the b eginning of the year"
     ],
     "category": "cash_flow"
   },
@@ -1346,7 +1371,10 @@
       "cash at end of period",
       "total cash at end of period",
       "reported cash at end of period",
-      "cash at end of period amount"
+      "cash at end of period amount",
+      "ash and cash e quivalents at the e nd of the year",
+      "ash and cash eq uivalents at the e nd of the year",
+      "cash and cash e quivalents at the e nd of the year"
     ],
     "category": "cash_flow"
   },
@@ -3651,7 +3679,8 @@
     "aliases": [
       "total equity and liabilities",
       "total equity liabilities",
-      "equity and liabilities total"
+      "equity and liabilities total",
+      "OTAL EQUITY AND LIABILITIES"
     ],
     "category": "balance_sheet"
   },
@@ -3871,7 +3900,11 @@
     "aliases": [
       "ordinary shares",
       "ordinary shares of pkr 10 each",
-      "ordinary shares of pkr 2 each"
+      "ordinary shares of pkr 2 each",
+      "Ordinary shares of P KR 2/– each",
+      "Ordinary shares of PK R 2/- each",
+      "Authorised capital - Ordinary shares of P KR 2/– each",
+      "Authorised capital - Ordinary shares of PK R 2/- each"
     ],
     "category": "share_capital"
   },
@@ -3925,7 +3958,8 @@
     "aliases": [
       "current assets excluding cash and cash equivalents",
       "current assets excluding cash equivalents",
-      "current assets excluding cash and bank balances"
+      "current assets excluding cash and bank balances",
+      "Current assets exc luding cash and cash equivalents"
     ],
     "category": "balance_sheet"
   },
@@ -4029,7 +4063,8 @@
     "display_name": "Defined Benefit Current Service Cost",
     "aliases": [
       "defined benefit current service cost",
-      "staff retirement benefit current service cost"
+      "staff retirement benefit current service cost",
+      "Current service cost"
     ],
     "category": "employee_metrics"
   },
@@ -4049,7 +4084,9 @@
       "the group share of net profit",
       "the group s share of net profit",
       "the group s share of net profit 50",
-      "share of profit joint ventures and associates"
+      "share of profit joint ventures and associates",
+      "Net profit (100%",
+      "Note 2025 2024 - Net profit (100%"
     ],
     "category": "investment_disclosures"
   },

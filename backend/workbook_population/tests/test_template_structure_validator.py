@@ -105,7 +105,13 @@ def test_template_validator_does_not_award_free_score_components(
 
 def test_template_validator_marks_missing_sheet_for_creation(tmp_path: Path) -> None:
     template_path = tmp_path / "template.xlsx"
-    _save_template(template_path, ["revenue"], [2025])
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Income Statement"
+    worksheet.append(["Metric", 2025])
+    worksheet.append(["revenue", None])
+    workbook.save(template_path)
+    workbook.close()
 
     result = TemplateStructureValidator().validate(
         str(template_path),

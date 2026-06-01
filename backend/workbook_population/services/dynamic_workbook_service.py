@@ -19,6 +19,7 @@ from workbook_population.constants.workbook_constants import (
     INSIGHTS_REVIEW_SHEET_NAME,
     INSIGHTS_SHEET_NAME,
 )
+from workbook_population.services.sheet_name_sanitizer import sanitize_sheet_name
 from workbook_population.services.workbook_mapper import WorkbookMapper
 
 
@@ -47,10 +48,13 @@ class DynamicWorkbookService:
         sheet_metrics = self._group_metrics_by_sheet(metric_values)
         created_sheets: list[str] = []
         metrics_written = 0
+        existing_sheet_names = set(workbook.sheetnames)
 
         for sheet_name, values in sheet_metrics.items():
-            worksheet = workbook.create_sheet(sheet_name)
-            created_sheets.append(sheet_name)
+            safe_sheet_name = sanitize_sheet_name(sheet_name, existing_sheet_names)
+            worksheet = workbook.create_sheet(safe_sheet_name)
+            existing_sheet_names.add(safe_sheet_name)
+            created_sheets.append(safe_sheet_name)
             metrics_written += self._write_metric_sheet(worksheet, values)
 
         governed_insights = self._insight_governance.apply(insights)
@@ -58,21 +62,27 @@ class DynamicWorkbookService:
         review_insights = governed_insights.review_insights
 
         if not sheet_metrics and not exported_insights and not review_insights:
-            worksheet = workbook.create_sheet("Financial Data")
+            sheet_name = sanitize_sheet_name("Financial Data", existing_sheet_names)
+            worksheet = workbook.create_sheet(sheet_name)
+            existing_sheet_names.add(sheet_name)
             worksheet.append(["Metric"])
             _style_header(worksheet[1])
-            created_sheets.append("Financial Data")
+            created_sheets.append(sheet_name)
 
         if exported_insights:
-            self._write_insights_sheet(workbook, INSIGHTS_SHEET_NAME, exported_insights)
-            created_sheets.append(INSIGHTS_SHEET_NAME)
+            sheet_name = self._write_insights_sheet(
+                workbook,
+                INSIGHTS_SHEET_NAME,
+                exported_insights,
+            )
+            created_sheets.append(sheet_name)
         if review_insights:
-            self._write_insights_sheet(
+            sheet_name = self._write_insights_sheet(
                 workbook,
                 INSIGHTS_REVIEW_SHEET_NAME,
                 review_insights,
             )
-            created_sheets.append(INSIGHTS_REVIEW_SHEET_NAME)
+            created_sheets.append(sheet_name)
 
         try:
             output_path = Path(output_file_path)
@@ -139,8 +149,9 @@ class DynamicWorkbookService:
         workbook: Workbook,
         sheet_name: str,
         insights: list[Insight],
-    ) -> None:
-        worksheet = workbook.create_sheet(sheet_name)
+    ) -> str:
+        safe_sheet_name = sanitize_sheet_name(sheet_name, set(workbook.sheetnames))
+        worksheet = workbook.create_sheet(safe_sheet_name)
         worksheet.append(
             [
                 "Year",
@@ -168,6 +179,7 @@ class DynamicWorkbookService:
             )
 
         _autosize_columns(worksheet)
+        return safe_sheet_name
 
 
 def _style_header(cells: object) -> None:

@@ -21,6 +21,7 @@ from workbook_population.constants.workbook_constants import (
     INSIGHTS_SHEET_NAME,
 )
 from workbook_population.models.sheet_validation_result import SheetValidationResult
+from workbook_population.services.sheet_name_sanitizer import sanitize_sheet_name
 from workbook_population.services.workbook_mapper import WorkbookMapper, _normalize_key
 
 logger = logging.getLogger(__name__)
@@ -78,12 +79,16 @@ class TemplatePopulationService:
                 )
 
                 if existing_sheet_name is None:
-                    worksheet = workbook.create_sheet(sheet_name)
+                    safe_sheet_name = sanitize_sheet_name(
+                        sheet_name,
+                        set(workbook.sheetnames),
+                    )
+                    worksheet = workbook.create_sheet(safe_sheet_name)
                     metrics_written += self._write_generated_metric_sheet(
                         worksheet,
                         values,
                     )
-                    sheets_created.append(sheet_name)
+                    sheets_created.append(safe_sheet_name)
                     continue
 
                 if sheet_result is None:
@@ -111,15 +116,19 @@ class TemplatePopulationService:
                             existing_sheet_name
                         )
                         workbook.remove(workbook[existing_sheet_name])
-                        worksheet = workbook.create_sheet(
+                        safe_sheet_name = sanitize_sheet_name(
                             sheet_name,
+                            set(workbook.sheetnames),
+                        )
+                        worksheet = workbook.create_sheet(
+                            safe_sheet_name,
                             replacement_index,
                         )
                         metrics_written += self._write_generated_metric_sheet(
                             worksheet,
                             values,
                         )
-                        sheets_replaced.append(sheet_name)
+                        sheets_replaced.append(safe_sheet_name)
                         continue
 
                     metrics_written += written
@@ -136,9 +145,13 @@ class TemplatePopulationService:
 
                 replacement_index = workbook.sheetnames.index(existing_sheet_name)
                 workbook.remove(workbook[existing_sheet_name])
-                worksheet = workbook.create_sheet(sheet_name, replacement_index)
+                safe_sheet_name = sanitize_sheet_name(
+                    sheet_name,
+                    set(workbook.sheetnames),
+                )
+                worksheet = workbook.create_sheet(safe_sheet_name, replacement_index)
                 metrics_written += self._write_generated_metric_sheet(worksheet, values)
-                sheets_replaced.append(sheet_name)
+                sheets_replaced.append(safe_sheet_name)
 
             sheets_created.extend(self._populate_insights(workbook, insights))
 
@@ -224,8 +237,14 @@ class TemplatePopulationService:
             return sheet_name
 
         normalized_target = _normalize_key(sheet_name)
+        sanitized_target = sanitize_sheet_name(sheet_name, set())
+        normalized_sanitized_target = _normalize_key(sanitized_target)
         for existing_sheet_name in workbook.sheetnames:
-            if _normalize_key(existing_sheet_name) == normalized_target:
+            normalized_existing = _normalize_key(existing_sheet_name)
+            if normalized_existing in {
+                normalized_target,
+                normalized_sanitized_target,
+            }:
                 return existing_sheet_name
         return None
 
@@ -268,18 +287,21 @@ class TemplatePopulationService:
 
         governance_result = self._insight_governance.apply(insights)
         sheets_created: list[str] = []
-        if self._write_insights_sheet(
+        created_sheet = self._write_insights_sheet(
             workbook,
             INSIGHTS_SHEET_NAME,
             governance_result.exported_insights,
-        ):
-            sheets_created.append(INSIGHTS_SHEET_NAME)
-        if governance_result.review_insights and self._write_insights_sheet(
-            workbook,
-            INSIGHTS_REVIEW_SHEET_NAME,
-            governance_result.review_insights,
-        ):
-            sheets_created.append(INSIGHTS_REVIEW_SHEET_NAME)
+        )
+        if created_sheet is not None:
+            sheets_created.append(created_sheet)
+        if governance_result.review_insights:
+            created_sheet = self._write_insights_sheet(
+                workbook,
+                INSIGHTS_REVIEW_SHEET_NAME,
+                governance_result.review_insights,
+            )
+            if created_sheet is not None:
+                sheets_created.append(created_sheet)
         return sheets_created
 
     @staticmethod
@@ -287,14 +309,20 @@ class TemplatePopulationService:
         workbook: object,
         sheet_name: str,
         insights: list[Insight],
-    ) -> bool:
+    ) -> str | None:
         """Write one governed insight bucket to a workbook sheet."""
 
-        sheet_created = sheet_name not in workbook.sheetnames
-        if sheet_created:
-            worksheet = workbook.create_sheet(sheet_name)
+        existing_sheet_name = TemplatePopulationService._find_existing_sheet_name(
+            workbook,
+            sheet_name,
+        )
+        if existing_sheet_name is None:
+            safe_sheet_name = sanitize_sheet_name(sheet_name, set(workbook.sheetnames))
+            worksheet = workbook.create_sheet(safe_sheet_name)
+            created_sheet_name = safe_sheet_name
         else:
-            worksheet = workbook[sheet_name]
+            worksheet = workbook[existing_sheet_name]
+            created_sheet_name = None
             worksheet.delete_rows(1, worksheet.max_row)
 
         headers = [
@@ -320,7 +348,7 @@ class TemplatePopulationService:
                 ]
             )
         _autosize_columns(worksheet)
-        return sheet_created
+        return created_sheet_name
 
     @staticmethod
     def _is_formula_cell(value: object) -> bool:

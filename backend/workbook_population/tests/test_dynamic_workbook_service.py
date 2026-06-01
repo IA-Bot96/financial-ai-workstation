@@ -119,6 +119,45 @@ def test_dynamic_workbook_preserves_duplicate_metrics_across_table_types(
     workbook.close()
 
 
+def test_dynamic_workbook_sanitizes_generated_sheet_names(tmp_path: Path) -> None:
+    output_path = tmp_path / "dynamic.xlsx"
+
+    sheets, metrics_written, warnings = DynamicWorkbookService().generate(
+        output_file_path=str(output_path),
+        metric_values=[
+            MetricValue(
+                metric="commitments",
+                value_year=2025,
+                value=100,
+                source_report_year=2025,
+                page_number=120,
+                table_type="contingent_liabilities_and_assets_note",
+            ),
+            MetricValue(
+                metric="cash",
+                value_year=2025,
+                value=200,
+                source_report_year=2025,
+                page_number=121,
+                table_type=r"cash/bank:*?[notes]",
+            ),
+        ],
+        insights=[],
+    )
+
+    workbook = load_workbook(output_path)
+    assert "Contingent Liabilities And Ass" in workbook.sheetnames
+    assert "CashBankNotes" in workbook.sheetnames
+    assert all(len(sheet_name) <= 31 for sheet_name in workbook.sheetnames)
+    assert sheets == [
+        "Contingent Liabilities And Ass",
+        "CashBankNotes",
+    ]
+    assert metrics_written == 2
+    assert warnings == []
+    workbook.close()
+
+
 def test_dynamic_workbook_routes_insights_by_confidence_governance(
     tmp_path: Path,
 ) -> None:

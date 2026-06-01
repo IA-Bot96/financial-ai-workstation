@@ -19,6 +19,7 @@ from workbook_population.models.sheet_validation_result import SheetValidationRe
 from workbook_population.models.template_validation_result import (
     TemplateValidationResult,
 )
+from workbook_population.services.sheet_name_sanitizer import sanitize_sheet_name
 from workbook_population.services.workbook_mapper import (
     WorkbookMapper,
     _cell_year,
@@ -174,8 +175,14 @@ class TemplateStructureValidator:
             return workbook[sheet_name]
 
         normalized_target = _normalize_key(sheet_name)
+        sanitized_target = sanitize_sheet_name(sheet_name, set())
+        normalized_sanitized_target = _normalize_key(sanitized_target)
         for existing_sheet_name in workbook.sheetnames:
-            if _normalize_key(existing_sheet_name) == normalized_target:
+            normalized_existing = _normalize_key(existing_sheet_name)
+            if normalized_existing in {
+                normalized_target,
+                normalized_sanitized_target,
+            }:
                 return workbook[existing_sheet_name]
         return None
 

@@ -159,6 +159,56 @@ def test_template_population_replaces_incompatible_and_creates_missing_sheets(
     populated.close()
 
 
+def test_template_population_sanitizes_created_and_replaced_sheet_names(
+    tmp_path: Path,
+) -> None:
+    template_path = tmp_path / "template.xlsx"
+    output_path = tmp_path / "output.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Legacy"
+    worksheet.append(["Metric", 2025])
+    workbook.save(template_path)
+    workbook.close()
+
+    sheets_reused, sheets_replaced, sheets_created, metrics_written, warnings = (
+        TemplatePopulationService().populate(
+            template_path=str(template_path),
+            output_file_path=str(output_path),
+            metric_values=[
+                _metric_value(
+                    "commitments",
+                    2025,
+                    100,
+                    table_type="contingent_liabilities_and_assets_note",
+                ),
+            ],
+            insights=[],
+            sheet_results=[
+                SheetValidationResult(
+                    sheet_name="Contingent Liabilities And Assets Note",
+                    match_score=0,
+                    is_compatible=False,
+                    missing_metrics=["commitments"],
+                    extra_metrics=[],
+                    warnings=[],
+                )
+            ],
+        )
+    )
+
+    populated = load_workbook(output_path, data_only=False)
+    assert "Contingent Liabilities And Ass" in populated.sheetnames
+    assert all(len(sheet_name) <= 31 for sheet_name in populated.sheetnames)
+    assert populated["Contingent Liabilities And Ass"]["A2"].value == "commitments"
+    assert sheets_reused == []
+    assert sheets_replaced == []
+    assert "Contingent Liabilities And Ass" in sheets_created
+    assert metrics_written == 1
+    assert warnings == []
+    populated.close()
+
+
 def test_template_population_replaces_cross_sheet_mapping_conflicts(
     tmp_path: Path,
 ) -> None:

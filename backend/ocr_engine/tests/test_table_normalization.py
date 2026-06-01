@@ -109,6 +109,11 @@ def test_metric_mapping_preserves_year_and_review_state() -> None:
         "table_index": None,
         "detected_table_id": None,
         "match_method": None,
+        "normalization_input_metric": None,
+        "parent_metric_context": None,
+        "child_metric": None,
+        "parent_prefix_stripped": False,
+        "normalization_rule": None,
     }
 
 

@@ -32,6 +32,13 @@ class FakeMetricNormalizer(IMetricNormalizer):
             "Net Sales": "revenue",
             "Gross Profit": "gross_profit",
             "Debt": "debt",
+            "Depreciation": "depreciation_expense",
+            "Goodwill": "goodwill",
+            "Accrued liabilities": "accrued_liabilities",
+            "REMUNERATION OF CHIEF EXECUTIVE - Managerial remuneration": (
+                "chief_executive_remuneration"
+            ),
+            "Managerial remuneration": "managerial_remuneration",
         }
         normalized_metric = lookup.get(metric_name)
         return NormalizedMetric(
@@ -165,6 +172,115 @@ def test_normalize_tables_preserves_year_on_tables_and_mappings() -> None:
         ("revenue", 2023, 2024),
         ("gross_profit", 2024, 2024),
     ]
+
+
+def test_normalize_tables_strips_preserved_parent_prefix_for_strong_child_match(
+) -> None:
+    service = TableMetricNormalizer(metric_normalizer=FakeMetricNormalizer())
+    extraction_result = TableExtractionResult(
+        tables=[
+            ExtractedTable(
+                source_report_year=2025,
+                page_number=222,
+                table_type="cost_of_sales_note",
+                table_index=0,
+                rows=[],
+                metric_values=[
+                    MetricValue(
+                        metric="COST OF SALES - Depreciation",
+                        value_year=2025,
+                        value=125,
+                        source_report_year=2025,
+                        page_number=222,
+                        table_type="cost_of_sales_note",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = service.normalize_tables(extraction_result)
+
+    assert result.metric_values[0].metric == "depreciation_expense"
+    assert result.mappings[0].original_metric == "COST OF SALES - Depreciation"
+    assert result.mappings[0].normalized_metric == "depreciation_expense"
+    assert result.mappings[0].normalization_input_metric == "Depreciation"
+    assert result.mappings[0].parent_metric_context == "COST OF SALES"
+    assert result.mappings[0].child_metric == "Depreciation"
+    assert result.mappings[0].parent_prefix_stripped is True
+    assert result.mappings[0].normalization_rule == "parent_prefix_stripping"
+
+
+def test_normalize_tables_keeps_parent_prefix_when_child_is_not_strong() -> None:
+    service = TableMetricNormalizer(metric_normalizer=FakeMetricNormalizer())
+    extraction_result = TableExtractionResult(
+        tables=[
+            ExtractedTable(
+                source_report_year=2025,
+                page_number=222,
+                table_type="cost_of_sales_note",
+                table_index=0,
+                rows=[],
+                metric_values=[
+                    MetricValue(
+                        metric="COST OF SALES - Unclear disclosure",
+                        value_year=2025,
+                        value=125,
+                        source_report_year=2025,
+                        page_number=222,
+                        table_type="cost_of_sales_note",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = service.normalize_tables(extraction_result)
+
+    assert result.metric_values[0].metric == "COST OF SALES - Unclear disclosure"
+    assert result.mappings[0].normalized_metric is None
+    assert result.mappings[0].requires_review is True
+    assert result.mappings[0].normalization_input_metric == (
+        "COST OF SALES - Unclear disclosure"
+    )
+    assert result.mappings[0].parent_prefix_stripped is False
+
+
+def test_normalize_tables_keeps_stronger_specific_parent_context_mapping() -> None:
+    service = TableMetricNormalizer(metric_normalizer=FakeMetricNormalizer())
+    extraction_result = TableExtractionResult(
+        tables=[
+            ExtractedTable(
+                source_report_year=2025,
+                page_number=300,
+                table_type="remuneration_note",
+                table_index=0,
+                rows=[],
+                metric_values=[
+                    MetricValue(
+                        metric=(
+                            "REMUNERATION OF CHIEF EXECUTIVE - "
+                            "Managerial remuneration"
+                        ),
+                        value_year=2025,
+                        value=10,
+                        source_report_year=2025,
+                        page_number=300,
+                        table_type="remuneration_note",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = service.normalize_tables(extraction_result)
+
+    assert result.metric_values[0].metric == "chief_executive_remuneration"
+    assert result.mappings[0].normalized_metric == "chief_executive_remuneration"
+    assert result.mappings[0].normalization_input_metric == (
+        "REMUNERATION OF CHIEF EXECUTIVE - Managerial remuneration"
+    )
+    assert result.mappings[0].parent_prefix_stripped is False
 
 
 def test_normalize_for_context_stores_results_by_report_year() -> None:

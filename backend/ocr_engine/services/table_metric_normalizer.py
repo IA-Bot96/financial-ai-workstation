@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import re
 from typing import Sequence
@@ -18,9 +19,25 @@ from ocr_engine.services.interfaces.table_metric_normalizer import (
 )
 from shared.models.company_context import CompanyContext
 from shared.models.metric_value import MetricValue
+from shared.normalization.constants.normalization_constants import (
+    HIGH_CONFIDENCE_THRESHOLD,
+)
 from shared.normalization.interfaces.metric_normalizer import IMetricNormalizer
+from shared.normalization.models.normalized_metric import NormalizedMetric
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _MetricNormalizationDecision:
+    """Normalization result plus preprocessing provenance."""
+
+    result: NormalizedMetric
+    normalization_input_metric: str
+    parent_metric_context: str | None = None
+    child_metric: str | None = None
+    parent_prefix_stripped: bool = False
+    normalization_rule: str | None = None
 
 
 class TableMetricNormalizer(ITableMetricNormalizer):
@@ -197,9 +214,10 @@ class TableMetricNormalizer(ITableMetricNormalizer):
     ) -> tuple[MetricValue, MetricMapping]:
         """Normalize one extracted metric value while preserving year provenance."""
 
-        normalized_metric = self._metric_normalizer.normalize_metric(
+        decision = self._normalize_metric_with_parent_prefix(
             metric_value.metric
         )
+        normalized_metric = decision.result
         normalized_metric_name = normalized_metric.normalized_metric or metric_value.metric
         normalized_metric_value = metric_value.model_copy(
             update={"metric": normalized_metric_name}
@@ -216,8 +234,70 @@ class TableMetricNormalizer(ITableMetricNormalizer):
             table_index=getattr(table, "table_index", None),
             detected_table_id=getattr(table, "detected_table_id", None),
             match_method=getattr(table, "match_method", None),
+            normalization_input_metric=decision.normalization_input_metric,
+            parent_metric_context=decision.parent_metric_context,
+            child_metric=decision.child_metric,
+            parent_prefix_stripped=decision.parent_prefix_stripped,
+            normalization_rule=decision.normalization_rule,
         )
         return normalized_metric_value, mapping
+
+    def _normalize_metric_with_parent_prefix(
+        self,
+        metric_name: str,
+    ) -> _MetricNormalizationDecision:
+        """Normalize a metric, stripping preserved parent context when safe."""
+
+        original_result = self._metric_normalizer.normalize_metric(metric_name)
+        split_metric = _split_parent_prefixed_metric(metric_name)
+        if split_metric is None:
+            return _MetricNormalizationDecision(
+                result=original_result,
+                normalization_input_metric=metric_name,
+            )
+
+        parent_context, child_metric = split_metric
+        child_result = self._metric_normalizer.normalize_metric(child_metric)
+        if not _is_strong_child_match(child_result):
+            return _MetricNormalizationDecision(
+                result=original_result,
+                normalization_input_metric=metric_name,
+            )
+
+        original_is_strong_specific_match = (
+            original_result.normalized_metric is not None
+            and original_result.confidence >= HIGH_CONFIDENCE_THRESHOLD
+            and original_result.normalized_metric != child_result.normalized_metric
+        )
+        if original_is_strong_specific_match:
+            return _MetricNormalizationDecision(
+                result=original_result,
+                normalization_input_metric=metric_name,
+            )
+
+        self._logger.debug(
+            "Parent prefix stripped before metric normalization",
+            extra={
+                "original_metric": metric_name,
+                "parent_metric_context": parent_context,
+                "child_metric": child_metric,
+                "normalized_metric": child_result.normalized_metric,
+                "confidence": child_result.confidence,
+            },
+        )
+        return _MetricNormalizationDecision(
+            result=NormalizedMetric(
+                original_metric=metric_name,
+                normalized_metric=child_result.normalized_metric,
+                confidence=child_result.confidence,
+                requires_review=child_result.requires_review,
+            ),
+            normalization_input_metric=child_metric,
+            parent_metric_context=parent_context,
+            child_metric=child_metric,
+            parent_prefix_stripped=True,
+            normalization_rule="parent_prefix_stripping",
+        )
 
     @staticmethod
     def _metric_label_index(row: Sequence[str]) -> int | None:
@@ -286,3 +366,35 @@ def _error_message(exc: Exception) -> str:
     """Return a non-empty error message for result metadata."""
 
     return str(exc) or exc.__class__.__name__
+
+
+def _split_parent_prefixed_metric(metric_name: str) -> tuple[str, str] | None:
+    """Return parent context and child metric for a preserved context label."""
+
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+(?:-|\u2013|\u2014)\s+", metric_name)
+        if part.strip()
+    ]
+    if len(parts) < 2:
+        return None
+
+    parent_context = " - ".join(parts[:-1]).strip()
+    child_metric = parts[-1].strip()
+    if not parent_context or not child_metric:
+        return None
+    if not re.search(r"[A-Za-z]", parent_context):
+        return None
+    if not re.search(r"[A-Za-z]", child_metric):
+        return None
+    return parent_context, child_metric
+
+
+def _is_strong_child_match(normalized_metric: NormalizedMetric) -> bool:
+    """Return whether a stripped child metric maps strongly on its own."""
+
+    return (
+        normalized_metric.normalized_metric is not None
+        and not normalized_metric.requires_review
+        and normalized_metric.confidence >= HIGH_CONFIDENCE_THRESHOLD
+    )

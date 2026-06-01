@@ -286,6 +286,37 @@ class MetricMapping(BaseModel):
         description="Matching strategy used for the source table.",
         examples=["detected_table_id"],
     )
+    normalization_input_metric: str | None = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "Metric text actually submitted to canonical normalization when it "
+            "differs from original_metric."
+        ),
+        examples=["Depreciation"],
+    )
+    parent_metric_context: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Preserved parent note or section context stripped from the child metric.",
+        examples=["COST OF SALES"],
+    )
+    child_metric: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Child metric label used after parent-prefix stripping.",
+        examples=["Depreciation"],
+    )
+    parent_prefix_stripped: bool = Field(
+        default=False,
+        description="Whether parent context was stripped before canonical normalization.",
+        examples=[True],
+    )
+    normalization_rule: str | None = Field(
+        default=None,
+        description="Rule responsible for a normalization preprocessing decision.",
+        examples=["parent_prefix_stripping"],
+    )
 
     @property
     def year(self) -> int:

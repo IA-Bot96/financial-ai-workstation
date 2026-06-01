@@ -224,6 +224,64 @@ def test_default_registry_normalizes_lucky_cement_labels(
 @pytest.mark.parametrize(
     ("label", "expected_metric"),
     [
+        ("Operating Profi", "operating_profit"),
+        ("Earnings Per S", "earnings_per_share"),
+        ("GP as % of Net", "gross_margin"),
+        ("NP (Attributabl", "net_income"),
+        (
+            "Current assets excluding cash and cash equivalents",
+            "current_assets_excluding_cash_and_cash_equivalents",
+        ),
+        (
+            "Investment Valuation Ratios - i) Without surplus on Revaluation of property rupees",
+            "break_up_value_per_share_without_surplus",
+        ),
+        (
+            "Investment Valuation Ratios - ii) With Surplus on Revaluation of PPE including all rupees",
+            "break_up_value_per_share_with_surplus",
+        ),
+        (
+            "Investment Valuation Ratios - iii) Including investment in related party at fair rupees",
+            "break_up_value_per_share_with_related_party_fair_value",
+        ),
+        (
+            "REMUNERATION OF CHIEF EX ECU - Managerial remuneration",
+            "chief_executive_remuneration",
+        ),
+        (
+            "Aggre gate amo unts char g - Managerial remuneration",
+            "managerial_remuneration",
+        ),
+        ("Other b enefits - Number of persons", "employee_count"),
+        ("Fair value of plan assets", "fair_value_of_plan_assets"),
+        (
+            "Historical in formation – funded plans - Net liability / (asset)",
+            "defined_benefit_net_liability_asset",
+        ),
+        ("Pension Grat uity - Government bonds", "defined_benefit_government_bonds"),
+        ("Pension Grat uity - Cash and term deposits", "defined_benefit_cash_term_deposits"),
+        ("The Group’s share of net assets (50%)", "share_of_net_assets"),
+        ("The Group’s share of net profit (50%)", "share_of_net_profit"),
+        ("Net loss (100%)", "share_of_net_loss"),
+    ],
+)
+def test_default_registry_normalizes_lucky_final_coverage_labels(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
         ("Salaries and amenities", "staff_cost"),
         ("Cash and bank balance", "cash_and_bank_balances"),
         ("Trade and other payables", "creditors_accrued_other_liabilities"),

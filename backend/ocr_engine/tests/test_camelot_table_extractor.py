@@ -1816,3 +1816,44 @@ def test_extract_tables_logs_processing_and_completion(
     assert "Processing page 20" in caplog.text
     assert "Camelot succeeded" in caplog.text
     assert "Extraction completed" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("rows", "table_type"),
+    [
+        (
+            [
+                ["38.", "CASH GENERATED F", "ROM OPERATIONS"],
+                ["Profit before taxatio", "n", "105,746,566", "90,301,772"],
+            ],
+            "cash_flow_statement",
+        ),
+        (
+            [
+                ["C", "omprehensive", "Income"],
+                ["Profit", "after taxation", "33,092,162", "28,106,539"],
+                ["Other", "comprehensive loss:"],
+            ],
+            "income_statement",
+        ),
+        (
+            [
+                ["9.", "LONG-TERM", "LOANS, AD", "VANCES AND DEPOS", "ITS"],
+                ["Long-term lo", "ans - cons", "idered good"],
+            ],
+            "debt_schedule",
+        ),
+        (
+            [
+                ["No", "tes t", "o", "the C", "onso", "l", "idat", "ed"],
+                ["Fin", "anci", "al", "State", "men", "t", "s"],
+            ],
+            "notes",
+        ),
+    ],
+)
+def test_table_type_match_score_handles_lucky_ocr_split_patterns(
+    rows: list[list[str]],
+    table_type: str,
+) -> None:
+    assert extractor_module._table_type_match_score(rows, table_type) > 0

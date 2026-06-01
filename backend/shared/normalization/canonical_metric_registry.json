@@ -131,7 +131,8 @@
       "operating result",
       "operating profit",
       "total operating profit",
-      "reported operating profit"
+      "reported operating profit",
+      "Operating Profi"
     ],
     "category": "income_statement"
   },
@@ -173,7 +174,9 @@
       "financial charges",
       "borrowing cost",
       "finance cost",
-      "total finance cost"
+      "total finance cost",
+      "Markup Interest expenses o n borrow ed fun ds",
+      "Finance costs p aid"
     ],
     "category": "income_statement"
   },
@@ -263,7 +266,10 @@
       "earnings after tax",
       "net income",
       "total net income",
-      "reported net income"
+      "reported net income",
+      "NP (Attributabl",
+      "net profit attributable",
+      "net profit attributable to owners"
     ],
     "category": "income_statement"
   },
@@ -277,7 +283,8 @@
       "total earnings per share",
       "reported earnings per share",
       "earning per share rupees",
-      "earning per share"
+      "earning per share",
+      "Earnings Per S"
     ],
     "category": "income_statement"
   },
@@ -451,7 +458,9 @@
       "gain on disposal of assets",
       "total gain on disposal of assets",
       "reported gain on disposal of assets",
-      "gain on disposal of assets amount"
+      "gain on disposal of assets amount",
+      "Income from non-financial assets - Sale of scrap",
+      "Gain on disposal of operating fixed assets"
     ],
     "category": "income_statement"
   },
@@ -499,7 +508,9 @@
       "cash and cash equivalent at the beginning of the year",
       "cash and cash equivalent at the end of the year",
       "cash and cash equivalents at the beginning of the year",
-      "cash and cash equivalents at the end of the year"
+      "cash and cash equivalents at the end of the year",
+      "Cash and cash equivalen ts",
+      "Cash and cash equ ivalents"
     ],
     "category": "balance_sheet"
   },
@@ -594,7 +605,9 @@
       "finished goods stock",
       "raw and packing material stock",
       "total stock in trade",
-      "reported stock in trade"
+      "reported stock in trade",
+      "Raw and packing mat erials",
+      "Work-in-process"
     ],
     "category": "balance_sheet"
   },
@@ -669,7 +682,8 @@
       "operating fixed assets",
       "total operating fixed assets",
       "reported operating fixed assets",
-      "operating fixed assets amount"
+      "operating fixed assets amount",
+      "Operating fix ed assets"
     ],
     "category": "balance_sheet"
   },
@@ -680,7 +694,10 @@
       "capital work-in-progress",
       "projects in progress",
       "total capital work in progress",
-      "reported capital work in progress"
+      "reported capital work in progress",
+      "Capital work in p rogress",
+      "Transfer from capital work-in-progress",
+      "Transfer from capital work i n pr ogress"
     ],
     "category": "balance_sheet"
   },
@@ -818,7 +835,9 @@
       "short term running finance",
       "short term financing",
       "total short term borrowings",
-      "reported short term borrowings"
+      "reported short term borrowings",
+      "Short term borrowin gs",
+      "Short term borr owings obtained repaid net"
     ],
     "category": "balance_sheet"
   },
@@ -843,7 +862,8 @@
       "current portion long term debt amount",
       "current portion of long term finance",
       "current portion of long term financing",
-      "long-term liabilities - current portion of long term finance"
+      "long-term liabilities - current portion of long term finance",
+      "Current por tion of long term finance"
     ],
     "category": "balance_sheet"
   },
@@ -855,7 +875,9 @@
       "term finance",
       "total long term financing",
       "reported long term financing",
-      "long term finance"
+      "long term finance",
+      "Long-term financin g",
+      "Long term fina ncing"
     ],
     "category": "balance_sheet"
   },
@@ -1096,7 +1118,12 @@
       "operating cash flow",
       "total operating cash flow",
       "reported operating cash flow",
-      "net cash from operating activities"
+      "net cash from operating activities",
+      "ash generated from operations",
+      "cash generated f rom operations",
+      "et cash generated from operating activities",
+      "et cash gener ated from operating activities",
+      "net cash generated from operating activities"
     ],
     "category": "cash_flow"
   },
@@ -1193,7 +1220,8 @@
       "dividends paid",
       "total dividends paid",
       "reported dividends paid",
-      "dividends paid amount"
+      "dividends paid amount",
+      "Dividend to shareholders"
     ],
     "category": "cash_flow"
   },
@@ -1375,7 +1403,10 @@
       "interest income received",
       "total interest income received",
       "reported interest income received",
-      "interest income received amount"
+      "interest income received amount",
+      "Income from deposits with Islamic banks",
+      "Income receive d from short-term investments",
+      "Income received from short-term investments"
     ],
     "category": "cash_flow"
   },
@@ -1558,7 +1589,9 @@
       "reported gross margin",
       "gross profit to sales percent",
       "gross profit to sales",
-      "profitability ratios - gross profit to sales percent"
+      "profitability ratios - gross profit to sales percent",
+      "GP as % of Net",
+      "gross profit as percent of net sales"
     ],
     "category": "profitability_ratios"
   },
@@ -3783,7 +3816,11 @@
     "aliases": [
       "managerial remuneration",
       "particulars - managerial remuneration",
-      "directors remuneration"
+      "directors remuneration",
+      "aggregate amounts charged - managerial remuneration",
+      "Aggre gate amo unts char g - Managerial remuneration",
+      "charge for defined benefit - managerial remuneration inc",
+      "Charge for defined benefit - Managerial remuneration i nc"
     ],
     "category": "employee_metrics"
   },
@@ -3792,7 +3829,10 @@
     "aliases": [
       "number of persons",
       "number of employees",
-      "employees as at june 30"
+      "employees as at june 30",
+      "Other benefits - Number of persons",
+      "Other b enefits - Number of persons",
+      "Charge for defined benefit - Number of persons"
     ],
     "category": "employee_metrics"
   },
@@ -3876,5 +3916,180 @@
       "non-financial ratios - maintenance cost as % of operating expenses"
     ],
     "category": "sector_specific_cement"
+  },
+  "current_assets_excluding_cash_and_cash_equivalents": {
+    "display_name": "Current Assets Excluding Cash And Cash Equivalents",
+    "aliases": [
+      "current assets excluding cash and cash equivalents",
+      "current assets excluding cash equivalents",
+      "current assets excluding cash and bank balances"
+    ],
+    "category": "balance_sheet"
+  },
+  "break_up_value_per_share_without_surplus": {
+    "display_name": "Break Up Value Per Share Without Surplus",
+    "aliases": [
+      "investment valuation ratios - i without surplus on revaluation of property rupees",
+      "without surplus on revaluation of property rupees",
+      "break-up value per share without surplus"
+    ],
+    "category": "market_metrics"
+  },
+  "break_up_value_per_share_with_surplus": {
+    "display_name": "Break Up Value Per Share With Surplus",
+    "aliases": [
+      "investment valuation ratios - ii with surplus on revaluation of ppe including all rupees",
+      "with surplus on revaluation of ppe including all rupees",
+      "break-up value per share with surplus"
+    ],
+    "category": "market_metrics"
+  },
+  "break_up_value_per_share_with_related_party_fair_value": {
+    "display_name": "Break Up Value Per Share With Related Party Fair Value",
+    "aliases": [
+      "investment valuation ratios - iii including investment in related party at fair rupees",
+      "including investment in related party at fair rupees",
+      "break-up value per share including investment in related party at fair value"
+    ],
+    "category": "market_metrics"
+  },
+  "chief_executive_remuneration": {
+    "display_name": "Chief Executive Remuneration",
+    "aliases": [
+      "chief executive remuneration",
+      "remuneration of chief executive",
+      "remuneration of chief execu - managerial remuneration",
+      "remuneration of chief ex ecu - managerial remuneration"
+    ],
+    "category": "employee_metrics"
+  },
+  "fair_value_of_plan_assets": {
+    "display_name": "Fair Value Of Plan Assets",
+    "aliases": [
+      "fair value of plan assets",
+      "defined benefit - fair value of plan assets",
+      "pension gratuity - fair value of plan assets"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_net_liability_asset": {
+    "display_name": "Defined Benefit Net Liability Asset",
+    "aliases": [
+      "historical information funded plans - net liability asset",
+      "Historical in formation funded plans - Net liability / (asset)",
+      "net liability asset funded plans"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_government_bonds": {
+    "display_name": "Defined Benefit Government Bonds",
+    "aliases": [
+      "Pension Grat uity - Government bonds",
+      "pension gratuity - government bonds"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_plan_shares": {
+    "display_name": "Defined Benefit Plan Shares",
+    "aliases": [
+      "Pension Grat uity - Shares",
+      "pension gratuity - shares"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_cash_term_deposits": {
+    "display_name": "Defined Benefit Cash And Term Deposits",
+    "aliases": [
+      "Pension Grat uity - Cash and term deposits",
+      "pension gratuity - cash and term deposits"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_plan_assets_total": {
+    "display_name": "Defined Benefit Plan Assets Total",
+    "aliases": [
+      "Pension Grat uity - Total",
+      "pension gratuity - total"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_benefits_paid": {
+    "display_name": "Defined Benefit Benefits Paid",
+    "aliases": [
+      "benefits paid",
+      "staff gratuity paid",
+      "Staff gratuity p aid"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_current_service_cost": {
+    "display_name": "Defined Benefit Current Service Cost",
+    "aliases": [
+      "defined benefit current service cost",
+      "staff retirement benefit current service cost"
+    ],
+    "category": "employee_metrics"
+  },
+  "share_of_net_assets": {
+    "display_name": "Share Of Net Assets",
+    "aliases": [
+      "the group share of net assets",
+      "the group s share of net assets",
+      "the group s share of net assets 50",
+      "net assets 100"
+    ],
+    "category": "investment_disclosures"
+  },
+  "share_of_net_profit": {
+    "display_name": "Share Of Net Profit",
+    "aliases": [
+      "the group share of net profit",
+      "the group s share of net profit",
+      "the group s share of net profit 50",
+      "share of profit joint ventures and associates"
+    ],
+    "category": "investment_disclosures"
+  },
+  "share_of_net_loss": {
+    "display_name": "Share Of Net Loss",
+    "aliases": [
+      "net loss 100",
+      "share of net loss"
+    ],
+    "category": "investment_disclosures"
+  },
+  "capital_spares": {
+    "display_name": "Capital Spares",
+    "aliases": [
+      "capital spares",
+      "Capital spare s"
+    ],
+    "category": "balance_sheet"
+  },
+  "accrued_liabilities": {
+    "display_name": "Accrued Liabilities",
+    "aliases": [
+      "accrued liabilities",
+      "TRADE AND OTHER PAYABLES - Accrued liabilities"
+    ],
+    "category": "balance_sheet"
+  },
+  "retention_money": {
+    "display_name": "Retention Money",
+    "aliases": [
+      "retention money",
+      "TRADE AND OTHER PAYABLES - Retention money",
+      "TRADE AND OTHER PAYABLES - Retention mo ney"
+    ],
+    "category": "balance_sheet"
+  },
+  "government_levies_payable": {
+    "display_name": "Government Levies Payable",
+    "aliases": [
+      "government levies",
+      "TRADE AND OTHER PAYABLES - government levies",
+      "sales tax excise and other government levies"
+    ],
+    "category": "balance_sheet"
   }
 }

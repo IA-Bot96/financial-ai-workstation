@@ -42,6 +42,8 @@ class SectionIdentifier:
     """Identify business narrative sections and exclude boilerplate pages."""
 
     _acceptance_threshold = 0.55
+    _continuation_page_limit = 3
+    _continuation_high_confidence_threshold = 0.85
     _terminal_page_types = {
         PAGE_TYPE_AUDITOR_REPORT,
         PAGE_TYPE_FINANCIAL_STATEMENT,
@@ -135,14 +137,28 @@ class SectionIdentifier:
         *,
         page_type_classifier: PageTypeClassifier | None = None,
         acceptance_threshold: float = _acceptance_threshold,
+        continuation_page_limit: int = _continuation_page_limit,
+        continuation_high_confidence_threshold: float = (
+            _continuation_high_confidence_threshold
+        ),
     ) -> None:
         """Initialize section identification dependencies."""
 
         if not 0 <= acceptance_threshold <= 1:
             raise ValueError("acceptance_threshold must be between 0 and 1.")
+        if continuation_page_limit < 0:
+            raise ValueError("continuation_page_limit must be non-negative.")
+        if not 0 <= continuation_high_confidence_threshold <= 1:
+            raise ValueError(
+                "continuation_high_confidence_threshold must be between 0 and 1."
+            )
 
         self._page_type_classifier = page_type_classifier or PageTypeClassifier()
         self._acceptance_threshold = acceptance_threshold
+        self._continuation_page_limit = continuation_page_limit
+        self._continuation_high_confidence_threshold = (
+            continuation_high_confidence_threshold
+        )
         self._last_report = SectionIdentificationReport()
 
     @property
@@ -156,16 +172,28 @@ class SectionIdentifier:
 
         section_pages: list[SectionPage] = []
         current_section: str | None = None
+        continuation_count = 0
         page_diagnostics: list[SectionIdentificationPageDiagnostic] = []
 
         for page in pages:
-            decision = self._diagnose_page(page, current_section)
+            decision = self._diagnose_page(
+                page,
+                current_section,
+                continuation_count,
+            )
             page_diagnostics.append(decision)
 
             if decision.detected_section is None:
                 current_section = None
+                continuation_count = 0
                 continue
 
+            if decision.section_alias_match:
+                continuation_count = 0
+            elif decision.is_continuation:
+                continuation_count = decision.continuation_index
+            else:
+                continuation_count = 0
             current_section = decision.detected_section
             section_pages.append(
                 SectionPage(
@@ -199,6 +227,16 @@ class SectionIdentifier:
             additional_accepted_pages=sum(
                 1 for page in pages if page.ocr_recovered
             ),
+            continuation_resets=sum(
+                1
+                for diagnostic in page_diagnostics
+                if diagnostic.rejection_reason == "continuation_budget_exceeded"
+            ),
+            continuation_budget_exceeded=sum(
+                1
+                for diagnostic in page_diagnostics
+                if diagnostic.continuation_budget_exceeded
+            ),
             page_diagnostics=page_diagnostics,
         )
         return section_pages
@@ -207,6 +245,7 @@ class SectionIdentifier:
         self,
         page: NarrativePage,
         current_section: str | None,
+        continuation_count: int,
     ) -> SectionIdentificationPageDiagnostic:
         """Build a page-level section decision with diagnostics."""
 
@@ -215,9 +254,11 @@ class SectionIdentifier:
         direct_section, _, heading_match = self._section_match(page.text)
         candidate_section = direct_section
         continuation = False
+        continuation_index = 0
         if candidate_section is None and current_section is not None:
             candidate_section = current_section
             continuation = True
+            continuation_index = continuation_count + 1
 
         confidence_score = _confidence_score(
             page_type=page_type.page_type,
@@ -237,6 +278,16 @@ class SectionIdentifier:
             terminal_page_types=self._terminal_page_types,
             ignored_keywords=ignored_keywords,
         )
+        continuation_budget_exceeded = (
+            continuation
+            and continuation_index > self._continuation_page_limit
+        )
+        if (
+            rejection_reason is None
+            and continuation_budget_exceeded
+            and confidence_score < self._continuation_high_confidence_threshold
+        ):
+            rejection_reason = "continuation_budget_exceeded"
         detected_section = None if rejection_reason else candidate_section
 
         return SectionIdentificationPageDiagnostic(
@@ -250,6 +301,9 @@ class SectionIdentifier:
             rejection_reason=rejection_reason,
             heading_match=heading_match,
             section_alias_match=direct_section is not None,
+            is_continuation=continuation,
+            continuation_index=continuation_index,
+            continuation_budget_exceeded=continuation_budget_exceeded,
             narrative_density=page_type.narrative_density,
             table_density=page_type.table_density,
             ignored_keyword_count=len(ignored_keywords),

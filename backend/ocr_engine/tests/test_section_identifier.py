@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -220,3 +222,112 @@ def test_section_identifier_keeps_terminal_exclusions_after_recall_improvements(
     assert identifier.last_report.page_diagnostics[1].rejection_reason == (
         "page_type_proxy"
     )
+
+
+def test_section_identifier_resets_low_confidence_continuation_after_budget() -> None:
+    """Low-confidence inherited sections should not bleed indefinitely."""
+
+    continuation_text = "\n".join(
+        [
+            "Market demand remained steady despite inflation pressure.",
+            "Update",
+            "Costs",
+            "Exports",
+            "Margins",
+        ]
+    )
+    pages = [
+        NarrativePage(1, "Business Review\nExports increased in key markets."),
+        NarrativePage(2, continuation_text),
+        NarrativePage(3, continuation_text),
+        NarrativePage(4, continuation_text),
+        NarrativePage(5, continuation_text),
+        NarrativePage(6, continuation_text),
+        NarrativePage(
+            7,
+            "Financial Review\nRevenue and profitability improved during the year.",
+        ),
+        NarrativePage(8, continuation_text),
+    ]
+
+    identifier = SectionIdentifier(continuation_page_limit=3)
+    section_pages = identifier.identify_sections(pages)
+    report = identifier.last_report
+
+    assert [(page.page_number, page.section) for page in section_pages] == [
+        (1, "Business Review"),
+        (2, "Business Review"),
+        (3, "Business Review"),
+        (4, "Business Review"),
+        (7, "Financial Review"),
+        (8, "Financial Review"),
+    ]
+    page_5 = report.page_diagnostics[4]
+    assert page_5.is_continuation is True
+    assert page_5.continuation_index == 4
+    assert page_5.continuation_budget_exceeded is True
+    assert page_5.rejection_reason == "continuation_budget_exceeded"
+    assert report.page_diagnostics[5].detected_section is None
+    assert report.page_diagnostics[7].is_continuation is True
+    assert report.page_diagnostics[7].continuation_index == 1
+    assert report.continuation_resets == 1
+    assert report.continuation_budget_exceeded == 1
+
+
+def test_section_identifier_preserves_high_confidence_continuation_over_budget() -> None:
+    """Strong narrative continuation should survive the conservative budget."""
+
+    low_confidence_text = "\n".join(
+        [
+            "Demand remained steady despite inflation pressure.",
+            "Update",
+            "Costs",
+            "Exports",
+            "Margins",
+        ]
+    )
+    high_confidence_text = "\n".join(
+        [
+            "The company delivered strong operational performance in exports.",
+            "Management invested in efficiency, safety, and employee welfare.",
+            "Demand remained resilient and margins improved during the year.",
+            "The business maintained disciplined working capital and liquidity.",
+        ]
+    )
+    pages = [
+        NarrativePage(1, "Business Review\nExports increased in key markets."),
+        NarrativePage(2, low_confidence_text),
+        NarrativePage(3, low_confidence_text),
+        NarrativePage(4, low_confidence_text),
+        NarrativePage(5, high_confidence_text),
+    ]
+
+    identifier = SectionIdentifier(
+        continuation_page_limit=3,
+        continuation_high_confidence_threshold=0.85,
+    )
+    section_pages = identifier.identify_sections(pages)
+    report = identifier.last_report
+
+    assert [(page.page_number, page.section) for page in section_pages] == [
+        (1, "Business Review"),
+        (2, "Business Review"),
+        (3, "Business Review"),
+        (4, "Business Review"),
+        (5, "Business Review"),
+    ]
+    page_5 = report.page_diagnostics[4]
+    assert page_5.continuation_index == 4
+    assert page_5.continuation_budget_exceeded is True
+    assert page_5.confidence_score >= 0.85
+    assert page_5.rejection_reason is None
+    assert report.continuation_resets == 0
+    assert report.continuation_budget_exceeded == 1
+
+
+def test_section_identifier_rejects_invalid_continuation_configuration() -> None:
+    with pytest.raises(ValueError, match="continuation_page_limit"):
+        SectionIdentifier(continuation_page_limit=-1)
+
+    with pytest.raises(ValueError, match="continuation_high_confidence_threshold"):
+        SectionIdentifier(continuation_high_confidence_threshold=1.1)

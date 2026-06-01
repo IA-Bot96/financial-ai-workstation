@@ -195,6 +195,8 @@ def test_insights_extraction_result_serializes_expected_output() -> None:
                 "ocr_pages_escalated": 0,
                 "ocr_pages_recovered": 0,
                 "additional_accepted_pages": 0,
+                "continuation_resets": 0,
+                "continuation_budget_exceeded": 0,
                 "page_diagnostics": [],
             },
         },

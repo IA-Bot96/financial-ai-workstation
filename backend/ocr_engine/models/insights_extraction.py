@@ -63,6 +63,25 @@ class SectionIdentificationPageDiagnostic(BaseModel):
         description="Whether a known section alias matched the page.",
         examples=[True],
     )
+    is_continuation: bool = Field(
+        default=False,
+        description="Whether this page inherited its section from a prior page.",
+        examples=[True],
+    )
+    continuation_index: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "One-based continuation count since the latest direct section heading; "
+            "zero when the page is not a continuation."
+        ),
+        examples=[2],
+    )
+    continuation_budget_exceeded: bool = Field(
+        default=False,
+        description="Whether this page exceeded the configured continuation budget.",
+        examples=[False],
+    )
     narrative_density: float = Field(
         default=0.0,
         ge=0,
@@ -199,6 +218,22 @@ class SectionIdentificationReport(BaseModel):
         description=(
             "Estimated pages accepted because Tesseract OCR beat rejected "
             "PyMuPDF OCR output."
+        ),
+    )
+    continuation_resets: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of pages rejected because inherited section continuation "
+            "exceeded the configured budget."
+        ),
+    )
+    continuation_budget_exceeded: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of inspected pages whose inherited section continuation "
+            "exceeded the configured budget."
         ),
     )
     page_diagnostics: list[SectionIdentificationPageDiagnostic] = Field(

@@ -134,6 +134,21 @@ class PageExtractionDiagnostic(BaseModel):
         description="Number of matches made by text-similarity fallback.",
         examples=[1],
     )
+    fallback_matches_applied: int = Field(
+        default=0,
+        ge=0,
+        description="Number of matches made by any fallback strategy.",
+        examples=[2],
+    )
+    unmatched_classified_types_reduced: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of previously unmatched classified types recovered by "
+            "targeted fallback matching."
+        ),
+        examples=[1],
+    )
     previously_unclassified_tables_recovered: int = Field(
         default=0,
         ge=0,
@@ -1039,6 +1054,23 @@ class ExtractionSummary(BaseModel):
         ge=0,
         description="Total matches made by text-similarity fallback.",
         examples=[5],
+    )
+    fallback_matches_applied: int = Field(
+        default=0,
+        ge=0,
+        description="Total matches made by any fallback strategy.",
+        examples=[7],
+    )
+    unmatched_classified_types_reduced: int = Field(
+        default=0,
+        ge=0,
+        description="Total classified types recovered by targeted fallback matching.",
+        examples=[2],
+    )
+    remaining_mismatch_pages: list[int] = Field(
+        default_factory=list,
+        description="Pages that still have unmatched classifications or extractions.",
+        examples=[[242, 293]],
     )
     previously_unclassified_tables_recovered: int = Field(
         default=0,

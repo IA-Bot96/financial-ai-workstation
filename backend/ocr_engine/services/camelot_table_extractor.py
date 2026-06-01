@@ -64,6 +64,7 @@ class _TableMappingResult:
     classified_table_by_raw_index: dict[int, ClassifiedTable]
     match_method_by_raw_index: dict[int, str]
     assigned_classified_type_indexes: set[int]
+    fallback_covered_classified_type_indexes: set[int]
 
 
 @dataclass(frozen=True)
@@ -876,15 +877,49 @@ class CamelotTableExtractor(ITableExtractor):
                 table_type_by_raw_index.match_method_by_raw_index,
                 "fallback_text_similarity",
             ),
+            fallback_matches_applied=(
+                _match_method_count(
+                    table_type_by_raw_index.match_method_by_raw_index,
+                    "fallback_text_similarity",
+                )
+                + _match_method_count(
+                    table_type_by_raw_index.match_method_by_raw_index,
+                    "fallback_structural_pattern",
+                )
+                + len(
+                    table_type_by_raw_index.fallback_covered_classified_type_indexes
+                )
+            ),
+            unmatched_classified_types_reduced=(
+                _match_method_count(
+                    table_type_by_raw_index.match_method_by_raw_index,
+                    "fallback_structural_pattern",
+                )
+                + len(
+                    table_type_by_raw_index.fallback_covered_classified_type_indexes
+                )
+            ),
             previously_unclassified_tables_recovered=sum(
                 1
                 for method in table_type_by_raw_index.match_method_by_raw_index.values()
-                if method in {"detected_table_id", "bbox", "order"}
+                if method
+                in {
+                    "detected_table_id",
+                    "bbox",
+                    "order",
+                    "fallback_structural_pattern",
+                }
             ),
             metric_values_recovered=sum(
                 len(table.metric_values)
                 for table in extracted_tables
-                if table.match_method in {"detected_table_id", "bbox", "order"}
+                if table.match_method
+                in {
+                    "detected_table_id",
+                    "bbox",
+                    "order",
+                    "fallback_structural_pattern",
+                }
             ),
         )
 
@@ -913,6 +948,7 @@ class CamelotTableExtractor(ITableExtractor):
                 classified_table_by_raw_index={},
                 match_method_by_raw_index={},
                 assigned_classified_type_indexes=set(),
+                fallback_covered_classified_type_indexes=set(),
             )
 
         table_type_by_raw_index: dict[int, str] = {}
@@ -920,6 +956,7 @@ class CamelotTableExtractor(ITableExtractor):
         match_method_by_raw_index: dict[int, str] = {}
         assigned_raw_tables: set[int] = set()
         assigned_classified_types: set[int] = set()
+        fallback_covered_classified_types: set[int] = set()
 
         raw_detected_tables = [
             _detected_table_for_raw_index(
@@ -997,6 +1034,35 @@ class CamelotTableExtractor(ITableExtractor):
                 assigned_table_type=table_type,
             )
 
+        structural_candidates = self._structural_table_type_candidates(
+            raw_tables=raw_tables,
+            classified_tables=classified_tables,
+        )
+        for candidate in structural_candidates:
+            if candidate.raw_table_index in assigned_raw_tables:
+                continue
+            if candidate.classified_type_index in assigned_classified_types:
+                continue
+            self._assign_match(
+                raw_table_index=candidate.raw_table_index,
+                classified_type_index=candidate.classified_type_index,
+                classified_tables=classified_tables,
+                table_type_by_raw_index=table_type_by_raw_index,
+                classified_table_by_raw_index=classified_table_by_raw_index,
+                match_method_by_raw_index=match_method_by_raw_index,
+                assigned_raw_tables=assigned_raw_tables,
+                assigned_classified_types=assigned_classified_types,
+                match_method="fallback_structural_pattern",
+            )
+
+        fallback_covered_classified_types = self._cover_multi_logical_types(
+            raw_tables=raw_tables,
+            classified_tables=classified_tables,
+            assigned_raw_tables=assigned_raw_tables,
+            assigned_classified_types=assigned_classified_types,
+        )
+        assigned_classified_types.update(fallback_covered_classified_types)
+
         self._log_unmatched_tables(
             page_table_type=page_table_type,
             raw_tables=raw_tables,
@@ -1008,6 +1074,7 @@ class CamelotTableExtractor(ITableExtractor):
             classified_table_by_raw_index=classified_table_by_raw_index,
             match_method_by_raw_index=match_method_by_raw_index,
             assigned_classified_type_indexes=assigned_classified_types,
+            fallback_covered_classified_type_indexes=fallback_covered_classified_types,
         )
 
     def _table_type_candidates(
@@ -1038,6 +1105,73 @@ class CamelotTableExtractor(ITableExtractor):
                 candidate.classified_type_index,
             ),
         )
+
+    def _structural_table_type_candidates(
+        self,
+        *,
+        raw_tables: list[RawTable],
+        classified_tables: list[ClassifiedTable],
+    ) -> list[_TableTypeCandidate]:
+        """Return fallback candidates from table structure and metric patterns."""
+
+        candidates: list[_TableTypeCandidate] = []
+        for raw_table_index, rows in enumerate(raw_tables):
+            for classified_type_index, classified_table in enumerate(classified_tables):
+                score = _structural_table_type_match_score(
+                    rows,
+                    classified_table.table_type,
+                )
+                if score < 3:
+                    continue
+                candidates.append(
+                    _TableTypeCandidate(
+                        score=score,
+                        raw_table_index=raw_table_index,
+                        classified_type_index=classified_type_index,
+                    )
+                )
+        return sorted(
+            candidates,
+            key=lambda candidate: (
+                -candidate.score,
+                candidate.raw_table_index,
+                candidate.classified_type_index,
+            ),
+        )
+
+    def _cover_multi_logical_types(
+        self,
+        *,
+        raw_tables: list[RawTable],
+        classified_tables: list[ClassifiedTable],
+        assigned_raw_tables: set[int],
+        assigned_classified_types: set[int],
+    ) -> set[int]:
+        """Mark obvious extra logical classifications covered by one raw table."""
+
+        covered: set[int] = set()
+        if not assigned_raw_tables:
+            return covered
+
+        for classified_type_index, classified_table in enumerate(classified_tables):
+            if classified_type_index in assigned_classified_types:
+                continue
+            if _is_primary_statement_table_type(classified_table.table_type):
+                continue
+            best_score = 0
+            for raw_table_index in assigned_raw_tables:
+                if raw_table_index >= len(raw_tables):
+                    continue
+                best_score = max(
+                    best_score,
+                    _structural_table_type_match_score(
+                        raw_tables[raw_table_index],
+                        classified_table.table_type,
+                    ),
+                )
+            if best_score >= 4:
+                covered.add(classified_type_index)
+        return covered
 
     def _assign_identity_matches(
         self,
@@ -1277,6 +1411,10 @@ class CamelotTableExtractor(ITableExtractor):
                 "bbox_matches": diagnostic.bbox_matches,
                 "order_matches": diagnostic.order_matches,
                 "fallback_matches": diagnostic.fallback_matches,
+                "fallback_matches_applied": diagnostic.fallback_matches_applied,
+                "unmatched_classified_types_reduced": (
+                    diagnostic.unmatched_classified_types_reduced
+                ),
                 "previously_unclassified_tables_recovered": (
                     diagnostic.previously_unclassified_tables_recovered
                 ),
@@ -4783,6 +4921,19 @@ def _build_extraction_summary(
         fallback_matches=sum(
             diagnostic.fallback_matches for diagnostic in page_diagnostics
         ),
+        fallback_matches_applied=sum(
+            diagnostic.fallback_matches_applied for diagnostic in page_diagnostics
+        ),
+        unmatched_classified_types_reduced=sum(
+            diagnostic.unmatched_classified_types_reduced
+            for diagnostic in page_diagnostics
+        ),
+        remaining_mismatch_pages=[
+            diagnostic.page_number
+            for diagnostic in page_diagnostics
+            if diagnostic.unmatched_classifications
+            or diagnostic.unmatched_extractions
+        ],
         previously_unclassified_tables_recovered=sum(
             diagnostic.previously_unclassified_tables_recovered
             for diagnostic in page_diagnostics
@@ -4812,6 +4963,75 @@ def _table_type_match_score(rows: RawTable, table_type: str) -> int:
                 score += 1
 
     return score
+
+
+def _structural_table_type_match_score(rows: RawTable, table_type: str) -> int:
+    """Score fallback table/type fit from structural financial signals."""
+
+    table_text = _normalized_table_text(rows)
+    if not table_text:
+        return 0
+
+    profile = _structural_profile_for_table_type(table_type)
+    if not profile:
+        return 0
+
+    score = 0
+    for signal in profile:
+        if _contains_structural_signal(table_text, signal):
+            token_count = len(_normalize_text(signal).split())
+            score += max(1, min(3, token_count // 2 or 1))
+
+    if score <= 0:
+        return 0
+
+    _, year_columns = CamelotTableExtractor._find_year_columns(rows)
+    if year_columns:
+        score += 1
+    if len(_metric_labels(rows)) >= 3:
+        score += 1
+    return score
+
+
+def _structural_profile_for_table_type(table_type: str) -> tuple[str, ...]:
+    """Return structural fallback signals for a classified table type."""
+
+    normalized_table_type = _normalize_key(table_type)
+    profile_key = _STRUCTURAL_PROFILE_ALIASES.get(
+        normalized_table_type,
+        normalized_table_type,
+    )
+    return _STRUCTURAL_TABLE_TYPE_SIGNALS.get(profile_key, ())
+
+
+def _is_primary_statement_table_type(table_type: str) -> bool:
+    """Return whether a table type is a primary financial statement."""
+
+    normalized_table_type = _normalize_key(table_type)
+    profile_key = _STRUCTURAL_PROFILE_ALIASES.get(
+        normalized_table_type,
+        normalized_table_type,
+    )
+    return profile_key in {
+        "balance_sheet",
+        "cash_flow_statement",
+        "income_statement",
+        "statement_of_changes_in_equity",
+    }
+
+
+def _contains_structural_signal(table_text: str, signal: str) -> bool:
+    """Return whether table text contains a signal, tolerating OCR splits."""
+
+    normalized_signal = _normalize_text(signal)
+    if not normalized_signal:
+        return False
+    if _contains_phrase(table_text, normalized_signal):
+        return True
+
+    compact_text = table_text.replace(" ", "")
+    compact_signal = normalized_signal.replace(" ", "")
+    return len(compact_signal) >= 8 and compact_signal in compact_text
 
 
 def _normalized_table_text(rows: RawTable) -> str:
@@ -5053,5 +5273,199 @@ _TABLE_TYPE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "capital work in progress",
         "capital work in p rogress",
         "capital spare",
+    ),
+}
+
+
+_STRUCTURAL_PROFILE_ALIASES: dict[str, str] = {
+    "statement_of_financial_position": "balance_sheet",
+    "statement_of_profit_or_loss": "income_statement",
+    "profit_and_loss": "income_statement",
+    "cash_flow": "cash_flow_statement",
+    "statement_of_cash_flows": "cash_flow_statement",
+    "borrowings_note": "debt_schedule",
+    "loans_and_borrowings": "debt_schedule",
+    "loans_and_advances": "loans_and_advances",
+    "maximum_outstanding_from_associates": "loans_and_advances",
+    "deposits_and_prepayments": "loans_and_advances",
+    "cash_and_bank_balances_table": "cash_and_bank_balances",
+    "cash_and_bank_balances": "cash_and_bank_balances",
+    "property_plant_equipment_note": "property_plant_equipment",
+    "operating_fixed_asset_disposals": "property_plant_equipment",
+    "capital_work_in_progress": "property_plant_equipment",
+    "intangible_assets": "property_plant_equipment",
+    "inventory_note": "inventory",
+    "inventories": "inventory",
+    "taxation_note": "taxation",
+    "other_expenses": "expenses",
+    "administrative_cost": "expenses",
+    "distribution_cost": "expenses",
+    "auditors_remuneration": "remuneration",
+    "remuneration_table": "remuneration",
+    "managerial_remuneration": "remuneration",
+    "related_parties": "related_parties",
+    "wealth_distribution": "wealth_generated",
+    "wealth_generated": "wealth_generated",
+    "eva_table": "eva",
+    "eva_statement": "eva",
+    "free_cash_flow_table": "free_cash_flow",
+    "shariah_ratios_table": "ratios",
+}
+
+
+_STRUCTURAL_TABLE_TYPE_SIGNALS: dict[str, tuple[str, ...]] = {
+    "balance_sheet": (
+        "financial position",
+        "assets employed",
+        "current assets",
+        "non current assets",
+        "current liabilities",
+        "non current liabilities",
+        "equity and liabilities",
+        "capital and reserves",
+        "share capital",
+        "reserves",
+        "net assets",
+        "total equity",
+    ),
+    "income_statement": (
+        "distribution cost",
+        "administrative expenses",
+        "administrative cost",
+        "selling expenses",
+        "other operating expenses",
+        "other income",
+        "finance charges",
+        "taxation",
+        "profit for the year",
+        "earnings per",
+        "gross profit",
+        "operating profit",
+    ),
+    "cash_flow_statement": (
+        "cash generated from operations",
+        "working capital changes",
+        "operating activities",
+        "investing activities",
+        "financing activities",
+        "cash and cash equivalents",
+        "net increase in cash",
+        "net decrease in cash",
+    ),
+    "debt_schedule": (
+        "long term financing",
+        "long term finance",
+        "current portion of long term",
+        "short term borrowings",
+        "lease liabilities",
+        "markup accrued",
+        "interest accrued",
+        "repayable",
+        "installments",
+    ),
+    "cash_and_bank_balances": (
+        "cash in hand",
+        "cash at banks",
+        "balances with banks",
+        "bank balances",
+        "deposit accounts",
+        "current accounts",
+        "saving accounts",
+    ),
+    "property_plant_equipment": (
+        "operating fixed assets",
+        "property plant and equipment",
+        "capital work in progress",
+        "additions during the year",
+        "disposals during the year",
+        "accumulated depreciation",
+        "written down value",
+        "depreciation charge",
+    ),
+    "inventory": (
+        "stores spares",
+        "stock in trade",
+        "raw materials",
+        "work in process",
+        "finished goods",
+        "packing material",
+        "goods in transit",
+    ),
+    "taxation": (
+        "current tax",
+        "deferred tax",
+        "income tax",
+        "tax charge",
+        "taxable temporary differences",
+        "deductible temporary differences",
+        "tax expense",
+    ),
+    "expenses": (
+        "salaries wages",
+        "salaries and benefits",
+        "legal and professional",
+        "auditors remuneration",
+        "repairs and maintenance",
+        "rent rates and taxes",
+        "travelling and conveyance",
+        "insurance",
+        "utilities",
+        "advertisement",
+        "depreciation",
+    ),
+    "remuneration": (
+        "chief executive",
+        "directors",
+        "executives",
+        "managerial remuneration",
+        "meeting fee",
+        "retirement benefits",
+        "number of persons",
+    ),
+    "related_parties": (
+        "related party",
+        "associated companies",
+        "associated undertakings",
+        "key management personnel",
+        "transactions with related",
+        "balances with related",
+    ),
+    "loans_and_advances": (
+        "loans to employees",
+        "advances to employees",
+        "deposits",
+        "prepayments",
+        "maximum outstanding",
+        "considered good",
+        "considered doubtful",
+    ),
+    "wealth_generated": (
+        "wealth generated",
+        "wealth distributed",
+        "employees",
+        "government",
+        "providers of capital",
+        "shareholders",
+        "retained in business",
+    ),
+    "eva": (
+        "economic value added",
+        "eva",
+        "cost of capital",
+        "net operating profit",
+        "capital employed",
+    ),
+    "free_cash_flow": (
+        "free cash flow",
+        "operating cash flow",
+        "capital expenditure",
+        "working capital",
+    ),
+    "ratios": (
+        "current ratio",
+        "quick ratio",
+        "debt equity",
+        "interest cover",
+        "shariah",
     ),
 }

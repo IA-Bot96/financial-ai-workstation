@@ -400,6 +400,104 @@ def test_extract_tables_keeps_text_similarity_fallback_for_legacy_payloads() -> 
     assert result.extraction_summary.fallback_matches == 2
 
 
+def test_extract_tables_uses_structural_fallback_for_zero_score_text_match() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable([["Metric", "2025"], ["Governance item", "1"]]),
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Distribution cost", "10"],
+                    ["Administrative expenses", "20"],
+                    ["Taxation", "3"],
+                    ["Profit for the year", "30"],
+                ]
+            ),
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=242,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [(table.table_index, table.table_type) for table in result.tables] == [
+        (0, "unclassified_table"),
+        (1, "income_statement"),
+    ]
+    assert result.tables[1].match_method == "fallback_structural_pattern"
+    assert result.extraction_summary.fallback_matches == 0
+    assert result.extraction_summary.fallback_matches_applied == 1
+    assert result.extraction_summary.unmatched_classified_types_reduced == 1
+    assert result.extraction_summary.previously_unclassified_tables_recovered == 1
+    assert result.extraction_summary.metric_values_recovered == 4
+
+
+def test_extract_tables_covers_extra_logical_classification_in_one_physical_table(
+) -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025"],
+                    ["Operating fixed assets", "100"],
+                    ["Additions during the year", "40"],
+                    ["Disposals during the year", "10"],
+                    ["Written down value", "90"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=321,
+                    table_types=[
+                        "property_plant_equipment_note",
+                        "operating_fixed_asset_disposals",
+                    ],
+                    classified_tables=[
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=321,
+                            table_type="property_plant_equipment_note",
+                            page_table_index=0,
+                        ),
+                        ClassifiedTable(
+                            year=2025,
+                            page_number=321,
+                            table_type="operating_fixed_asset_disposals",
+                        ),
+                    ],
+                )
+            ]
+        ),
+    )
+
+    assert [table.table_type for table in result.tables] == [
+        "property_plant_equipment_note"
+    ]
+    assert result.extraction_summary.total_matched_tables == 1
+    assert result.extraction_summary.unmatched_classifications == []
+    assert result.extraction_summary.unmatched_classified_types_reduced == 1
+    assert result.extraction_summary.fallback_matches_applied == 1
+    assert result.extraction_summary.remaining_mismatch_pages == []
+
+
 def test_extract_tables_identifies_metric_value_years() -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [
@@ -1538,6 +1636,8 @@ def test_extract_tables_reports_page_diagnostics_from_detection_to_extraction(
         "bbox_matches": 0,
         "order_matches": 0,
         "fallback_matches": 1,
+        "fallback_matches_applied": 1,
+        "unmatched_classified_types_reduced": 0,
         "previously_unclassified_tables_recovered": 0,
         "metric_values_recovered": 0,
     }

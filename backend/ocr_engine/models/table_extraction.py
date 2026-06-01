@@ -358,6 +358,201 @@ class LabelReconstructionDiagnostic(BaseModel):
     )
 
 
+class LabelDegluingDiagnostic(BaseModel):
+    """Trace of a reconstructed label cleaned for intra-word spacing artifacts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the label was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the label was extracted.",
+        examples=[225],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the label originated.",
+        examples=["balance_sheet"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the deglued label.",
+        examples=[3],
+    )
+    original_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label after reconstruction but before degluing.",
+        examples=["Current Asse ts"],
+    )
+    deglued_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label after intra-word spacing artifacts were removed.",
+        examples=["Current Assets"],
+    )
+    degluing_confidence: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Confidence that the degluing operation preserved the label.",
+        examples=[0.97],
+    )
+    rules_applied: list[str] = Field(
+        default_factory=list,
+        description="Stable rule names applied during label degluing.",
+        examples=[["known_financial_word_join"]],
+    )
+    metric_values_affected: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues generated from this deglued row.",
+        examples=[2],
+    )
+
+
+class NoteRowFilteringDiagnostic(BaseModel):
+    """Trace of a non-metric note row filtered before MetricValue creation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the row was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the row was extracted.",
+        examples=[225],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the row originated.",
+        examples=["notes"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the filtered label.",
+        examples=[3],
+    )
+    label: str = Field(
+        ...,
+        min_length=1,
+        description="Final reconstructed/deglued label that was filtered.",
+        examples=["(PKR in '000)"],
+    )
+    filtering_reason: str = Field(
+        ...,
+        min_length=1,
+        description="Stable reason code explaining why the row was filtered.",
+        examples=["unit_row"],
+    )
+    metric_values_removed: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues prevented from being created.",
+        examples=[2],
+    )
+
+
+class NoteContextInheritanceDiagnostic(BaseModel):
+    """Trace of a note-table metric label enriched from active note context."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the row was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the row was extracted.",
+        examples=[321],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the row originated.",
+        examples=["notes"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the inherited label.",
+        examples=[7],
+    )
+    original_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label after reconstruction and degluing, before context inheritance.",
+        examples=["Opening balance"],
+    )
+    inherited_label: str = Field(
+        ...,
+        min_length=1,
+        description="Metric label after inheriting active note context.",
+        examples=["Capital work-in-progress - Opening balance"],
+    )
+    inherited_context: str = Field(
+        ...,
+        min_length=1,
+        description="Context label applied to the metric row.",
+        examples=["Capital work-in-progress"],
+    )
+    context_source: str = Field(
+        ...,
+        min_length=1,
+        description="Context stack source used for inheritance.",
+        examples=["section_header"],
+    )
+    reconstruction_reason: str = Field(
+        ...,
+        min_length=1,
+        description="Stable reason code explaining why context was inherited.",
+        examples=["generic_note_label"],
+    )
+    metric_values_affected: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues generated from this inherited row.",
+        examples=[2],
+    )
+
+
 class ExtractionQualityReport(BaseModel):
     """Post-extraction quality validation report."""
 
@@ -438,6 +633,42 @@ class ExtractionQualityReport(BaseModel):
         description="Number of MetricValues receiving reconstructed metric labels.",
         examples=[240],
     )
+    labels_deglued: int = Field(
+        default=0,
+        ge=0,
+        description="Number of reconstructed labels cleaned by label degluing.",
+        examples=[120],
+    )
+    metric_values_improved_by_label_degluing: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues receiving deglued metric labels.",
+        examples=[240],
+    )
+    note_rows_filtered: int = Field(
+        default=0,
+        ge=0,
+        description="Number of non-metric note rows filtered before MetricValue creation.",
+        examples=[12],
+    )
+    metric_values_removed_by_note_row_filtering: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues prevented by note-row filtering.",
+        examples=[24],
+    )
+    context_inheritances_applied: int = Field(
+        default=0,
+        ge=0,
+        description="Number of note-table rows enriched using context inheritance.",
+        examples=[18],
+    )
+    metric_values_improved_by_context_inheritance: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues receiving inherited note context.",
+        examples=[36],
+    )
     confidence_distribution: dict[str, int] = Field(
         default_factory=dict,
         description="Distribution of table quality scores by score bucket.",
@@ -454,6 +685,20 @@ class ExtractionQualityReport(BaseModel):
     label_reconstruction_diagnostics: list[LabelReconstructionDiagnostic] = Field(
         default_factory=list,
         description="Rows where metric labels were reconstructed from adjacent cells.",
+    )
+    label_degluing_diagnostics: list[LabelDegluingDiagnostic] = Field(
+        default_factory=list,
+        description="Rows where reconstructed labels were cleaned for split words.",
+    )
+    note_row_filtering_diagnostics: list[NoteRowFilteringDiagnostic] = Field(
+        default_factory=list,
+        description="Rows filtered because they are note metadata, units, or markers.",
+    )
+    note_context_inheritance_diagnostics: list[
+        NoteContextInheritanceDiagnostic
+    ] = Field(
+        default_factory=list,
+        description="Rows whose note-table labels were enriched from context.",
     )
 
 

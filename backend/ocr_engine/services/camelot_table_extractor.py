@@ -16,8 +16,11 @@ from ocr_engine.models.table_extraction import (
     ExtractedTable,
     ExtractionQualityReport,
     ExtractionSummary,
+    LabelDegluingDiagnostic,
     LabelReconstructionDiagnostic,
     MetricValueOccurrence,
+    NoteContextInheritanceDiagnostic,
+    NoteRowFilteringDiagnostic,
     PageExtractionDiagnostic,
     SuspiciousMetricFinding,
     SuspiciousTableFinding,
@@ -124,6 +127,48 @@ class _ReconstructedLabel:
         """Return whether reconstruction changed the extracted label."""
 
         return self.reconstructed_label != self.original_label
+
+
+@dataclass(frozen=True)
+class _DegluedLabel:
+    """Metric label cleaned after reconstruction for OCR spacing artifacts."""
+
+    original_label: str
+    deglued_label: str
+    confidence: float
+    rules_applied: tuple[str, ...]
+
+    @property
+    def changed(self) -> bool:
+        """Return whether degluing changed the reconstructed label."""
+
+        return self.deglued_label != self.original_label
+
+
+@dataclass
+class _NoteContextStack:
+    """Active note-table context while walking extracted rows."""
+
+    active_note_header: str | None = None
+    active_section_header: str | None = None
+    active_parent_label: str | None = None
+
+
+@dataclass(frozen=True)
+class _ContextInheritedLabel:
+    """Metric label after optional note-table context inheritance."""
+
+    original_label: str
+    inherited_label: str
+    inherited_context: str | None = None
+    context_source: str | None = None
+    reconstruction_reason: str | None = None
+
+    @property
+    def changed(self) -> bool:
+        """Return whether context inheritance changed the label."""
+
+        return self.inherited_label != self.original_label
 
 
 class CamelotTableExtractor(ITableExtractor):
@@ -919,6 +964,8 @@ class CamelotTableExtractor(ITableExtractor):
 
         scale_multiplier = self._scale_multiplier(rows)
         metric_values: list[MetricValue] = []
+        context_stack = _NoteContextStack()
+        use_note_context = _is_note_context_table(table_type, rows)
         for row_index, row in enumerate(rows):
             if row_index == header_row_index:
                 continue
@@ -927,11 +974,45 @@ class CamelotTableExtractor(ITableExtractor):
             if label_index is None:
                 continue
 
-            metric = self._reconstruct_metric_label(
+            reconstructed_label = self._reconstruct_metric_label(
                 row=row,
                 label_index=label_index,
                 year_columns=year_columns,
             ).reconstructed_label
+            metric = _deglue_label_text(reconstructed_label).deglued_label
+            if _note_row_filtering_reason(metric) is not None:
+                continue
+
+            metric_value_count = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if use_note_context and metric_value_count == 0:
+                _update_note_context_from_header_row(
+                    context_stack,
+                    label=metric,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    table_type=table_type,
+                )
+                continue
+
+            inherited_label = (
+                _inherit_note_context(
+                    metric,
+                    context_stack,
+                    broad_note_context=True,
+                )
+                if use_note_context
+                else _ContextInheritedLabel(
+                    original_label=metric,
+                    inherited_label=metric,
+                )
+            )
+            metric = inherited_label.inherited_label
+
             for column_index, value_year in year_columns.items():
                 if column_index >= len(row) or column_index == label_index:
                     continue
@@ -952,6 +1033,13 @@ class CamelotTableExtractor(ITableExtractor):
                         page_number=page_number,
                         table_type=table_type,
                     )
+                )
+
+            if use_note_context and metric_value_count > 0:
+                _update_note_context_from_metric_row(
+                    context_stack,
+                    label=inherited_label.original_label,
+                    inherited_label=inherited_label,
                 )
 
         return metric_values
@@ -1338,6 +1426,655 @@ def _normalize_label_text(text: str) -> str:
     return normalized.strip()
 
 
+_DEGLUE_KNOWN_WORDS = {
+    "addition",
+    "administrative",
+    "advance",
+    "advances",
+    "amenities",
+    "assets",
+    "balances",
+    "bank",
+    "before",
+    "billion",
+    "capital",
+    "cash",
+    "charges",
+    "company",
+    "comprehensive",
+    "cost",
+    "current",
+    "deferred",
+    "deposits",
+    "distribution",
+    "employees",
+    "equipment",
+    "equity",
+    "expenses",
+    "finance",
+    "financial",
+    "gain",
+    "habib",
+    "income",
+    "intangible",
+    "investments",
+    "liabilities",
+    "loans",
+    "loss",
+    "managerial",
+    "noncurrent",
+    "note",
+    "obligations",
+    "of",
+    "operating",
+    "ordinary",
+    "other",
+    "payables",
+    "persons",
+    "prepayments",
+    "profit",
+    "receivables",
+    "remuneration",
+    "reserve",
+    "reserves",
+    "salaries",
+    "share",
+    "subscription",
+    "taxation",
+    "term",
+    "to",
+}
+_DEGLUE_TOKEN_PATTERN = re.compile(r"^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$")
+_DEGLUE_RATING_TOKENS = {"A", "AA", "AAA", "A1", "A1+", "PACRA", "VIS", "JCR"}
+
+
+def _deglue_label_text(text: str) -> _DegluedLabel:
+    """Remove intra-word spaces introduced by OCR/pdfplumber label segmentation."""
+
+    original_label = _normalize_label_text(text)
+    if not original_label:
+        return _DegluedLabel(
+            original_label=str(text),
+            deglued_label=str(text),
+            confidence=1.0,
+            rules_applied=(),
+        )
+
+    tokens = original_label.split(" ")
+    rules_applied: list[str] = []
+    for _ in range(4):
+        changed = False
+        merged_tokens: list[str] = []
+        index = 0
+        while index < len(tokens):
+            if index + 1 < len(tokens):
+                merged_token = _try_deglue_token_pair(tokens[index], tokens[index + 1])
+                if merged_token is not None:
+                    merged_tokens.append(merged_token)
+                    rules_applied.append("known_financial_word_join")
+                    index += 2
+                    changed = True
+                    continue
+
+            merged_tokens.append(tokens[index])
+            index += 1
+
+        tokens = merged_tokens
+        if not changed:
+            break
+
+    deglued_label = _normalize_label_text(" ".join(tokens))
+    rules = tuple(_dedupe_preserve_order(rules_applied))
+    return _DegluedLabel(
+        original_label=original_label,
+        deglued_label=deglued_label,
+        confidence=_label_degluing_confidence(
+            original_label=original_label,
+            deglued_label=deglued_label,
+            rules_applied=rules,
+        ),
+        rules_applied=rules,
+    )
+
+
+def _try_deglue_token_pair(left: str, right: str) -> str | None:
+    """Return a joined token when a token pair is a known split word."""
+
+    left_match = _DEGLUE_TOKEN_PATTERN.fullmatch(left)
+    right_match = _DEGLUE_TOKEN_PATTERN.fullmatch(right)
+    if left_match is None or right_match is None:
+        return None
+
+    left_prefix, left_core, left_suffix = left_match.groups()
+    right_prefix, right_core, right_suffix = right_match.groups()
+    if left_suffix or right_prefix:
+        return None
+    if _is_deglue_protected_token(left_core) or _is_deglue_protected_token(right_core):
+        return None
+
+    joined_lower = f"{left_core}{right_core}".lower()
+    if joined_lower not in _DEGLUE_KNOWN_WORDS:
+        return None
+
+    joined = _apply_deglued_case(left_core, right_core, joined_lower)
+    return f"{left_prefix}{joined}{right_suffix}"
+
+
+def _is_deglue_protected_token(token: str) -> bool:
+    """Return whether a token should not participate in degluing."""
+
+    upper = token.upper()
+    return upper in _DEGLUE_RATING_TOKENS or re.fullmatch(r"(?:19|20)\d{2}", token)
+
+
+def _apply_deglued_case(left: str, right: str, joined_lower: str) -> str:
+    """Return a deglued token with the original label's casing style."""
+
+    if left.isupper() and right.isupper() and len(joined_lower) > 2:
+        return joined_lower.upper()
+    if left[:1].isupper():
+        return joined_lower.capitalize()
+    return joined_lower
+
+
+def _label_degluing_confidence(
+    *,
+    original_label: str,
+    deglued_label: str,
+    rules_applied: Sequence[str],
+) -> float:
+    """Score how likely degluing preserved the intended metric label."""
+
+    if original_label == deglued_label:
+        return 1.0
+    confidence = 0.91
+    if rules_applied:
+        confidence += 0.06
+    if len(rules_applied) > 4:
+        confidence -= 0.06
+    return round(max(0.0, min(confidence, 0.99)), 2)
+
+
+_NOTE_UNIT_PATTERN = re.compile(
+    r"(?:\bpkr\b|\brs\.?\b|\busd\b|\beur\b|\bgbp\b|\brupees?\b|"
+    r"\bruppees\b|\bamounts?\b|"
+    r"\bthousand\b|\bthousands\b|\bmillion\b|\bmillions\b|\bmn\b|"
+    r"\bbillion\b|\bbillions\b|\bbn\b|(?<!\d)[`'’‘]?0{2,3}s?\b|"
+    r"\bin\s+[`'’‘]?0{1,3})",
+    re.IGNORECASE,
+)
+_NOTE_REFERENCE_PATTERN = re.compile(
+    r"^(?:note\s*)?\d+(?:\.\d+)*$",
+    re.IGNORECASE,
+)
+_NOTE_HEADER_LABELS = {
+    "note",
+    "notes",
+}
+_NOTE_FORMATTING_LABELS = {
+    "do",
+    "-do-",
+    "--do--",
+    "---do---",
+    "----do----",
+}
+_NOTE_CONTINUATION_PATTERN = re.compile(
+    r"\b(continued|brought forward|carried forward|same as above|"
+    r"balance b/f|balance c/f|b/f|c/f)\b",
+    re.IGNORECASE,
+)
+_NOTE_LEGITIMATE_DISCLOSURE_PATTERN = re.compile(
+    r"\b(managerial remuneration|number of persons|ordinary shares|"
+    r"share counts?|employee counts?|employees?|persons?|shares?)\b",
+    re.IGNORECASE,
+)
+_NOTE_SUBTOTAL_PATTERN = re.compile(
+    r"\b(total|subtotal|sub total|net assets|net liabilities|closing balance|"
+    r"opening balance|balance as at|balance at|carrying amount|"
+    r"written down value)\b",
+    re.IGNORECASE,
+)
+
+
+def _note_row_filtering_reason(label: str) -> str | None:
+    """Return a reason when a reconstructed/deglued label is note metadata."""
+
+    text = _normalize_label_text(label)
+    if not text:
+        return "formatting_only_row"
+
+    normalized = _normalize_text(text)
+    compacted = normalized.replace(" ", "")
+    if normalized in _NOTE_HEADER_LABELS:
+        return "note_header"
+    if compacted in _NOTE_FORMATTING_LABELS or _is_ditto_marker(text):
+        return "continuation_marker"
+    if _NOTE_REFERENCE_PATTERN.fullmatch(text.strip()) is not None:
+        return "standalone_note_reference"
+    if _NOTE_CONTINUATION_PATTERN.search(text):
+        return "continuation_marker"
+    if _is_formatting_only_label(text):
+        return "formatting_only_row"
+    if _is_note_unit_row(text):
+        return "unit_row"
+    return None
+
+
+def _is_ditto_marker(label: str) -> bool:
+    """Return whether a label is only a ditto/continuation marker."""
+
+    compacted = _normalize_text(label).replace(" ", "")
+    return "do" in compacted and set(compacted) <= {"d", "o", "-"}
+
+
+def _is_formatting_only_label(label: str) -> bool:
+    """Return whether a label carries no metric text."""
+
+    return re.fullmatch(r"[\W_]+", label.strip()) is not None
+
+
+def _is_note_unit_row(label: str) -> bool:
+    """Return whether a label is a unit/header row rather than a metric."""
+
+    text = _normalize_label_text(label)
+    if not _NOTE_UNIT_PATTERN.search(text):
+        return False
+    if _NOTE_LEGITIMATE_DISCLOSURE_PATTERN.search(text):
+        return False
+    if _NOTE_SUBTOTAL_PATTERN.search(text):
+        return False
+
+    lower_text = text.lower().strip()
+    words = re.findall(r"[A-Za-z]+", text)
+    normalized_words = {
+        word.lower()
+        for word in words
+        if word.lower() not in {"in", "of", "and", "the", "as", "at"}
+    }
+    unit_words = {
+        "pkr",
+        "rs",
+        "usd",
+        "eur",
+        "gbp",
+        "rupees",
+        "rupee",
+        "ruppees",
+        "amount",
+        "amounts",
+        "thousand",
+        "thousands",
+        "million",
+        "millions",
+        "mn",
+        "billion",
+        "billions",
+        "bn",
+    }
+    if (
+        text.startswith("(")
+        or re.match(r"(?i)^(pkr|rs\.?|rupees?|ruppees|amounts?)\b", lower_text)
+    ):
+        return True
+
+    return bool(normalized_words) and normalized_words <= unit_words
+
+
+_NOTE_CONTEXT_TABLE_TYPE_HINTS = {
+    "aging",
+    "borrowings",
+    "capital_work",
+    "cash_and_bank",
+    "contingent",
+    "credit_quality",
+    "debt",
+    "deferred",
+    "deposits",
+    "disclosure",
+    "expense",
+    "expenses",
+    "fair_value",
+    "financial_assets",
+    "financial_instruments",
+    "fixed_assets",
+    "intangible",
+    "inventory",
+    "lease",
+    "liabilities",
+    "loan",
+    "movement",
+    "mutual_fund",
+    "note",
+    "notes",
+    "payables",
+    "prepayments",
+    "provision",
+    "receivables",
+    "related_party",
+    "remuneration",
+    "schedule",
+    "short_term",
+    "stock",
+    "tax",
+    "taxation",
+}
+_NOTE_CONTEXT_HEADER_PATTERN = re.compile(
+    r"\b(breakup|claims?|classification|comprise|comprises|details?|"
+    r"during the year|following|in respect of|movement|schedule|set out)\b",
+    re.IGNORECASE,
+)
+_NOTE_CONTEXT_DEPENDENT_PATTERNS = (
+    (
+        "total_label",
+        re.compile(r"^(?:total|subtotal|sub total)$", re.IGNORECASE),
+    ),
+    (
+        "generic_note_label",
+        re.compile(
+            r"^(?:others?|other|current|non[- ]?current|less than .+|"
+            r"more than .+|neither past due nor impaired)$",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "movement_label",
+        re.compile(
+            r"^(?:opening balance|closing balance|additions?|disposals?|"
+            r"transfers?|adjustments?|charge for the year|for the year|"
+            r"written off|balance at .+|balance as at .+|balance b/f|"
+            r"balance c/f|b/f|c/f)$",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "short_disclosure_label",
+        re.compile(
+            r"^(?:number of persons|number of employees|number of shares|"
+            r"less than pkr .+ each|less than rs .+ each)$",
+            re.IGNORECASE,
+        ),
+    ),
+)
+_NOTE_CONTEXT_STANDALONE_LABELS = {
+    "bank balances",
+    "cash and bank balances",
+    "cash and cash equivalents",
+    "property plant and equipment",
+}
+
+
+def _is_note_context_table(table_type: str, rows: RawTable) -> bool:
+    """Return whether note context inheritance should be considered."""
+
+    normalized_type = _normalize_key(table_type)
+    primary_statement_types = {
+        "balance_sheet",
+        "cash_flow_statement",
+        "comprehensive_income_statement",
+        "income_statement",
+        "profit_and_loss",
+        "statement_of_cash_flows",
+        "statement_of_changes_in_equity",
+        "statement_of_comprehensive_income",
+        "statement_of_financial_position",
+        "statement_of_profit_or_loss",
+    }
+    if normalized_type in primary_statement_types:
+        return False
+    if any(hint in normalized_type for hint in _NOTE_CONTEXT_TABLE_TYPE_HINTS):
+        return True
+
+    table_text = _normalized_table_text(rows)
+    return bool(
+        _NOTE_CONTEXT_HEADER_PATTERN.search(table_text)
+        or _contains_phrase(table_text, "note")
+        or _contains_phrase(table_text, "notes")
+    )
+
+
+def _update_note_context_from_header_row(
+    context_stack: _NoteContextStack,
+    *,
+    label: str,
+    row_index: int,
+    header_row_index: int | None,
+    table_type: str,
+) -> None:
+    """Update active note context from a non-value row."""
+
+    context_label = _normalize_label_text(label)
+    if not _is_usable_context_label(context_label):
+        return
+    if _context_inheritance_reason(context_label) is not None:
+        return
+
+    if _is_note_header_context_label(
+        context_label,
+        row_index=row_index,
+        header_row_index=header_row_index,
+        table_type=table_type,
+    ):
+        context_stack.active_note_header = context_label
+        context_stack.active_section_header = None
+        context_stack.active_parent_label = None
+        return
+
+    context_stack.active_section_header = context_label
+    context_stack.active_parent_label = None
+
+
+def _update_note_context_from_metric_row(
+    context_stack: _NoteContextStack,
+    *,
+    label: str,
+    inherited_label: _ContextInheritedLabel,
+) -> None:
+    """Track the latest complete metric row as parent context."""
+
+    if inherited_label.changed:
+        return
+    if not _is_usable_context_label(label):
+        return
+    if _context_inheritance_reason(label) is not None:
+        return
+    context_stack.active_parent_label = _normalize_label_text(label)
+
+
+def _inherit_note_context(
+    label: str,
+    context_stack: _NoteContextStack,
+    *,
+    broad_note_context: bool = False,
+) -> _ContextInheritedLabel:
+    """Return a label enriched with active note context when appropriate."""
+
+    normalized_label = _normalize_label_text(label)
+    reason = _context_inheritance_reason(normalized_label)
+    if (
+        reason is None
+        and broad_note_context
+        and _has_inheritance_context(context_stack)
+        and _is_context_sensitive_note_metric(normalized_label)
+    ):
+        reason = "note_context_label"
+    if reason is None:
+        return _ContextInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+
+    context_source, inherited_context = _select_inherited_context(
+        reason,
+        context_stack,
+    )
+    if inherited_context is None or context_source is None:
+        return _ContextInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+    if _context_already_present(
+        label=normalized_label,
+        inherited_context=inherited_context,
+    ):
+        return _ContextInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+
+    return _ContextInheritedLabel(
+        original_label=normalized_label,
+        inherited_label=_normalize_label_text(
+            f"{inherited_context} - {normalized_label}",
+        ),
+        inherited_context=inherited_context,
+        context_source=context_source,
+        reconstruction_reason=reason,
+    )
+
+
+def _context_inheritance_reason(label: str) -> str | None:
+    """Return why a label should inherit context, if applicable."""
+
+    normalized = _normalize_text(label)
+    if not normalized:
+        return None
+    for reason, pattern in _NOTE_CONTEXT_DEPENDENT_PATTERNS:
+        if pattern.fullmatch(normalized):
+            return reason
+    return None
+
+
+def _select_inherited_context(
+    reason: str,
+    context_stack: _NoteContextStack,
+) -> tuple[str | None, str | None]:
+    """Return the best available context source for a dependent note label."""
+
+    if reason == "generic_note_label":
+        candidates = (
+            ("parent_row", context_stack.active_parent_label),
+            ("section_header", context_stack.active_section_header),
+            ("note_header", context_stack.active_note_header),
+        )
+    elif reason == "note_context_label":
+        candidates = (
+            ("section_header", context_stack.active_section_header),
+            ("note_header", context_stack.active_note_header),
+        )
+    elif reason == "total_label":
+        candidates = (
+            ("section_header", context_stack.active_section_header),
+            ("note_header", context_stack.active_note_header),
+        )
+    else:
+        candidates = (
+            ("section_header", context_stack.active_section_header),
+            ("parent_row", context_stack.active_parent_label),
+            ("note_header", context_stack.active_note_header),
+        )
+
+    for source, candidate in candidates:
+        if _is_usable_context_label(candidate or ""):
+            return source, candidate
+    return None, None
+
+
+def _has_inheritance_context(context_stack: _NoteContextStack) -> bool:
+    """Return whether the stack has any context available for inheritance."""
+
+    return any(
+        _is_usable_context_label(candidate or "")
+        for candidate in (
+            context_stack.active_parent_label,
+            context_stack.active_section_header,
+            context_stack.active_note_header,
+        )
+    )
+
+
+def _is_context_sensitive_note_metric(label: str) -> bool:
+    """Return whether a note metric needs context to stay interpretable."""
+
+    normalized = _normalize_text(label)
+    words = normalized.split()
+    if not words:
+        return False
+    if normalized in _NOTE_CONTEXT_STANDALONE_LABELS:
+        return False
+    if len(words) <= 4:
+        return True
+    return bool(
+        re.search(
+            r"\b(accrued|deposits?|gain|levy|loss|other|prepayments?|"
+            r"receivables?|tax|taxation)\b",
+            normalized,
+        )
+        and len(words) <= 7
+    )
+
+
+def _is_note_header_context_label(
+    label: str,
+    *,
+    row_index: int,
+    header_row_index: int | None,
+    table_type: str,
+) -> bool:
+    """Return whether a non-value row should be treated as the note header."""
+
+    if header_row_index is not None and row_index < header_row_index:
+        return True
+    normalized_label = _normalize_text(label)
+    if _NOTE_CONTEXT_HEADER_PATTERN.search(normalized_label):
+        return True
+    if "note" in _normalize_key(table_type) and len(normalized_label.split()) >= 7:
+        return True
+    return False
+
+
+def _is_usable_context_label(label: str) -> bool:
+    """Return whether a label is safe to use as inherited context."""
+
+    text = _normalize_label_text(label)
+    if not text or _note_row_filtering_reason(text) is not None:
+        return False
+    normalized = _normalize_text(text)
+    words = normalized.split()
+    if normalized.startswith("for the year ended"):
+        return False
+    if normalized.startswith("particulars "):
+        return False
+    if normalized.startswith("represent ") or " has been" in normalized:
+        return False
+    if "if any" in normalized:
+        return False
+    if words:
+        short_word_count = sum(1 for word in words if len(word) <= 2)
+        if short_word_count / len(words) > 0.4:
+            return False
+    if len(words) > 8 and _NOTE_CONTEXT_HEADER_PATTERN.search(normalized) is None:
+        return False
+    if len(words) > 14:
+        return False
+    if len(words) == 1 and normalized not in {"taxation", "borrowings"}:
+        return False
+    return True
+
+
+def _context_already_present(*, label: str, inherited_context: str) -> bool:
+    """Return whether applying the context would only repeat the label."""
+
+    normalized_label = _normalize_text(label)
+    normalized_context = _normalize_text(inherited_context)
+    if not normalized_label or not normalized_context:
+        return True
+    return (
+        normalized_label == normalized_context
+        or _contains_phrase(normalized_context, normalized_label)
+        or _contains_phrase(normalized_label, normalized_context)
+    )
+
+
 def _detected_counts_by_page(
     table_detection_result: TableDetectionResult | None,
 ) -> dict[int, int]:
@@ -1627,6 +2364,11 @@ def _build_extraction_quality_report(
 
     metric_findings = _metric_quality_findings(tables)
     label_reconstruction_diagnostics = _label_reconstruction_diagnostics(tables)
+    label_degluing_diagnostics = _label_degluing_diagnostics(tables)
+    note_row_filtering_diagnostics = _note_row_filtering_diagnostics(tables)
+    note_context_inheritance_diagnostics = _note_context_inheritance_diagnostics(
+        tables,
+    )
     top_suspicious_tables = sorted(
         table_findings,
         key=lambda finding: (
@@ -1672,10 +2414,28 @@ def _build_extraction_quality_report(
             diagnostic.metric_values_affected
             for diagnostic in label_reconstruction_diagnostics
         ),
+        labels_deglued=len(label_degluing_diagnostics),
+        metric_values_improved_by_label_degluing=sum(
+            diagnostic.metric_values_affected
+            for diagnostic in label_degluing_diagnostics
+        ),
+        note_rows_filtered=len(note_row_filtering_diagnostics),
+        metric_values_removed_by_note_row_filtering=sum(
+            diagnostic.metric_values_removed
+            for diagnostic in note_row_filtering_diagnostics
+        ),
+        context_inheritances_applied=len(note_context_inheritance_diagnostics),
+        metric_values_improved_by_context_inheritance=sum(
+            diagnostic.metric_values_affected
+            for diagnostic in note_context_inheritance_diagnostics
+        ),
         confidence_distribution=confidence_distribution,
         top_suspicious_tables=top_suspicious_tables,
         top_suspicious_metrics=top_suspicious_metrics,
         label_reconstruction_diagnostics=label_reconstruction_diagnostics,
+        label_degluing_diagnostics=label_degluing_diagnostics,
+        note_row_filtering_diagnostics=note_row_filtering_diagnostics,
+        note_context_inheritance_diagnostics=note_context_inheritance_diagnostics,
     )
 
 
@@ -1696,6 +2456,9 @@ def _build_partial_extraction_quality_report(
         top_suspicious_tables=[],
         top_suspicious_metrics=[],
         label_reconstruction_diagnostics=[],
+        label_degluing_diagnostics=[],
+        note_row_filtering_diagnostics=[],
+        note_context_inheritance_diagnostics=[],
     )
 
 
@@ -1782,6 +2545,13 @@ def _label_reconstruction_diagnostics(
                 label_index=label_index,
                 year_columns=year_columns,
             )
+            if (
+                _note_row_filtering_reason(
+                    _deglue_label_text(reconstructed.reconstructed_label).deglued_label
+                )
+                is not None
+            ):
+                continue
             if not reconstructed.changed:
                 continue
 
@@ -1810,6 +2580,195 @@ def _label_reconstruction_diagnostics(
                     metric_values_affected=metric_values_affected,
                     stop_reason=reconstructed.stop_reason,
                 )
+            )
+
+    return diagnostics
+
+
+def _label_degluing_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[LabelDegluingDiagnostic]:
+    """Return row-level diagnostics for labels cleaned by degluing."""
+
+    diagnostics: list[LabelDegluingDiagnostic] = []
+    for table in tables:
+        _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+        if not year_columns:
+            continue
+
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        for row_index, row in enumerate(table.rows):
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            if _note_row_filtering_reason(deglued.deglued_label) is not None:
+                continue
+            if not deglued.changed:
+                continue
+
+            metric_values_affected = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if metric_values_affected == 0:
+                continue
+
+            diagnostics.append(
+                LabelDegluingDiagnostic(
+                    source_report_year=table.source_report_year,
+                    page_number=table.page_number,
+                    table_index=table.table_index,
+                    table_type=table.table_type,
+                    row_index=row_index,
+                    original_label=deglued.original_label,
+                    deglued_label=deglued.deglued_label,
+                    degluing_confidence=deglued.confidence,
+                    rules_applied=list(deglued.rules_applied),
+                    metric_values_affected=metric_values_affected,
+                )
+            )
+
+    return diagnostics
+
+
+def _note_row_filtering_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[NoteRowFilteringDiagnostic]:
+    """Return row-level diagnostics for note rows filtered as non-metrics."""
+
+    diagnostics: list[NoteRowFilteringDiagnostic] = []
+    for table in tables:
+        _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+        if not year_columns:
+            continue
+
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        for row_index, row in enumerate(table.rows):
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            filtering_reason = _note_row_filtering_reason(deglued.deglued_label)
+            if filtering_reason is None:
+                continue
+
+            metric_values_removed = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if metric_values_removed == 0:
+                continue
+
+            diagnostics.append(
+                NoteRowFilteringDiagnostic(
+                    source_report_year=table.source_report_year,
+                    page_number=table.page_number,
+                    table_index=table.table_index,
+                    table_type=table.table_type,
+                    row_index=row_index,
+                    label=deglued.deglued_label,
+                    filtering_reason=filtering_reason,
+                    metric_values_removed=metric_values_removed,
+                )
+            )
+
+    return diagnostics
+
+
+def _note_context_inheritance_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[NoteContextInheritanceDiagnostic]:
+    """Return diagnostics for note labels enriched from context stack."""
+
+    diagnostics: list[NoteContextInheritanceDiagnostic] = []
+    for table in tables:
+        header_row_index, year_columns = CamelotTableExtractor._find_year_columns(
+            table.rows,
+        )
+        if not year_columns or not _is_note_context_table(table.table_type, table.rows):
+            continue
+
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        context_stack = _NoteContextStack()
+        for row_index, row in enumerate(table.rows):
+            if row_index == header_row_index:
+                continue
+
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            label = deglued.deglued_label
+            if _note_row_filtering_reason(label) is not None:
+                continue
+
+            metric_values_affected = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if metric_values_affected == 0:
+                _update_note_context_from_header_row(
+                    context_stack,
+                    label=label,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    table_type=table.table_type,
+                )
+                continue
+
+            inherited_label = _inherit_note_context(
+                label,
+                context_stack,
+                broad_note_context=True,
+            )
+            if inherited_label.changed:
+                diagnostics.append(
+                    NoteContextInheritanceDiagnostic(
+                        source_report_year=table.source_report_year,
+                        page_number=table.page_number,
+                        table_index=table.table_index,
+                        table_type=table.table_type,
+                        row_index=row_index,
+                        original_label=inherited_label.original_label,
+                        inherited_label=inherited_label.inherited_label,
+                        inherited_context=inherited_label.inherited_context or "",
+                        context_source=inherited_label.context_source or "",
+                        reconstruction_reason=(
+                            inherited_label.reconstruction_reason or ""
+                        ),
+                        metric_values_affected=metric_values_affected,
+                    )
+                )
+
+            _update_note_context_from_metric_row(
+                context_stack,
+                label=inherited_label.original_label,
+                inherited_label=inherited_label,
             )
 
     return diagnostics

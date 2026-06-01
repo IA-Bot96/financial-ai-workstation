@@ -318,6 +318,245 @@ def test_label_reconstruction_stops_before_note_and_percentage_columns() -> None
     assert result.extraction_summary.quality_report.labels_reconstructed == 0
 
 
+def test_extract_tables_deglues_lucky_and_millat_label_fragments() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025", "2024"],
+                    ["Current Asse ts", "100", "80"],
+                    ["Current Liabi lities", "45", "50"],
+                    ["Distribution Co st", "11", "9"],
+                    ["Operating Pro fit", "30", "25"],
+                    ["Loans to e mployees", "5", "4"],
+                    ["Cash and b ank balances", "19", "24"],
+                    ["Trade and o ther payables", "7", "8"],
+                    ["Salaries and amenitie s", "3", "2"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=164,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Current Assets", 2025, 100),
+        ("Current Assets", 2024, 80),
+        ("Current Liabilities", 2025, 45),
+        ("Current Liabilities", 2024, 50),
+        ("Distribution Cost", 2025, 11),
+        ("Distribution Cost", 2024, 9),
+        ("Operating Profit", 2025, 30),
+        ("Operating Profit", 2024, 25),
+        ("Loans to employees", 2025, 5),
+        ("Loans to employees", 2024, 4),
+        ("Cash and bank balances", 2025, 19),
+        ("Cash and bank balances", 2024, 24),
+        ("Trade and other payables", 2025, 7),
+        ("Trade and other payables", 2024, 8),
+        ("Salaries and amenities", 2025, 3),
+        ("Salaries and amenities", 2024, 2),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.labels_deglued == 8
+    assert quality_report.metric_values_improved_by_label_degluing == 16
+    assert [
+        (diagnostic.original_label, diagnostic.deglued_label)
+        for diagnostic in quality_report.label_degluing_diagnostics
+    ] == [
+        ("Current Asse ts", "Current Assets"),
+        ("Current Liabi lities", "Current Liabilities"),
+        ("Distribution Co st", "Distribution Cost"),
+        ("Operating Pro fit", "Operating Profit"),
+        ("Loans to e mployees", "Loans to employees"),
+        ("Cash and b ank balances", "Cash and bank balances"),
+        ("Trade and o ther payables", "Trade and other payables"),
+        ("Salaries and amenitie s", "Salaries and amenities"),
+    ]
+
+
+def test_label_degluing_preserves_non_label_tokens() -> None:
+    deglued = extractor_module._deglue_label_text("Note 28.1 2025 A1+ +5% PKR 10")
+
+    assert deglued.deglued_label == "Note 28.1 2025 A1+ +5% PKR 10"
+    assert deglued.rules_applied == ()
+
+
+def test_extract_tables_filters_non_metric_note_rows_before_metric_values() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025", "2024"],
+                    ["Note", "1", "2"],
+                    ["(PKR in '00", "3", "4"],
+                    ["----do----", "5", "6"],
+                    ["Note 28.1", "7", "8"],
+                    ["continued", "9", "10"],
+                    ["Managerial remuneration", "11", "12"],
+                    ["Number of persons", "13", "14"],
+                    ["ordinary shares of PKR 10 each", "15", "16"],
+                    ["Total", "17", "18"],
+                    ["Year High Close Rupees", "19", "20"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=353,
+                    table_types=["notes"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Managerial remuneration", 2025, 11),
+        ("Managerial remuneration", 2024, 12),
+        ("Managerial remuneration - Number of persons", 2025, 13),
+        ("Managerial remuneration - Number of persons", 2024, 14),
+        ("ordinary shares of PKR 10 each", 2025, 15),
+        ("ordinary shares of PKR 10 each", 2024, 16),
+        ("Total", 2025, 17),
+        ("Total", 2024, 18),
+        ("Year High Close Rupees", 2025, 19),
+        ("Year High Close Rupees", 2024, 20),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.note_rows_filtered == 5
+    assert quality_report.metric_values_removed_by_note_row_filtering == 10
+    assert [
+        (diagnostic.label, diagnostic.filtering_reason)
+        for diagnostic in quality_report.note_row_filtering_diagnostics
+    ] == [
+        ("Note", "note_header"),
+        ("(PKR in '00", "unit_row"),
+        ("----do----", "continuation_marker"),
+        ("Note 28.1", "standalone_note_reference"),
+        ("continued", "continuation_marker"),
+    ]
+
+
+def test_extract_tables_inherits_note_context_for_generic_labels() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "2025", "2024"],
+                    ["Capital work-in-progress", "", ""],
+                    ["Opening balance", "100", "80"],
+                    ["Closing balance", "120", "100"],
+                    ["Other expenses", "", ""],
+                    ["Others", "5", "4"],
+                    ["Cash and b ank balances", "30", "28"],
+                    ["Managerial remuneration", "", ""],
+                    ["Number of persons", "3", "2"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=321,
+                    table_types=["notes"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("Capital work-in-progress - Opening balance", 2025, 100),
+        ("Capital work-in-progress - Opening balance", 2024, 80),
+        ("Capital work-in-progress - Closing balance", 2025, 120),
+        ("Capital work-in-progress - Closing balance", 2024, 100),
+        ("Other expenses - Others", 2025, 5),
+        ("Other expenses - Others", 2024, 4),
+        ("Cash and bank balances", 2025, 30),
+        ("Cash and bank balances", 2024, 28),
+        ("Managerial remuneration - Number of persons", 2025, 3),
+        ("Managerial remuneration - Number of persons", 2024, 2),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.context_inheritances_applied == 4
+    assert quality_report.metric_values_improved_by_context_inheritance == 8
+    assert [
+        (
+            diagnostic.original_label,
+            diagnostic.inherited_context,
+            diagnostic.context_source,
+            diagnostic.reconstruction_reason,
+            diagnostic.inherited_label,
+        )
+        for diagnostic in quality_report.note_context_inheritance_diagnostics
+    ] == [
+        (
+            "Opening balance",
+            "Capital work-in-progress",
+            "section_header",
+            "movement_label",
+            "Capital work-in-progress - Opening balance",
+        ),
+        (
+            "Closing balance",
+            "Capital work-in-progress",
+            "section_header",
+            "movement_label",
+            "Capital work-in-progress - Closing balance",
+        ),
+        (
+            "Others",
+            "Other expenses",
+            "section_header",
+            "generic_note_label",
+            "Other expenses - Others",
+        ),
+        (
+            "Number of persons",
+            "Managerial remuneration",
+            "section_header",
+            "short_disclosure_label",
+            "Managerial remuneration - Number of persons",
+        ),
+    ]
+
+
 def test_extract_tables_applies_financial_scale_conversion() -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [

@@ -398,6 +398,92 @@ def test_label_degluing_preserves_non_label_tokens() -> None:
     assert deglued.rules_applied == ()
 
 
+def test_extract_tables_completes_remaining_fragmented_lucky_labels() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "", "2025", "2024"],
+                    ["(Other Income)/Charg es", "", "100", "80"],
+                    ["Property, plant a nd equipment", "", "200", "180"],
+                    ["Cash flow Coverage ra tio times", "", "3", "2"],
+                    ["Net assets (100", "%)", "50", "40"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=164,
+                    table_types=["income_statement"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("(Other Income)/Charges", 2025, 100),
+        ("(Other Income)/Charges", 2024, 80),
+        ("Property, plant and equipment", 2025, 200),
+        ("Property, plant and equipment", 2024, 180),
+        ("Cash flow Coverage ratio times", 2025, 3),
+        ("Cash flow Coverage ratio times", 2024, 2),
+        ("Net assets (100%)", 2025, 50),
+        ("Net assets (100%)", 2024, 40),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.labels_completed == 4
+    assert quality_report.metric_values_improved_by_fragmentation_cleanup == 8
+    assert [
+        (
+            diagnostic.original_label,
+            diagnostic.completed_label,
+            diagnostic.reconstruction_reason,
+            diagnostic.completion_source,
+        )
+        for diagnostic in quality_report.fragmentation_cleanup_diagnostics
+    ] == [
+        (
+            "(Other Income)/Charg es",
+            "(Other Income)/Charges",
+            "remaining_spacing_repair",
+            "spacing_repair",
+        ),
+        (
+            "Property, plant a nd equipment",
+            "Property, plant and equipment",
+            "remaining_spacing_repair",
+            "spacing_repair",
+        ),
+        (
+            "Cash flow Coverage ra tio times",
+            "Cash flow Coverage ratio times",
+            "remaining_spacing_repair",
+            "spacing_repair",
+        ),
+        (
+            "Net assets (100",
+            "Net assets (100%)",
+            "unit_context_completion",
+            "adjacent_unit_cell",
+        ),
+    ]
+    assert quality_report.fragmentation_cleanup_diagnostics[3].source_cells == [
+        "Net assets (100",
+        "%)",
+    ]
+
+
 def test_extract_tables_filters_non_metric_note_rows_before_metric_values() -> None:
     extractor = CamelotTableExtractor(
         camelot_reader=lambda *args, **kwargs: [
@@ -553,6 +639,152 @@ def test_extract_tables_inherits_note_context_for_generic_labels() -> None:
             "section_header",
             "short_disclosure_label",
             "Managerial remuneration - Number of persons",
+        ),
+    ]
+
+
+def test_extract_tables_inherits_header_context_for_fragmented_labels() -> None:
+    extractor = CamelotTableExtractor(
+        camelot_reader=lambda *args, **kwargs: [
+            FakeCamelotTable(
+                [
+                    ["Metric", "", "", "2025", "2024"],
+                    ["except EPS", "", "", "", ""],
+                    ["GP as % of Net", "", "", "34%", "35%"],
+                    ["Long-term liabilities", "", "", "", ""],
+                    ["Current portion", "of long ter", "m finance", "127", "507"],
+                    ["Lucky Holdings Limited", "", "", "", ""],
+                    ["ordinary shares o", "f PKR 10 each", "", "32,145", "32,145"],
+                    [
+                        "The Group's interest in LRHL's assets and liabilities",
+                        "is as follows:",
+                        "",
+                        "",
+                        "",
+                    ],
+                    ["Net assets (100", "%)", "", "81,312", "66,460"],
+                    ["Non-Financial Ratios", "", "", "", ""],
+                    ["% of Plant Availability", "", "", "76.42%", "89.63%"],
+                    ["Investment at cost", "", "", "6,870", "3,399"],
+                ]
+            )
+        ],
+        pdfplumber_open=lambda _: FakePdfplumberDocument([]),
+    )
+
+    result = extractor.extract_tables(
+        pdf_path="annual_report.pdf",
+        classification_result=FinancialTableClassificationResult(
+            page_table_types=[
+                PageTableType(
+                    year=2025,
+                    page_number=321,
+                    table_types=["investment_valuation_ratios"],
+                )
+            ]
+        ),
+    )
+
+    assert [
+        (metric_value.metric, metric_value.value_year, metric_value.value)
+        for metric_value in result.metric_values
+    ] == [
+        ("GP as % of Net", 2025, 34),
+        ("GP as % of Net", 2024, 35),
+        (
+            "Long-term liabilities - Current portion of long term finance",
+            2025,
+            127,
+        ),
+        (
+            "Long-term liabilities - Current portion of long term finance",
+            2024,
+            507,
+        ),
+        (
+            "Lucky Holdings Limited - ordinary shares of PKR 10 each",
+            2025,
+            32145,
+        ),
+        (
+            "Lucky Holdings Limited - ordinary shares of PKR 10 each",
+            2024,
+            32145,
+        ),
+        ("Net assets (100%)", 2025, 81312),
+        ("Net assets (100%)", 2024, 66460),
+        (
+            "Non-Financial Ratios - % of Plant Availability",
+            2025,
+            76.42,
+        ),
+        (
+            "Non-Financial Ratios - % of Plant Availability",
+            2024,
+            89.63,
+        ),
+        ("Non-Financial Ratios - Investment at cost", 2025, 6870),
+        ("Non-Financial Ratios - Investment at cost", 2024, 3399),
+    ]
+
+    quality_report = result.extraction_summary.quality_report
+    assert quality_report.header_inheritances_applied == 4
+    assert quality_report.metric_values_improved_by_header_inheritance == 8
+    assert quality_report.labels_completed == 1
+    assert quality_report.metric_values_improved_by_fragmentation_cleanup == 2
+    assert [
+        (
+            diagnostic.original_label,
+            diagnostic.completed_label,
+            diagnostic.reconstruction_reason,
+            diagnostic.completion_source,
+        )
+        for diagnostic in quality_report.fragmentation_cleanup_diagnostics
+    ] == [
+        (
+            "Net assets (100",
+            "Net assets (100%)",
+            "unit_context_completion",
+            "adjacent_unit_cell",
+        )
+    ]
+    assert [
+        (
+            diagnostic.original_label,
+            diagnostic.inherited_header,
+            diagnostic.inheritance_source,
+            diagnostic.reconstruction_reason,
+            diagnostic.inherited_label,
+        )
+        for diagnostic in quality_report.header_inheritance_diagnostics
+    ] == [
+        (
+            "Current portion of long term finance",
+            "Long-term liabilities",
+            "table_section_context",
+            "section_context_inheritance",
+            "Long-term liabilities - Current portion of long term finance",
+        ),
+        (
+            "ordinary shares of PKR 10 each",
+            "Lucky Holdings Limited",
+            "table_header_context",
+            "security_header_inheritance",
+            "Lucky Holdings Limited - ordinary shares of PKR 10 each",
+        ),
+        (
+            "% of Plant Availability",
+            "Non-Financial Ratios",
+            "table_section_context",
+            "unit_context_inheritance",
+            "Non-Financial Ratios - % of Plant Availability",
+        ),
+        (
+            "Investment at cost",
+            "Non-Financial Ratios",
+            "table_section_context",
+            "table_header_inheritance",
+            "Non-Financial Ratios - Investment at cost",
         ),
     ]
 

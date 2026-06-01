@@ -425,6 +425,78 @@ class LabelDegluingDiagnostic(BaseModel):
     )
 
 
+class FragmentationCleanupDiagnostic(BaseModel):
+    """Trace of a fragmented metric label completed before MetricValue creation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the label was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the label was extracted.",
+        examples=[164],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the label originated.",
+        examples=["income_statement"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the completed label.",
+        examples=[7],
+    )
+    original_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label after reconstruction/degluing and before final cleanup.",
+        examples=["Property, plant a nd equipment"],
+    )
+    completed_label: str = Field(
+        ...,
+        min_length=1,
+        description="Metric label after fragmentation cleanup.",
+        examples=["Property, plant and equipment"],
+    )
+    reconstruction_reason: str = Field(
+        ...,
+        min_length=1,
+        description="Stable reason code explaining why the label was completed.",
+        examples=["remaining_spacing_repair"],
+    )
+    source_cells: list[str] = Field(
+        default_factory=list,
+        description="Original row cells used as evidence for label completion.",
+        examples=[["Property, plant a nd equipment"]],
+    )
+    completion_source: str = Field(
+        ...,
+        min_length=1,
+        description="Source of the completion signal.",
+        examples=["spacing_repair"],
+    )
+    metric_values_affected: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues generated from this completed row.",
+        examples=[2],
+    )
+
+
 class NoteRowFilteringDiagnostic(BaseModel):
     """Trace of a non-metric note row filtered before MetricValue creation."""
 
@@ -553,6 +625,79 @@ class NoteContextInheritanceDiagnostic(BaseModel):
     )
 
 
+class HeaderInheritanceDiagnostic(BaseModel):
+    """Trace of a fragmented metric label enriched from table header context."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_report_year: int = Field(
+        ...,
+        ge=1900,
+        description="Annual report year from which the row was extracted.",
+        examples=[2025],
+    )
+    page_number: int = Field(
+        ...,
+        gt=0,
+        description="One-based PDF page number where the row was extracted.",
+        examples=[321],
+    )
+    table_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based table index on the source page.",
+        examples=[0],
+    )
+    table_type: str = Field(
+        ...,
+        min_length=1,
+        description="Financial table category where the row originated.",
+        examples=["investment_valuation_ratios"],
+    )
+    row_index: int = Field(
+        ...,
+        ge=0,
+        description="Zero-based row index containing the inherited label.",
+        examples=[18],
+    )
+    original_label: str = Field(
+        ...,
+        min_length=1,
+        description="Label after reconstruction/degluing before header inheritance.",
+        examples=["Net assets (100"],
+    )
+    inherited_label: str = Field(
+        ...,
+        min_length=1,
+        description="Metric label after table/header/unit context inheritance.",
+        examples=["Net assets (100%)"],
+    )
+    inherited_header: str = Field(
+        ...,
+        min_length=1,
+        description="Header, section, or unit context applied to the label.",
+        examples=["%)"],
+    )
+    inheritance_source: str = Field(
+        ...,
+        min_length=1,
+        description="Source of inherited context.",
+        examples=["unit_context"],
+    )
+    reconstruction_reason: str = Field(
+        ...,
+        min_length=1,
+        description="Stable reason code explaining why header context was inherited.",
+        examples=["unit_fragment_completion"],
+    )
+    metric_values_affected: int = Field(
+        ...,
+        ge=0,
+        description="Number of MetricValues generated from this inherited row.",
+        examples=[2],
+    )
+
+
 class ExtractionQualityReport(BaseModel):
     """Post-extraction quality validation report."""
 
@@ -645,6 +790,18 @@ class ExtractionQualityReport(BaseModel):
         description="Number of MetricValues receiving deglued metric labels.",
         examples=[240],
     )
+    labels_completed: int = Field(
+        default=0,
+        ge=0,
+        description="Number of fragmented labels completed by final cleanup.",
+        examples=[120],
+    )
+    metric_values_improved_by_fragmentation_cleanup: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues receiving completed metric labels.",
+        examples=[240],
+    )
     note_rows_filtered: int = Field(
         default=0,
         ge=0,
@@ -669,6 +826,18 @@ class ExtractionQualityReport(BaseModel):
         description="Number of MetricValues receiving inherited note context.",
         examples=[36],
     )
+    header_inheritances_applied: int = Field(
+        default=0,
+        ge=0,
+        description="Number of fragmented labels enriched from table/header context.",
+        examples=[18],
+    )
+    metric_values_improved_by_header_inheritance: int = Field(
+        default=0,
+        ge=0,
+        description="Number of MetricValues receiving inherited header context.",
+        examples=[36],
+    )
     confidence_distribution: dict[str, int] = Field(
         default_factory=dict,
         description="Distribution of table quality scores by score bucket.",
@@ -690,6 +859,12 @@ class ExtractionQualityReport(BaseModel):
         default_factory=list,
         description="Rows where reconstructed labels were cleaned for split words.",
     )
+    fragmentation_cleanup_diagnostics: list[
+        FragmentationCleanupDiagnostic
+    ] = Field(
+        default_factory=list,
+        description="Rows where fragmented labels were completed before MetricValues.",
+    )
     note_row_filtering_diagnostics: list[NoteRowFilteringDiagnostic] = Field(
         default_factory=list,
         description="Rows filtered because they are note metadata, units, or markers.",
@@ -699,6 +874,10 @@ class ExtractionQualityReport(BaseModel):
     ] = Field(
         default_factory=list,
         description="Rows whose note-table labels were enriched from context.",
+    )
+    header_inheritance_diagnostics: list[HeaderInheritanceDiagnostic] = Field(
+        default_factory=list,
+        description="Rows whose fragmented labels inherited header or unit context.",
     )
 
 

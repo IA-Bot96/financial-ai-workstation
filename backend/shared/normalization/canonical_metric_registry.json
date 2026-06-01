@@ -7,7 +7,9 @@
       "turnover",
       "revenue from contracts with customers",
       "revenue",
-      "total revenue"
+      "total revenue",
+      "turnover - net",
+      "net revenue"
     ],
     "category": "income_statement"
   },
@@ -17,7 +19,8 @@
       "gross sales",
       "total gross sales",
       "reported gross sales",
-      "gross sales amount"
+      "gross sales amount",
+      "gross revenue"
     ],
     "category": "income_statement"
   },
@@ -73,7 +76,9 @@
       "general and administrative expenses",
       "administrative expenses",
       "total administrative expenses",
-      "reported administrative expenses"
+      "reported administrative expenses",
+      "administrative cost",
+      "administrative costs"
     ],
     "category": "income_statement"
   },
@@ -103,7 +108,9 @@
       "other income",
       "total other income",
       "reported other income",
-      "other income amount"
+      "other income amount",
+      "other income charges",
+      "other income charge"
     ],
     "category": "income_statement"
   },
@@ -200,7 +207,8 @@
       "earnings before tax",
       "profit before tax",
       "total profit before tax",
-      "reported profit before tax"
+      "reported profit before tax",
+      "profit before taxation and levy"
     ],
     "category": "income_statement"
   },
@@ -267,7 +275,9 @@
       "earnings per share rupees",
       "earnings per share",
       "total earnings per share",
-      "reported earnings per share"
+      "reported earnings per share",
+      "earning per share rupees",
+      "earning per share"
     ],
     "category": "income_statement"
   },
@@ -347,7 +357,9 @@
       "staff cost",
       "total staff cost",
       "reported staff cost",
-      "staff cost amount"
+      "staff cost amount",
+      "salaries and amenities",
+      "salaries wages and benefits"
     ],
     "category": "income_statement"
   },
@@ -459,7 +471,8 @@
       "comprehensive income",
       "total comprehensive income",
       "reported comprehensive income",
-      "comprehensive income amount"
+      "comprehensive income amount",
+      "total comprehensive income for the year"
     ],
     "category": "income_statement"
   },
@@ -471,7 +484,8 @@
       "cash in hand and at banks",
       "cash and bank balances",
       "total cash and bank balances",
-      "reported cash and bank balances"
+      "reported cash and bank balances",
+      "cash and bank balance"
     ],
     "category": "balance_sheet"
   },
@@ -481,7 +495,11 @@
       "cash and cash equivalents",
       "total cash and cash equivalents",
       "reported cash and cash equivalents",
-      "cash and cash equivalents amount"
+      "cash and cash equivalents amount",
+      "cash and cash equivalent at the beginning of the year",
+      "cash and cash equivalent at the end of the year",
+      "cash and cash equivalents at the beginning of the year",
+      "cash and cash equivalents at the end of the year"
     ],
     "category": "balance_sheet"
   },
@@ -542,7 +560,9 @@
       "deposits prepayments other receivables",
       "total deposits prepayments other receivables",
       "reported deposits prepayments other receivables",
-      "deposits prepayments other receivables amount"
+      "deposits prepayments other receivables amount",
+      "other receivables",
+      "other advances and deposits"
     ],
     "category": "balance_sheet"
   },
@@ -616,7 +636,8 @@
       "non current assets",
       "total non current assets",
       "reported non current assets",
-      "non current assets amount"
+      "non current assets amount",
+      "noncurrent assets"
     ],
     "category": "balance_sheet"
   },
@@ -744,7 +765,8 @@
       "other payables",
       "creditors accrued other liabilities",
       "total creditors accrued other liabilities",
-      "reported creditors accrued other liabilities"
+      "reported creditors accrued other liabilities",
+      "trade and other payables"
     ],
     "category": "balance_sheet"
   },
@@ -774,7 +796,8 @@
       "non current liabilities",
       "total non current liabilities",
       "reported non current liabilities",
-      "non current liabilities amount"
+      "non current liabilities amount",
+      "noncurrent liabilities"
     ],
     "category": "balance_sheet"
   },
@@ -817,7 +840,10 @@
       "current portion long term debt",
       "total current portion long term debt",
       "reported current portion long term debt",
-      "current portion long term debt amount"
+      "current portion long term debt amount",
+      "current portion of long term finance",
+      "current portion of long term financing",
+      "long-term liabilities - current portion of long term finance"
     ],
     "category": "balance_sheet"
   },
@@ -828,7 +854,8 @@
       "long term loans",
       "term finance",
       "total long term financing",
-      "reported long term financing"
+      "reported long term financing",
+      "long term finance"
     ],
     "category": "balance_sheet"
   },
@@ -904,7 +931,12 @@
       "equity attributable to owners",
       "equity",
       "reported equity",
-      "equity amount"
+      "equity amount",
+      "shareholders funds",
+      "shareholders funds rupees in mn",
+      "profitability ratios - shareholders' funds rupees in mn",
+      "return on shareholders' funds percent",
+      "profitability ratios - return on shareholders' funds percent"
     ],
     "category": "balance_sheet"
   },
@@ -1049,7 +1081,9 @@
       "net assets per share",
       "book value per share",
       "total book value per share",
-      "reported book value per share"
+      "reported book value per share",
+      "capital structure ratios - net assets per share rupees",
+      "net assets per share rupees"
     ],
     "category": "balance_sheet"
   },
@@ -1061,7 +1095,8 @@
       "cash generated from operating activities",
       "operating cash flow",
       "total operating cash flow",
-      "reported operating cash flow"
+      "reported operating cash flow",
+      "net cash from operating activities"
     ],
     "category": "cash_flow"
   },
@@ -1085,7 +1120,8 @@
       "cash generated from financing activities",
       "financing cash flow",
       "total financing cash flow",
-      "reported financing cash flow"
+      "reported financing cash flow",
+      "net cash outflow inflow from financing activities"
     ],
     "category": "cash_flow"
   },
@@ -1371,7 +1407,9 @@
       "debtors days",
       "days sales outstanding",
       "total days sales outstanding",
-      "reported days sales outstanding"
+      "reported days sales outstanding",
+      "no of days in receivables",
+      "no. of days in receivables days"
     ],
     "category": "working_capital"
   },
@@ -1383,7 +1421,9 @@
       "creditor days",
       "days payable outstanding",
       "total days payable outstanding",
-      "reported days payable outstanding"
+      "reported days payable outstanding",
+      "no of days in payables",
+      "no. of days in payables days"
     ],
     "category": "working_capital"
   },
@@ -1394,7 +1434,9 @@
       "inventory days",
       "days inventory outstanding",
       "total days inventory outstanding",
-      "reported days inventory outstanding"
+      "reported days inventory outstanding",
+      "no of days in inventory",
+      "no. of days in inventory days"
     ],
     "category": "working_capital"
   },
@@ -1414,7 +1456,9 @@
       "inventory turnover",
       "total inventory turnover",
       "reported inventory turnover",
-      "inventory turnover amount"
+      "inventory turnover amount",
+      "activity turnover ratios - inventory turnover times",
+      "inventory turnover times"
     ],
     "category": "working_capital"
   },
@@ -1424,7 +1468,9 @@
       "receivables turnover",
       "total receivables turnover",
       "reported receivables turnover",
-      "receivables turnover amount"
+      "receivables turnover amount",
+      "activity turnover ratios - debtor turnover times",
+      "debtor turnover times"
     ],
     "category": "working_capital"
   },
@@ -1434,7 +1480,9 @@
       "payables turnover",
       "total payables turnover",
       "reported payables turnover",
-      "payables turnover amount"
+      "payables turnover amount",
+      "activity turnover ratios - creditor turnover times",
+      "creditor turnover times"
     ],
     "category": "working_capital"
   },
@@ -1494,7 +1542,8 @@
       "operating cycle",
       "total operating cycle",
       "reported operating cycle",
-      "operating cycle amount"
+      "operating cycle amount",
+      "operating cycle days"
     ],
     "category": "working_capital"
   },
@@ -1506,7 +1555,10 @@
       "gross profit ratio",
       "gross margin",
       "total gross margin",
-      "reported gross margin"
+      "reported gross margin",
+      "gross profit to sales percent",
+      "gross profit to sales",
+      "profitability ratios - gross profit to sales percent"
     ],
     "category": "profitability_ratios"
   },
@@ -1518,7 +1570,9 @@
       "operating cash earnings margin",
       "ebitda margin",
       "total ebitda margin",
-      "reported ebitda margin"
+      "reported ebitda margin",
+      "ebitda to sales percent",
+      "profitability ratios - ebitda to sales percent"
     ],
     "category": "profitability_ratios"
   },
@@ -1550,7 +1604,10 @@
       "pat margin",
       "net margin",
       "total net margin",
-      "reported net margin"
+      "reported net margin",
+      "net profit after tax to sales percent",
+      "net profit after tax to sales",
+      "profitability ratios - net profit after tax to sales percent"
     ],
     "category": "profitability_ratios"
   },
@@ -1584,7 +1641,9 @@
       "net income to shareholders equity",
       "return on equity",
       "total return on equity",
-      "reported return on equity"
+      "reported return on equity",
+      "profitability ratios - return on equity percent",
+      "return on equity percent"
     ],
     "category": "profitability_ratios"
   },
@@ -1606,7 +1665,9 @@
       "return on capital employed",
       "total return on capital employed",
       "reported return on capital employed",
-      "return on capital employed amount"
+      "return on capital employed amount",
+      "profitability ratios - return on capital employed percent",
+      "return on capital employed percent"
     ],
     "category": "profitability_ratios"
   },
@@ -1678,7 +1739,9 @@
       "working capital ratio",
       "current ratio",
       "total current ratio",
-      "reported current ratio"
+      "reported current ratio",
+      "liquidity ratios - current ratio times",
+      "current ratio times"
     ],
     "category": "liquidity_ratios"
   },
@@ -1690,7 +1753,10 @@
       "liquid ratio",
       "quick ratio",
       "total quick ratio",
-      "reported quick ratio"
+      "reported quick ratio",
+      "quick/acid test ratio",
+      "liquidity ratios - quick/acid test ratio times",
+      "quick/acid test ratio times"
     ],
     "category": "liquidity_ratios"
   },
@@ -1700,7 +1766,9 @@
       "cash ratio",
       "total cash ratio",
       "reported cash ratio",
-      "cash ratio amount"
+      "cash ratio amount",
+      "cash to current liabilities times",
+      "liquidity ratios - cash to current liabilities times"
     ],
     "category": "liquidity_ratios"
   },
@@ -1712,7 +1780,9 @@
       "borrowings to equity",
       "debt to equity",
       "total debt to equity",
-      "reported debt to equity"
+      "reported debt to equity",
+      "debt to equity ratio as per book value",
+      "debt to equity ratio as per market value"
     ],
     "category": "leverage_ratios"
   },
@@ -1744,7 +1814,9 @@
       "interest cover",
       "interest coverage",
       "total interest coverage",
-      "reported interest coverage"
+      "reported interest coverage",
+      "interest coverage ratio times",
+      "capital structure ratios - interest coverage ratio times"
     ],
     "category": "leverage_ratios"
   },
@@ -1804,7 +1876,9 @@
       "asset turnover",
       "total asset turnover",
       "reported asset turnover",
-      "asset turnover amount"
+      "asset turnover amount",
+      "activity turnover ratios - total assets turnover times",
+      "total assets turnover times"
     ],
     "category": "efficiency_ratios"
   },
@@ -1814,7 +1888,9 @@
       "fixed asset turnover",
       "total fixed asset turnover",
       "reported fixed asset turnover",
-      "fixed asset turnover amount"
+      "fixed asset turnover amount",
+      "activity turnover ratios - fixed assets turnover times",
+      "fixed assets turnover times"
     ],
     "category": "efficiency_ratios"
   },
@@ -1876,7 +1952,10 @@
       "price earnings ratio",
       "price to earnings",
       "total price to earnings",
-      "reported price to earnings"
+      "reported price to earnings",
+      "price / earning ratio after tax times",
+      "price earning ratio after tax",
+      "investment valuation ratios - price / earning ratio after tax times"
     ],
     "category": "market_metrics"
   },
@@ -1888,7 +1967,9 @@
       "market price to book value",
       "price to book",
       "total price to book",
-      "reported price to book"
+      "reported price to book",
+      "price to book ratio percent",
+      "investment valuation ratios - price to book ratio percent"
     ],
     "category": "market_metrics"
   },
@@ -1970,7 +2051,9 @@
       "dividend payout ratio",
       "total dividend payout ratio",
       "reported dividend payout ratio",
-      "dividend payout ratio amount"
+      "dividend payout ratio amount",
+      "dividend payout ratio percent",
+      "investment valuation ratios - dividend payout ratio percent"
     ],
     "category": "dividend_metrics"
   },
@@ -1982,7 +2065,9 @@
       "dividend per share to market price",
       "dividend yield",
       "total dividend yield",
-      "reported dividend yield"
+      "reported dividend yield",
+      "dividend yield percent",
+      "investment valuation ratios - dividend yield percent"
     ],
     "category": "dividend_metrics"
   },
@@ -1994,7 +2079,9 @@
       "dividend rupees per share",
       "dividend per share",
       "total dividend per share",
-      "reported dividend per share"
+      "reported dividend per share",
+      "cash dividend per share rupees",
+      "investment valuation ratios - cash dividend per share rupees"
     ],
     "category": "dividend_metrics"
   },
@@ -2144,7 +2231,9 @@
       "weighted average borrowing rate",
       "total weighted average borrowing rate",
       "reported weighted average borrowing rate",
-      "weighted average borrowing rate amount"
+      "weighted average borrowing rate amount",
+      "weighted average cost of debt percent",
+      "capital structure ratios - weighted average cost of debt percent"
     ],
     "category": "capital_structure"
   },
@@ -3511,5 +3600,281 @@
       "reported lost time injury frequency rate"
     ],
     "category": "esg_metrics"
+  },
+  "other_comprehensive_income": {
+    "display_name": "Other Comprehensive Income",
+    "aliases": [
+      "other comprehensive income",
+      "other comprehensive income amount",
+      "reported other comprehensive income"
+    ],
+    "category": "income_statement"
+  },
+  "total_equity_and_liabilities": {
+    "display_name": "Total Equity And Liabilities",
+    "aliases": [
+      "total equity and liabilities",
+      "total equity liabilities",
+      "equity and liabilities total"
+    ],
+    "category": "balance_sheet"
+  },
+  "share_capital_and_reserves": {
+    "display_name": "Share Capital And Reserves",
+    "aliases": [
+      "share capital and reserves",
+      "capital and reserves"
+    ],
+    "category": "balance_sheet"
+  },
+  "deferred_liabilities": {
+    "display_name": "Deferred Liabilities",
+    "aliases": [
+      "deferred liabilities",
+      "deferred liability",
+      "total deferred liabilities"
+    ],
+    "category": "balance_sheet"
+  },
+  "long_term_advances": {
+    "display_name": "Long Term Advances",
+    "aliases": [
+      "long term advance",
+      "long term advances"
+    ],
+    "category": "balance_sheet"
+  },
+  "long_term_deposits_and_deferred_liabilities": {
+    "display_name": "Long Term Deposits And Deferred Liabilities",
+    "aliases": [
+      "long term deposits and deferred liabilities",
+      "long term deposits and other liabilities"
+    ],
+    "category": "balance_sheet"
+  },
+  "levy": {
+    "display_name": "Levy",
+    "aliases": [
+      "levy",
+      "tax levy",
+      "government levy"
+    ],
+    "category": "income_statement"
+  },
+  "market_value_per_share": {
+    "display_name": "Market Value Per Share",
+    "aliases": [
+      "market value per share",
+      "market value per share as on 30th june",
+      "investment valuation ratios - market value per share as on 30th june rupees"
+    ],
+    "category": "market_metrics"
+  },
+  "share_price_year_high": {
+    "display_name": "Share Price Year High",
+    "aliases": [
+      "year high close",
+      "year high close rupees",
+      "investment valuation ratios - year high close rupees"
+    ],
+    "category": "market_metrics"
+  },
+  "share_price_year_low": {
+    "display_name": "Share Price Year Low",
+    "aliases": [
+      "year low close",
+      "year low close rupees",
+      "investment valuation ratios - year low close rupees"
+    ],
+    "category": "market_metrics"
+  },
+  "financial_leverage_ratio": {
+    "display_name": "Financial Leverage Ratio",
+    "aliases": [
+      "financial leverage ratio",
+      "financial leverage ratio times",
+      "capital structure ratios - financial leverage ratio times"
+    ],
+    "category": "leverage_ratios"
+  },
+  "operating_leverage": {
+    "display_name": "Operating Leverage",
+    "aliases": [
+      "operating leverage",
+      "operating leverage percent",
+      "profitability ratios - operating leverage percent"
+    ],
+    "category": "leverage_ratios"
+  },
+  "cash_flow_coverage_ratio": {
+    "display_name": "Cash Flow Coverage Ratio",
+    "aliases": [
+      "cash flow coverage ratio",
+      "cash flow coverage ratio times",
+      "liquidity ratios - cash flow coverage ratio times"
+    ],
+    "category": "liquidity_ratios"
+  },
+  "cash_flow_from_operations_to_sales": {
+    "display_name": "Cash Flow From Operations To Sales",
+    "aliases": [
+      "cash flow from operations to sales",
+      "cash flow from operations to sales times",
+      "liquidity ratios - cash flow from operations to sales times"
+    ],
+    "category": "liquidity_ratios"
+  },
+  "cash_flow_to_capital_expenditures": {
+    "display_name": "Cash Flow To Capital Expenditures",
+    "aliases": [
+      "cash flow to capital expenditures",
+      "cash flow to capital expenditures times",
+      "liquidity ratios - cash flow to capital expenditures times"
+    ],
+    "category": "liquidity_ratios"
+  },
+  "operating_cost_to_sales": {
+    "display_name": "Operating Cost To Sales",
+    "aliases": [
+      "operating cost to sales",
+      "operating cost to sales percent",
+      "profitability ratios - operating cost to sales percent"
+    ],
+    "category": "profitability_ratios"
+  },
+  "profit_before_tax_margin": {
+    "display_name": "Profit Before Tax Margin",
+    "aliases": [
+      "profit before tax to sales",
+      "profit before tax to sales percent",
+      "profitability ratios - profit before tax to sales percent"
+    ],
+    "category": "profitability_ratios"
+  },
+  "production_per_employee": {
+    "display_name": "Production Per Employee",
+    "aliases": [
+      "production per employee",
+      "production per employee mt",
+      "employee productivity ratios - production per employee mt"
+    ],
+    "category": "employee_metrics"
+  },
+  "revenue_per_employee": {
+    "display_name": "Revenue Per Employee",
+    "aliases": [
+      "revenue per employee",
+      "revenue per employee rupees in mn",
+      "employee productivity ratios - revenue per employee rupees in mn"
+    ],
+    "category": "employee_metrics"
+  },
+  "staff_turnover_ratio": {
+    "display_name": "Staff Turnover Ratio",
+    "aliases": [
+      "staff turnover ratio",
+      "staff turnover ratio times",
+      "employee productivity ratios - staff turnover ratio times"
+    ],
+    "category": "employee_metrics"
+  },
+  "managerial_remuneration": {
+    "display_name": "Managerial Remuneration",
+    "aliases": [
+      "managerial remuneration",
+      "particulars - managerial remuneration",
+      "directors remuneration"
+    ],
+    "category": "employee_metrics"
+  },
+  "employee_count": {
+    "display_name": "Employee Count",
+    "aliases": [
+      "number of persons",
+      "number of employees",
+      "employees as at june 30"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_obligation": {
+    "display_name": "Defined Benefit Obligation",
+    "aliases": [
+      "defined benefit obligation",
+      "present value of defined benefit obligation",
+      "charge for defined benefit obligation"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_expense": {
+    "display_name": "Defined Benefit Expense",
+    "aliases": [
+      "defined benefit expense",
+      "charge for defined benefit",
+      "defined benefit charge"
+    ],
+    "category": "employee_metrics"
+  },
+  "loans_to_employees": {
+    "display_name": "Loans To Employees",
+    "aliases": [
+      "loans to employees",
+      "employee loans",
+      "advances to employees"
+    ],
+    "category": "employee_metrics"
+  },
+  "ordinary_shares": {
+    "display_name": "Ordinary Shares",
+    "aliases": [
+      "ordinary shares",
+      "ordinary shares of pkr 10 each",
+      "ordinary shares of pkr 2 each"
+    ],
+    "category": "share_capital"
+  },
+  "capital_redemption_reserve": {
+    "display_name": "Capital Redemption Reserve",
+    "aliases": [
+      "capital redemption reserve",
+      "capital redemption reserves",
+      "capital redemption reserve amount"
+    ],
+    "category": "share_capital"
+  },
+  "unclaimed_dividend": {
+    "display_name": "Unclaimed Dividend",
+    "aliases": [
+      "unclaimed dividend",
+      "unclaimed dividends",
+      "unclaimed dividend payable"
+    ],
+    "category": "dividend_metrics"
+  },
+  "plant_availability": {
+    "display_name": "Plant Availability",
+    "aliases": [
+      "plant availability",
+      "% of plant availability",
+      "non-financial ratios - % of plant availability"
+    ],
+    "category": "sector_specific_cement"
+  },
+  "spares_inventory_to_total_assets": {
+    "display_name": "Spares Inventory To Total Assets",
+    "aliases": [
+      "spares inventory as % of total assets",
+      "spares inventory as percent of total assets",
+      "non-financial ratios - spares inventory as % of total assets"
+    ],
+    "category": "sector_specific_cement"
+  },
+  "maintenance_cost_to_operating_expenses": {
+    "display_name": "Maintenance Cost To Operating Expenses",
+    "aliases": [
+      "maintenance cost as % of operating expenses",
+      "maintenance cost as percent of operating expenses",
+      "non-financial ratios - maintenance cost as % of operating expenses"
+    ],
+    "category": "sector_specific_cement"
   }
 }

@@ -183,3 +183,65 @@ def test_normalizer_rejects_empty_metric_names() -> None:
 
     with pytest.raises(ValueError, match="non-empty"):
         normalizer.normalize_metric(" ")
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
+        ("(Other Income)/Charges", "other_income"),
+        ("Administrative Cost", "administrative_expenses"),
+        ("Noncurrent Assets", "non_current_assets"),
+        ("Noncurrent Liabilities", "non_current_liabilities"),
+        ("Operating Cycle days", "operating_cycle"),
+        ("Share Capital & Reserves", "share_capital_and_reserves"),
+        ("Total Equity & Liabilities", "total_equity_and_liabilities"),
+        (
+            "Investment Valuation Ratios - Market Value Per Share as on 30th June rupees",
+            "market_value_per_share",
+        ),
+        (
+            "Employee Productivity Ratios - Revenue per Employee rupees in MN",
+            "revenue_per_employee",
+        ),
+        ("Non-Financial Ratios - % of Plant Availability", "plant_availability"),
+        ("Particulars - Managerial remuneration", "managerial_remuneration"),
+    ],
+)
+def test_default_registry_normalizes_lucky_cement_labels(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
+        ("Salaries and amenities", "staff_cost"),
+        ("Cash and bank balance", "cash_and_bank_balances"),
+        ("Trade and other payables", "creditors_accrued_other_liabilities"),
+        ("Loans to employees", "loans_to_employees"),
+        ("Long term investments", "long_term_investments"),
+        ("Distribution Cost", "distribution_expenses"),
+        ("Operating Profit", "operating_profit"),
+    ],
+)
+def test_default_registry_normalizes_millat_labels(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []

@@ -16,6 +16,8 @@ from ocr_engine.models.table_extraction import (
     ExtractedTable,
     ExtractionQualityReport,
     ExtractionSummary,
+    FragmentationCleanupDiagnostic,
+    HeaderInheritanceDiagnostic,
     LabelDegluingDiagnostic,
     LabelReconstructionDiagnostic,
     MetricValueOccurrence,
@@ -145,6 +147,23 @@ class _DegluedLabel:
         return self.deglued_label != self.original_label
 
 
+@dataclass(frozen=True)
+class _FragmentationCleanupResult:
+    """Metric label completed after reconstruction and degluing."""
+
+    original_label: str
+    completed_label: str
+    reconstruction_reason: tuple[str, ...]
+    source_cells: tuple[str, ...]
+    completion_source: tuple[str, ...]
+
+    @property
+    def changed(self) -> bool:
+        """Return whether cleanup changed the deglued label."""
+
+        return self.completed_label != self.original_label
+
+
 @dataclass
 class _NoteContextStack:
     """Active note-table context while walking extracted rows."""
@@ -167,6 +186,32 @@ class _ContextInheritedLabel:
     @property
     def changed(self) -> bool:
         """Return whether context inheritance changed the label."""
+
+        return self.inherited_label != self.original_label
+
+
+@dataclass
+class _HeaderContextStack:
+    """Active table/header/unit context while walking extracted rows."""
+
+    active_header: str | None = None
+    active_section: str | None = None
+    active_unit: str | None = None
+
+
+@dataclass(frozen=True)
+class _HeaderInheritedLabel:
+    """Metric label after optional table header inheritance."""
+
+    original_label: str
+    inherited_label: str
+    inherited_header: str | None = None
+    inheritance_source: str | None = None
+    reconstruction_reason: str | None = None
+
+    @property
+    def changed(self) -> bool:
+        """Return whether header inheritance changed the label."""
 
         return self.inherited_label != self.original_label
 
@@ -965,9 +1010,19 @@ class CamelotTableExtractor(ITableExtractor):
         scale_multiplier = self._scale_multiplier(rows)
         metric_values: list[MetricValue] = []
         context_stack = _NoteContextStack()
+        header_context_stack = _HeaderContextStack()
         use_note_context = _is_note_context_table(table_type, rows)
         for row_index, row in enumerate(rows):
             if row_index == header_row_index:
+                _update_header_context_from_row(
+                    header_context_stack,
+                    label=_row_text(row),
+                    row=row,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    metric_value_count=0,
+                    table_type=table_type,
+                )
                 continue
 
             label_index = self._metric_label_index(row)
@@ -979,7 +1034,13 @@ class CamelotTableExtractor(ITableExtractor):
                 label_index=label_index,
                 year_columns=year_columns,
             ).reconstructed_label
-            metric = _deglue_label_text(reconstructed_label).deglued_label
+            deglued_label = _deglue_label_text(reconstructed_label).deglued_label
+            metric = _cleanup_fragmented_label(
+                deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            ).completed_label
             if _note_row_filtering_reason(metric) is not None:
                 continue
 
@@ -989,7 +1050,18 @@ class CamelotTableExtractor(ITableExtractor):
                 year_columns=year_columns,
                 scale_multiplier=scale_multiplier,
             )
-            if use_note_context and metric_value_count == 0:
+            if metric_value_count == 0:
+                _update_header_context_from_row(
+                    header_context_stack,
+                    label=metric,
+                    row=row,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    metric_value_count=metric_value_count,
+                    table_type=table_type,
+                )
+                if not use_note_context:
+                    continue
                 _update_note_context_from_header_row(
                     context_stack,
                     label=metric,
@@ -1011,7 +1083,21 @@ class CamelotTableExtractor(ITableExtractor):
                     inherited_label=metric,
                 )
             )
-            metric = inherited_label.inherited_label
+            header_inherited_label = (
+                _inherit_header_context(
+                    inherited_label.inherited_label,
+                    row=row,
+                    label_index=label_index,
+                    year_columns=year_columns,
+                    context_stack=header_context_stack,
+                )
+                if not inherited_label.changed
+                else _HeaderInheritedLabel(
+                    original_label=inherited_label.inherited_label,
+                    inherited_label=inherited_label.inherited_label,
+                )
+            )
+            metric = header_inherited_label.inherited_label
 
             for column_index, value_year in year_columns.items():
                 if column_index >= len(row) or column_index == label_index:
@@ -1040,6 +1126,17 @@ class CamelotTableExtractor(ITableExtractor):
                     context_stack,
                     label=inherited_label.original_label,
                     inherited_label=inherited_label,
+                )
+            if metric_value_count > 0:
+                _update_header_context_from_row(
+                    header_context_stack,
+                    label=header_inherited_label.original_label,
+                    row=row,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    metric_value_count=metric_value_count,
+                    table_type=table_type,
+                    inherited_label=header_inherited_label,
                 )
 
         return metric_values
@@ -1595,6 +1692,251 @@ def _label_degluing_confidence(
     return round(max(0.0, min(confidence, 0.99)), 2)
 
 
+_FRAGMENTATION_CLEANUP_WORDS = tuple(
+    sorted(
+        _DEGLUE_KNOWN_WORDS
+        | {
+            "activities",
+            "after",
+            "analysis",
+            "and",
+            "average",
+            "benefit",
+            "coverage",
+            "decrease",
+            "employed",
+            "employee",
+            "equivalent",
+            "expenditures",
+            "flow",
+            "increase",
+            "investment",
+            "june",
+            "operation",
+            "operations",
+            "outflow",
+            "particulars",
+            "plant",
+            "position",
+            "property",
+            "ratio",
+            "ratios",
+            "revaluation",
+            "sale",
+            "sales",
+            "times",
+            "valuation",
+            "value",
+            "year",
+        },
+        key=len,
+        reverse=True,
+    )
+)
+
+
+def _cleanup_fragmented_label(
+    label: str,
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+) -> _FragmentationCleanupResult:
+    """Complete residual OCR/pdfplumber fragments before MetricValue creation."""
+
+    original_label = _normalize_label_text(label)
+    completed_label = original_label
+    reasons: list[str] = []
+    completion_sources: list[str] = []
+    source_cells: list[str] = [
+        str(row[label_index]).strip()
+    ] if label_index < len(row) and str(row[label_index]).strip() else []
+
+    text_completion = _adjacent_text_completion_fragment(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+        current_label=completed_label,
+    )
+    if text_completion:
+        candidate = _normalize_label_text(
+            f"{completed_label} {' '.join(text_completion)}",
+        )
+        if candidate != completed_label:
+            completed_label = candidate
+            reasons.append("adjacent_cell_completion")
+            completion_sources.append("adjacent_text_cells")
+            source_cells.extend(text_completion)
+
+    unit_fragment = _row_unit_context_fragment(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+    )
+    if unit_fragment is not None and _should_complete_with_unit_fragment(
+        completed_label,
+        unit_fragment,
+    ):
+        candidate = _complete_label_with_unit_fragment(
+            completed_label,
+            unit_fragment,
+        )
+        if candidate != completed_label:
+            completed_label = candidate
+            reasons.append("unit_context_completion")
+            completion_sources.append("adjacent_unit_cell")
+            source_cells.append(unit_fragment)
+
+    truncated_candidate = _repair_truncated_label(completed_label)
+    if truncated_candidate != completed_label:
+        completed_label = truncated_candidate
+        reasons.append("truncated_label_repair")
+        completion_sources.append("heuristic_truncated_label")
+
+    spacing_repaired = _repair_remaining_fragment_spacing(completed_label)
+    if spacing_repaired != completed_label:
+        completed_label = spacing_repaired
+        reasons.append("remaining_spacing_repair")
+        completion_sources.append("spacing_repair")
+
+    return _FragmentationCleanupResult(
+        original_label=original_label,
+        completed_label=completed_label,
+        reconstruction_reason=tuple(_dedupe_preserve_order(reasons)),
+        source_cells=tuple(
+            _dedupe_preserve_order(
+                [cell for cell in source_cells if str(cell).strip()],
+            )
+        ),
+        completion_source=tuple(_dedupe_preserve_order(completion_sources)),
+    )
+
+
+def _adjacent_text_completion_fragment(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    current_label: str,
+) -> list[str]:
+    """Return adjacent text cells that complete a truncated metric label."""
+
+    fragments: list[str] = []
+    for column_index in range(label_index + 1, len(row)):
+        text = str(row[column_index]).strip()
+        stop_reason = CamelotTableExtractor._label_merge_stop_reason(
+            text,
+            column_index=column_index,
+            year_columns=year_columns,
+        )
+        if stop_reason is not None:
+            break
+        if not text:
+            continue
+        if not re.search(r"[A-Za-z]", text):
+            break
+        if _is_unit_fragment_cell(text):
+            break
+        fragments.append(text)
+
+    if not fragments:
+        return []
+    compact_current = _compact_text(current_label)
+    compact_fragments = _compact_text(" ".join(fragments))
+    if compact_fragments and compact_fragments in compact_current:
+        return []
+    candidate = _normalize_label_text(f"{current_label} {' '.join(fragments)}")
+    if candidate == current_label:
+        return []
+    if _should_complete_from_adjacent_text(current_label, fragments):
+        return fragments
+    return []
+
+
+def _should_complete_from_adjacent_text(label: str, fragments: Sequence[str]) -> bool:
+    """Return whether adjacent text is likely a lost label fragment."""
+
+    if not fragments:
+        return False
+    joined = _normalize_label_text(" ".join(fragments))
+    if not joined:
+        return False
+    if _HEADER_TRUNCATED_LABEL_PATTERN.search(label):
+        return True
+    if re.search(r"\b(?:of|and|to|from|for|with|by|in|at)$", _normalize_text(label)):
+        return True
+    if len(fragments) <= 2 and all(len(fragment.split()) <= 3 for fragment in fragments):
+        return True
+    return False
+
+
+def _repair_truncated_label(label: str) -> str:
+    """Repair high-confidence truncated label endings seen in annual reports."""
+
+    repaired = _normalize_label_text(label)
+    repairs = [
+        (r"\bnet assets\s*\(\s*100$", "Net assets (100%)"),
+        (r"\bnet assets\s*\(\s*100\s*%$", "Net assets (100%)"),
+    ]
+    for pattern, replacement in repairs:
+        repaired = re.sub(pattern, replacement, repaired, flags=re.IGNORECASE)
+    return _normalize_label_text(repaired)
+
+
+def _should_complete_with_unit_fragment(label: str, unit_fragment: str) -> bool:
+    """Return whether an adjacent unit fragment should complete this label."""
+
+    normalized_unit = _normalize_unit_fragment_context(unit_fragment)
+    if not normalized_unit:
+        return False
+    if _unit_context_already_present(label, normalized_unit):
+        return False
+    return bool(
+        label.endswith("(")
+        or re.search(r"\(\s*\d+$", label)
+        or (
+            "(" in label
+            and ")" not in label
+            and (
+                normalized_unit.startswith("%")
+                or normalized_unit.startswith(")")
+            )
+        )
+    )
+
+
+def _repair_remaining_fragment_spacing(label: str) -> str:
+    """Repair residual intra-word spaces not covered by the degluing pass."""
+
+    repaired = _normalize_label_text(label)
+    for word in _FRAGMENTATION_CLEANUP_WORDS:
+        for split_index in range(1, len(word)):
+            if len(word) <= 3 and word != "and":
+                continue
+            left = re.escape(word[:split_index])
+            right = re.escape(word[split_index:])
+            pattern = re.compile(rf"\b{left}\s+{right}\b", re.IGNORECASE)
+            repaired = pattern.sub(
+                lambda match, canonical=word: _apply_fragment_word_case(
+                    canonical,
+                    match.group(0),
+                ),
+                repaired,
+            )
+    return _normalize_label_text(repaired)
+
+
+def _apply_fragment_word_case(canonical_word: str, observed_fragment: str) -> str:
+    """Return a repaired word using the observed fragment's casing."""
+
+    compacted = re.sub(r"\s+", "", observed_fragment)
+    if compacted.isupper() and len(canonical_word) > 2:
+        return canonical_word.upper()
+    if compacted[:1].isupper():
+        return canonical_word.capitalize()
+    return canonical_word
+
+
 _NOTE_UNIT_PATTERN = re.compile(
     r"(?:\bpkr\b|\brs\.?\b|\busd\b|\beur\b|\bgbp\b|\brupees?\b|"
     r"\bruppees\b|\bamounts?\b|"
@@ -2075,6 +2417,371 @@ def _context_already_present(*, label: str, inherited_context: str) -> bool:
     )
 
 
+_HEADER_INHERITANCE_UNIT_PATTERN = re.compile(
+    r"\b(pkr|rs\.?|usd|rupees?|mn|million|times|percent|mt|each)\b|%",
+    re.IGNORECASE,
+)
+_HEADER_SECTION_PATTERN = re.compile(
+    r"\b(assets?|capital|cash flows?|current liabilities|financial ratios|"
+    r"key ratios|liabilities|non[- ]?financial ratios|ratio|share capital|"
+    r"turnover)\b",
+    re.IGNORECASE,
+)
+_HEADER_CONTEXT_LABEL_PATTERN = re.compile(
+    r"\b(company|corporation|holdings?|industries|limited|ltd|power|"
+    r"resources|associates?|subsidiar(?:y|ies)|quoted|unquoted)\b",
+    re.IGNORECASE,
+)
+_HEADER_CONTEXT_DEPENDENT_PATTERN = re.compile(
+    r"^(?:current portion\b.*|investment at cost$|ordinary shares?.*each$|"
+    r".*\btimes$|.*\bpercent$|.*%.*|.*\brupees?$|.*\bmn$|.*\bmt$)",
+    re.IGNORECASE,
+)
+_HEADER_TRUNCATED_LABEL_PATTERN = re.compile(
+    r"(?:\([^)]*$|\b(?:i\s+nc|th\s+e|bas|provi|accumula|unalloca|rema)$|\d+\s*$)",
+    re.IGNORECASE,
+)
+
+
+def _update_header_context_from_row(
+    context_stack: _HeaderContextStack,
+    *,
+    label: str,
+    row: Sequence[str],
+    row_index: int,
+    header_row_index: int | None,
+    metric_value_count: int,
+    table_type: str,
+    inherited_label: _HeaderInheritedLabel | None = None,
+) -> None:
+    """Update active table/header/unit context from an extracted row."""
+
+    if inherited_label is not None and inherited_label.changed:
+        return
+
+    row_context = _normalize_label_text(label)
+    if not _is_usable_header_context(row_context):
+        return
+
+    if metric_value_count > 0:
+        return
+
+    unit_context = _unit_context_from_label(row_context)
+    if unit_context is not None:
+        context_stack.active_unit = unit_context
+
+    if _is_table_section_context(row_context, table_type=table_type):
+        context_stack.active_section = row_context
+        context_stack.active_header = row_context
+        return
+
+    if _is_table_header_context(
+        row_context,
+        row=row,
+        row_index=row_index,
+        header_row_index=header_row_index,
+        table_type=table_type,
+    ):
+        context_stack.active_header = row_context
+
+
+def _inherit_header_context(
+    label: str,
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+    context_stack: _HeaderContextStack,
+) -> _HeaderInheritedLabel:
+    """Return a fragmented label enriched with active header/unit context."""
+
+    normalized_label = _normalize_label_text(label)
+    row_unit_context = _row_unit_context_fragment(
+        row=row,
+        label_index=label_index,
+        year_columns=year_columns,
+    )
+    if row_unit_context is not None:
+        completed = _complete_label_with_unit_fragment(
+            normalized_label,
+            row_unit_context,
+        )
+        if completed != normalized_label:
+            return _HeaderInheritedLabel(
+                original_label=normalized_label,
+                inherited_label=completed,
+                inherited_header=row_unit_context,
+                inheritance_source="unit_context",
+                reconstruction_reason="unit_fragment_completion",
+            )
+
+    reason = _header_inheritance_reason(normalized_label)
+    if reason is None:
+        return _HeaderInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+
+    inheritance_source, inherited_header = _select_header_context(
+        reason,
+        context_stack,
+    )
+    if inheritance_source is None or inherited_header is None:
+        return _HeaderInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+    if _context_already_present(
+        label=normalized_label,
+        inherited_context=inherited_header,
+    ):
+        return _HeaderInheritedLabel(
+            original_label=normalized_label,
+            inherited_label=normalized_label,
+        )
+
+    return _HeaderInheritedLabel(
+        original_label=normalized_label,
+        inherited_label=_normalize_label_text(
+            f"{inherited_header} - {normalized_label}",
+        ),
+        inherited_header=inherited_header,
+        inheritance_source=inheritance_source,
+        reconstruction_reason=reason,
+    )
+
+
+def _header_inheritance_reason(label: str) -> str | None:
+    """Return why a fragmented label should inherit header context."""
+
+    normalized = _normalize_text(label)
+    if not normalized:
+        return None
+    if re.search(r"\(\s*\d+\s*%\)", label):
+        return None
+    if _HEADER_TRUNCATED_LABEL_PATTERN.search(label):
+        return "truncated_label_completion"
+    if normalized.startswith("current portion"):
+        return "section_context_inheritance"
+    if "ordinary shares" in normalized and "each" in normalized:
+        return "security_header_inheritance"
+    if normalized == "investment at cost":
+        return "table_header_inheritance"
+    if _HEADER_CONTEXT_DEPENDENT_PATTERN.match(label):
+        return "unit_context_inheritance"
+    return None
+
+
+def _select_header_context(
+    reason: str,
+    context_stack: _HeaderContextStack,
+) -> tuple[str | None, str | None]:
+    """Return the best available header context for a fragmented label."""
+
+    if reason == "unit_context_inheritance":
+        candidates = (
+            ("table_section_context", context_stack.active_section),
+            ("table_header_context", context_stack.active_header),
+            ("unit_context", context_stack.active_unit),
+        )
+    elif reason == "security_header_inheritance":
+        candidates = (
+            ("table_header_context", context_stack.active_header),
+            ("table_section_context", context_stack.active_section),
+            ("unit_context", context_stack.active_unit),
+        )
+    else:
+        candidates = (
+            ("table_section_context", context_stack.active_section),
+            ("table_header_context", context_stack.active_header),
+            ("unit_context", context_stack.active_unit),
+        )
+
+    for source, candidate in candidates:
+        if _is_usable_header_context(candidate or ""):
+            return source, candidate
+    return None, None
+
+
+def _row_unit_context_fragment(
+    *,
+    row: Sequence[str],
+    label_index: int,
+    year_columns: dict[int, int],
+) -> str | None:
+    """Return an adjacent unit fragment excluded from label reconstruction."""
+
+    fragments: list[str] = []
+    for column_index in range(label_index + 1, len(row)):
+        if column_index in year_columns:
+            break
+        text = str(row[column_index]).strip()
+        if not text:
+            continue
+        if CamelotTableExtractor._is_note_number_cell(text):
+            break
+        if CamelotTableExtractor._parse_metric_value(text) is not None:
+            break
+        if _is_unit_fragment_cell(text):
+            fragments.append(text)
+            continue
+        if fragments:
+            break
+        if re.search(r"[A-Za-z]", text):
+            continue
+        break
+
+    if not fragments:
+        return None
+    return _normalize_label_text("".join(fragments))
+
+
+def _is_unit_fragment_cell(text: str) -> bool:
+    """Return whether a cell is a unit fragment for an adjacent label."""
+
+    stripped = str(text).strip()
+    if not stripped:
+        return False
+    return (
+        stripped in {"%)", "%", "(%)"}
+        or bool(_HEADER_INHERITANCE_UNIT_PATTERN.search(stripped))
+        and CamelotTableExtractor._parse_metric_value(stripped) is None
+    )
+
+
+def _complete_label_with_unit_fragment(label: str, unit_fragment: str) -> str:
+    """Complete a label using an adjacent unit fragment."""
+
+    normalized_unit = _normalize_unit_fragment_context(unit_fragment)
+    if not normalized_unit:
+        return label
+    if _unit_context_already_present(label, normalized_unit):
+        return label
+    if "%" in normalized_unit and "%" in label:
+        return label
+    if normalized_unit in {"%)", "%", "(%)"} and re.search(r"\(\s*\d+\s*%\)", label):
+        return label
+    if label.endswith("(") or re.search(r"\(\s*\d+$", label):
+        return _normalize_label_text(f"{label}{normalized_unit}")
+    if normalized_unit.startswith(")") or normalized_unit.startswith("%"):
+        return _normalize_label_text(f"{label}{normalized_unit}")
+    if _contains_phrase(_normalize_text(label), normalized_unit):
+        return label
+    return _normalize_label_text(f"{label} {normalized_unit}")
+
+
+def _unit_context_already_present(label: str, normalized_unit: str) -> bool:
+    """Return whether a unit fragment is already represented in the label."""
+
+    label_text = _normalize_text(label)
+    unit_text = _normalize_text(normalized_unit)
+    if not unit_text:
+        return False
+    unit_groups = (
+        {"percent", "%"},
+        {"rupees", "rupee", "pkr", "rs"},
+        {"times"},
+        {"million", "mn"},
+        {"thousand", "000"},
+        {"each"},
+        {"mt"},
+    )
+    for group in unit_groups:
+        unit_has_group = any(token in unit_text for token in group)
+        label_has_group = any(token in label_text for token in group)
+        if unit_has_group and label_has_group:
+            return True
+    return False
+
+
+def _normalize_unit_fragment_context(unit_fragment: str) -> str:
+    """Normalize adjacent unit fragments before completion checks."""
+
+    normalized_unit = _normalize_label_text(unit_fragment)
+    normalized_unit = re.sub(
+        r"^(?:f|o\s*f)\s+(?=pkr|rs\.?|usd|rupees?)",
+        "of ",
+        normalized_unit,
+        flags=re.IGNORECASE,
+    )
+    return normalized_unit
+
+
+def _unit_context_from_label(label: str) -> str | None:
+    """Return unit context embedded in a header or metric label."""
+
+    text = _normalize_label_text(label)
+    match = _HEADER_INHERITANCE_UNIT_PATTERN.search(text)
+    if match is None:
+        return None
+    if len(_normalize_text(text).split()) <= 6:
+        return text
+    return match.group(0)
+
+
+def _is_table_section_context(label: str, *, table_type: str) -> bool:
+    """Return whether a non-value row can act as table section context."""
+
+    normalized = _normalize_text(label)
+    if not normalized:
+        return False
+    if _HEADER_SECTION_PATTERN.search(normalized):
+        return True
+    normalized_type = _normalize_key(table_type)
+    if "ratio" in normalized_type and "ratio" in normalized:
+        return True
+    return False
+
+
+def _is_table_header_context(
+    label: str,
+    *,
+    row: Sequence[str],
+    row_index: int,
+    header_row_index: int | None,
+    table_type: str,
+) -> bool:
+    """Return whether a non-value row can act as header context."""
+
+    normalized = _normalize_text(label)
+    if not normalized:
+        return False
+    if header_row_index is not None and row_index < header_row_index:
+        return True
+    if _HEADER_CONTEXT_LABEL_PATTERN.search(normalized):
+        return True
+    if _is_table_section_context(label, table_type=table_type):
+        return True
+    non_empty_cells = [str(cell).strip() for cell in row if str(cell).strip()]
+    return len(non_empty_cells) <= 3 and 1 < len(normalized.split()) <= 8
+
+
+def _is_usable_header_context(label: str) -> bool:
+    """Return whether a label is safe to use as header inheritance context."""
+
+    text = _normalize_label_text(label)
+    if not text or _note_row_filtering_reason(text) is not None:
+        return False
+    normalized = _normalize_text(text)
+    words = normalized.split()
+    if not words:
+        return False
+    if normalized.startswith("metric "):
+        return False
+    if normalized.startswith(("except ", "excluding ")):
+        return False
+    if re.fullmatch(r"(?:19|20)\d{2}(?:\s+(?:19|20)\d{2})*", normalized):
+        return False
+    if normalized.startswith("for the year ended"):
+        return False
+    if len(words) > 12:
+        return False
+    short_word_count = sum(1 for word in words if len(word) <= 2)
+    if len(words) > 2 and short_word_count / len(words) > 0.5:
+        return False
+    return True
+
+
 def _detected_counts_by_page(
     table_detection_result: TableDetectionResult | None,
 ) -> dict[int, int]:
@@ -2365,10 +3072,12 @@ def _build_extraction_quality_report(
     metric_findings = _metric_quality_findings(tables)
     label_reconstruction_diagnostics = _label_reconstruction_diagnostics(tables)
     label_degluing_diagnostics = _label_degluing_diagnostics(tables)
+    fragmentation_cleanup_diagnostics = _fragmentation_cleanup_diagnostics(tables)
     note_row_filtering_diagnostics = _note_row_filtering_diagnostics(tables)
     note_context_inheritance_diagnostics = _note_context_inheritance_diagnostics(
         tables,
     )
+    header_inheritance_diagnostics = _header_inheritance_diagnostics(tables)
     top_suspicious_tables = sorted(
         table_findings,
         key=lambda finding: (
@@ -2419,6 +3128,11 @@ def _build_extraction_quality_report(
             diagnostic.metric_values_affected
             for diagnostic in label_degluing_diagnostics
         ),
+        labels_completed=len(fragmentation_cleanup_diagnostics),
+        metric_values_improved_by_fragmentation_cleanup=sum(
+            diagnostic.metric_values_affected
+            for diagnostic in fragmentation_cleanup_diagnostics
+        ),
         note_rows_filtered=len(note_row_filtering_diagnostics),
         metric_values_removed_by_note_row_filtering=sum(
             diagnostic.metric_values_removed
@@ -2429,13 +3143,20 @@ def _build_extraction_quality_report(
             diagnostic.metric_values_affected
             for diagnostic in note_context_inheritance_diagnostics
         ),
+        header_inheritances_applied=len(header_inheritance_diagnostics),
+        metric_values_improved_by_header_inheritance=sum(
+            diagnostic.metric_values_affected
+            for diagnostic in header_inheritance_diagnostics
+        ),
         confidence_distribution=confidence_distribution,
         top_suspicious_tables=top_suspicious_tables,
         top_suspicious_metrics=top_suspicious_metrics,
         label_reconstruction_diagnostics=label_reconstruction_diagnostics,
         label_degluing_diagnostics=label_degluing_diagnostics,
+        fragmentation_cleanup_diagnostics=fragmentation_cleanup_diagnostics,
         note_row_filtering_diagnostics=note_row_filtering_diagnostics,
         note_context_inheritance_diagnostics=note_context_inheritance_diagnostics,
+        header_inheritance_diagnostics=header_inheritance_diagnostics,
     )
 
 
@@ -2457,8 +3178,10 @@ def _build_partial_extraction_quality_report(
         top_suspicious_metrics=[],
         label_reconstruction_diagnostics=[],
         label_degluing_diagnostics=[],
+        fragmentation_cleanup_diagnostics=[],
         note_row_filtering_diagnostics=[],
         note_context_inheritance_diagnostics=[],
+        header_inheritance_diagnostics=[],
     )
 
 
@@ -2545,9 +3268,16 @@ def _label_reconstruction_diagnostics(
                 label_index=label_index,
                 year_columns=year_columns,
             )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            completed = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
             if (
                 _note_row_filtering_reason(
-                    _deglue_label_text(reconstructed.reconstructed_label).deglued_label
+                    completed.completed_label
                 )
                 is not None
             ):
@@ -2608,7 +3338,13 @@ def _label_degluing_diagnostics(
                 year_columns=year_columns,
             )
             deglued = _deglue_label_text(reconstructed.reconstructed_label)
-            if _note_row_filtering_reason(deglued.deglued_label) is not None:
+            completed = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            if _note_row_filtering_reason(completed.completed_label) is not None:
                 continue
             if not deglued.changed:
                 continue
@@ -2640,6 +3376,72 @@ def _label_degluing_diagnostics(
     return diagnostics
 
 
+def _fragmentation_cleanup_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[FragmentationCleanupDiagnostic]:
+    """Return diagnostics for labels completed by final fragmentation cleanup."""
+
+    diagnostics: list[FragmentationCleanupDiagnostic] = []
+    for table in tables:
+        _, year_columns = CamelotTableExtractor._find_year_columns(table.rows)
+        if not year_columns:
+            continue
+
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        for row_index, row in enumerate(table.rows):
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            completed = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            if _note_row_filtering_reason(completed.completed_label) is not None:
+                continue
+            if not completed.changed:
+                continue
+
+            metric_values_affected = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if metric_values_affected == 0:
+                continue
+
+            diagnostics.append(
+                FragmentationCleanupDiagnostic(
+                    source_report_year=table.source_report_year,
+                    page_number=table.page_number,
+                    table_index=table.table_index,
+                    table_type=table.table_type,
+                    row_index=row_index,
+                    original_label=completed.original_label,
+                    completed_label=completed.completed_label,
+                    reconstruction_reason=", ".join(
+                        completed.reconstruction_reason,
+                    )
+                    or "fragmentation_cleanup",
+                    source_cells=list(completed.source_cells),
+                    completion_source=", ".join(completed.completion_source)
+                    or "fragmentation_cleanup",
+                    metric_values_affected=metric_values_affected,
+                )
+            )
+
+    return diagnostics
+
+
 def _note_row_filtering_diagnostics(
     tables: list[ExtractedTable],
 ) -> list[NoteRowFilteringDiagnostic]:
@@ -2663,7 +3465,13 @@ def _note_row_filtering_diagnostics(
                 year_columns=year_columns,
             )
             deglued = _deglue_label_text(reconstructed.reconstructed_label)
-            filtering_reason = _note_row_filtering_reason(deglued.deglued_label)
+            completed = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            filtering_reason = _note_row_filtering_reason(completed.completed_label)
             if filtering_reason is None:
                 continue
 
@@ -2683,7 +3491,7 @@ def _note_row_filtering_diagnostics(
                     table_index=table.table_index,
                     table_type=table.table_type,
                     row_index=row_index,
-                    label=deglued.deglued_label,
+                    label=completed.completed_label,
                     filtering_reason=filtering_reason,
                     metric_values_removed=metric_values_removed,
                 )
@@ -2721,7 +3529,12 @@ def _note_context_inheritance_diagnostics(
                 year_columns=year_columns,
             )
             deglued = _deglue_label_text(reconstructed.reconstructed_label)
-            label = deglued.deglued_label
+            label = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            ).completed_label
             if _note_row_filtering_reason(label) is not None:
                 continue
 
@@ -2769,6 +3582,146 @@ def _note_context_inheritance_diagnostics(
                 context_stack,
                 label=inherited_label.original_label,
                 inherited_label=inherited_label,
+            )
+
+    return diagnostics
+
+
+def _header_inheritance_diagnostics(
+    tables: list[ExtractedTable],
+) -> list[HeaderInheritanceDiagnostic]:
+    """Return diagnostics for labels enriched from table/header context."""
+
+    diagnostics: list[HeaderInheritanceDiagnostic] = []
+    for table in tables:
+        header_row_index, year_columns = CamelotTableExtractor._find_year_columns(
+            table.rows,
+        )
+        if not year_columns:
+            continue
+
+        scale_multiplier = CamelotTableExtractor._scale_multiplier(table.rows)
+        note_context_stack = _NoteContextStack()
+        header_context_stack = _HeaderContextStack()
+        use_note_context = _is_note_context_table(table.table_type, table.rows)
+        for row_index, row in enumerate(table.rows):
+            if row_index == header_row_index:
+                _update_header_context_from_row(
+                    header_context_stack,
+                    label=_row_text(row),
+                    row=row,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    metric_value_count=0,
+                    table_type=table.table_type,
+                )
+                continue
+
+            label_index = CamelotTableExtractor._metric_label_index(row)
+            if label_index is None:
+                continue
+
+            reconstructed = CamelotTableExtractor._reconstruct_metric_label(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            )
+            deglued = _deglue_label_text(reconstructed.reconstructed_label)
+            label = _cleanup_fragmented_label(
+                deglued.deglued_label,
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+            ).completed_label
+            if _note_row_filtering_reason(label) is not None:
+                continue
+
+            metric_values_affected = _metric_value_count_for_row(
+                row=row,
+                label_index=label_index,
+                year_columns=year_columns,
+                scale_multiplier=scale_multiplier,
+            )
+            if metric_values_affected == 0:
+                _update_header_context_from_row(
+                    header_context_stack,
+                    label=label,
+                    row=row,
+                    row_index=row_index,
+                    header_row_index=header_row_index,
+                    metric_value_count=metric_values_affected,
+                    table_type=table.table_type,
+                )
+                if use_note_context:
+                    _update_note_context_from_header_row(
+                        note_context_stack,
+                        label=label,
+                        row_index=row_index,
+                        header_row_index=header_row_index,
+                        table_type=table.table_type,
+                    )
+                continue
+
+            note_inherited = (
+                _inherit_note_context(
+                    label,
+                    note_context_stack,
+                    broad_note_context=True,
+                )
+                if use_note_context
+                else _ContextInheritedLabel(
+                    original_label=label,
+                    inherited_label=label,
+                )
+            )
+            header_inherited = (
+                _inherit_header_context(
+                    note_inherited.inherited_label,
+                    row=row,
+                    label_index=label_index,
+                    year_columns=year_columns,
+                    context_stack=header_context_stack,
+                )
+                if not note_inherited.changed
+                else _HeaderInheritedLabel(
+                    original_label=note_inherited.inherited_label,
+                    inherited_label=note_inherited.inherited_label,
+                )
+            )
+            if header_inherited.changed:
+                diagnostics.append(
+                    HeaderInheritanceDiagnostic(
+                        source_report_year=table.source_report_year,
+                        page_number=table.page_number,
+                        table_index=table.table_index,
+                        table_type=table.table_type,
+                        row_index=row_index,
+                        original_label=header_inherited.original_label,
+                        inherited_label=header_inherited.inherited_label,
+                        inherited_header=header_inherited.inherited_header or "",
+                        inheritance_source=header_inherited.inheritance_source or "",
+                        reconstruction_reason=(
+                            header_inherited.reconstruction_reason or ""
+                        ),
+                        metric_values_affected=metric_values_affected,
+                    )
+                )
+
+            if use_note_context and metric_values_affected > 0:
+                _update_note_context_from_metric_row(
+                    note_context_stack,
+                    label=note_inherited.original_label,
+                    inherited_label=note_inherited,
+                )
+            _update_header_context_from_row(
+                header_context_stack,
+                label=header_inherited.original_label,
+                row=row,
+                row_index=row_index,
+                header_row_index=header_row_index,
+                metric_value_count=metric_values_affected,
+                table_type=table.table_type,
+                inherited_label=header_inherited,
             )
 
     return diagnostics

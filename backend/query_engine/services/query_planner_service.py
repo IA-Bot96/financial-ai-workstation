@@ -17,6 +17,7 @@ from query_engine.models.query_planner import (
     QueryPlan,
     QueryRequest,
     UnsupportedPlan,
+    normalize_query,
 )
 from query_engine.services.calculation_service import CalculationService
 from query_engine.services.evidence_builder_service import EvidenceBuilderService
@@ -36,7 +37,7 @@ _STOPWORD_PATTERN = re.compile(
     r"trend|history|historical|series|over|time|compare|comparison|"
     r"conflict|conflicts|conflicting|competing|candidate|candidates|"
     r"why|selected|select|selection|source|provenance|citation|citations|"
-    r"where|from|explain"
+    r"where|from|explain|did|does|do|come|came|origin|originate|originated"
     r")\b"
 )
 
@@ -62,7 +63,9 @@ class QueryPlannerService:
     def plan(self, query_request: QueryRequest) -> QueryPlan:
         """Return a deterministic executable plan for a user query request."""
 
-        normalized_query = query_request.normalized_query or ""
+        normalized_query = normalize_query(
+            query_request.normalized_query or query_request.raw_query
+        )
         intent = query_request.intent or _infer_intent(normalized_query)
         requested_year = query_request.requested_year or _extract_year(normalized_query)
         explicit_start_year, explicit_end_year = _extract_year_range(normalized_query)
@@ -86,6 +89,7 @@ class QueryPlannerService:
         requested_metric, comparison_metric = _infer_metrics(
             query_request,
             intent,
+            normalized_query,
         )
         metric_resolution = _resolve_metric(
             self._metric_resolution_service,
@@ -273,7 +277,9 @@ def _infer_intent(normalized_query: str) -> QueryIntent | None:
     if _contains_any(
         normalized_query,
         ("selected", "selection", "source", "provenance", "citation", "citations"),
-    ) or normalized_query.startswith("why was "):
+    ) or normalized_query.startswith("why was ") or _is_source_origin_query(
+        normalized_query
+    ):
         return QueryIntent.PROVENANCE_LOOKUP
     if _contains_any(normalized_query, ("compare", "comparison", " vs ", " versus ")):
         return QueryIntent.METRIC_COMPARISON
@@ -295,10 +301,11 @@ def _infer_intent(normalized_query: str) -> QueryIntent | None:
 def _infer_metrics(
     query_request: QueryRequest,
     intent: QueryIntent,
+    normalized_query: str,
 ) -> tuple[str | None, str | None]:
     if intent == QueryIntent.METRIC_COMPARISON:
         inferred_left, inferred_right = _extract_comparison_metrics(
-            query_request.normalized_query or ""
+            normalized_query
         )
         return (
             query_request.requested_metric or inferred_left,
@@ -306,7 +313,7 @@ def _infer_metrics(
         )
     return (
         query_request.requested_metric
-        or _extract_metric(query_request.normalized_query or ""),
+        or _extract_metric(normalized_query),
         query_request.comparison_metric,
     )
 
@@ -339,6 +346,13 @@ def _is_cagr_query(normalized_query: str) -> bool:
     return (
         " cagr " in f" {normalized_query} "
         or "compound annual growth rate" in normalized_query
+    )
+
+
+def _is_source_origin_query(normalized_query: str) -> bool:
+    return (
+        normalized_query.startswith(("where did ", "where does ", "where do "))
+        and " come from" in f" {normalized_query} "
     )
 
 

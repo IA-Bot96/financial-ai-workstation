@@ -13,6 +13,7 @@ if str(BACKEND_DIR) not in sys.path:
 from ocr_engine.models.insights_extraction import InsightsExtractionResult
 from query_engine.models.input_bundle import QueryEngineInputBundle
 from query_engine.models.query_planner import (
+    CAGRPlan,
     ConflictPlan,
     MetricComparisonPlan,
     MetricGrowthPlan,
@@ -148,6 +149,7 @@ def _planner_service() -> QueryPlannerService:
         _metric_value("revenue", 2024, 1200, 10, "income_statement"),
         _metric_value("revenue", 2025, 1500, 10, "income_statement"),
         _metric_value("earnings_per_share", 2025, 15, 12, "income_statement"),
+        _metric_value("finance_cost", 2025, 100, 14, "income_statement"),
         _metric_value("total_debt", 2025, 700, 16, "balance_sheet"),
         _metric_value("cash_and_cash_equivalents", 2025, 500, 20, "cash_flow"),
     ]
@@ -217,6 +219,22 @@ def test_value_query_plan() -> None:
     assert plan.is_valid is True
 
 
+def test_total_debt_value_query_with_punctuated_normalized_query() -> None:
+    plan = _planner_service().plan(
+        QueryRequest(
+            raw_query="What was total debt in 2025?",
+            normalized_query="what was total debt in 2025?",
+        )
+    )
+
+    assert isinstance(plan, MetricValuePlan)
+    assert plan.intent == QueryIntent.METRIC_VALUE
+    assert plan.requested_metric == "total debt"
+    assert plan.requested_year == 2025
+    assert plan.resolved_metric == "total_debt"
+    assert plan.is_valid is True
+
+
 def test_history_query_plan() -> None:
     plan = _planner_service().plan(QueryRequest(raw_query="Show revenue trend."))
 
@@ -268,6 +286,18 @@ def test_provenance_query_plan() -> None:
     assert plan.intent == QueryIntent.PROVENANCE_LOOKUP
     assert plan.requested_metric == "eps"
     assert plan.resolved_metric == "earnings_per_share"
+    assert plan.is_valid is True
+
+
+def test_source_origin_provenance_query_plan() -> None:
+    plan = _planner_service().plan(
+        QueryRequest(raw_query="Where did finance cost come from?")
+    )
+
+    assert isinstance(plan, ProvenancePlan)
+    assert plan.intent == QueryIntent.PROVENANCE_LOOKUP
+    assert plan.requested_metric == "finance cost"
+    assert plan.resolved_metric == "finance_cost"
     assert plan.is_valid is True
 
 

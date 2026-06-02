@@ -107,6 +107,17 @@ def _services() -> tuple[QueryPlannerService, EvidenceBuilderService, ResponseRe
                 (2025, 130),
             )
         ],
+        *[
+            _metric_value("cash_and_cash_equivalents", year, value, 16, "cash_flow")
+            for year, value in (
+                (2020, 80),
+                (2021, 90),
+                (2022, 95),
+                (2023, 105),
+                (2024, 115),
+                (2025, 125),
+            )
+        ],
         _metric_value("capital_expenditure", 2025, 80, 18, "cash_flow"),
     ]
     bundle = QueryEngineInputBundle(
@@ -197,6 +208,44 @@ def test_eps_cagr_implicit_full_history() -> None:
     assert plan.start_year == 2020
     assert plan.end_year == 2025
     assert response.cagr_value == pytest.approx(14.869835, rel=1e-6)
+
+
+def test_cash_cagr_with_punctuated_normalized_query() -> None:
+    planner, evidence_builder, renderer = _services()
+
+    plan = planner.plan(
+        QueryRequest(
+            raw_query="What was cash CAGR?",
+            normalized_query="what was cash cagr?",
+        )
+    )
+    response = renderer.render_cagr(plan, evidence_builder.build_cagr_evidence(plan))
+
+    assert isinstance(plan, CAGRPlan)
+    assert plan.resolved_metric == "cash_and_cash_equivalents"
+    assert plan.start_year == 2020
+    assert plan.end_year == 2025
+    assert response.is_answerable is True
+    assert response.citations
+
+
+def test_eps_cagr_with_punctuated_normalized_query() -> None:
+    planner, evidence_builder, renderer = _services()
+
+    plan = planner.plan(
+        QueryRequest(
+            raw_query="What was EPS CAGR?",
+            normalized_query="what was eps cagr?",
+        )
+    )
+    response = renderer.render_cagr(plan, evidence_builder.build_cagr_evidence(plan))
+
+    assert isinstance(plan, CAGRPlan)
+    assert plan.resolved_metric == "earnings_per_share"
+    assert plan.start_year == 2020
+    assert plan.end_year == 2025
+    assert response.is_answerable is True
+    assert response.citations
 
 
 def test_operating_profit_compound_annual_growth_rate() -> None:

@@ -43,6 +43,7 @@ _BROAD_PARENT_PREFERENCES_BY_QUERY = {
     "debt": ("total_debt",),
     "equity": ("total_equity", "equity"),
     "revenue": ("revenue",),
+    "total_debt": ("total_debt",),
 }
 
 
@@ -295,6 +296,8 @@ class MetricResolutionService:
         if not query_tokens:
             return
         for canonical_metric in self._available_metric_counts:
+            if canonical_metric not in self._metric_by_key:
+                continue
             metric_tokens = _tokens(canonical_metric)
             overlap = query_tokens & metric_tokens
             if not overlap:
@@ -357,6 +360,8 @@ class MetricResolutionService:
             for candidate in candidates:
                 if candidate.canonical_metric == preferred and candidate.available_in_dataset:
                     return candidate
+        if _has_unavailable_deterministic_match(candidates):
+            return None
 
         available = tuple(candidate for candidate in candidates if candidate.available_in_dataset)
         if available:
@@ -438,6 +443,17 @@ def _has_strong_deterministic_match(
         ):
             return True
     return False
+
+
+def _has_unavailable_deterministic_match(
+    candidates: tuple[MetricResolutionCandidate, ...],
+) -> bool:
+    return any(
+        candidate.match_type in {"exact", "alias", "canonical"}
+        and not candidate.available_in_dataset
+        and candidate.confidence >= _ALIAS_CONFIDENCE
+        for candidate in candidates
+    )
 
 
 def _similarity(left: str, right: str) -> float:

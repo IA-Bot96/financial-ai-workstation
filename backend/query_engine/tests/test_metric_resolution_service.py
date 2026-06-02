@@ -140,6 +140,15 @@ def test_metric_resolution_debt_returns_candidates() -> None:
     assert "debt_to_equity" in candidate_metrics
 
 
+def test_metric_resolution_total_debt_with_punctuation() -> None:
+    result = _resolution_service().resolve_metric("total debt ?")
+
+    assert result.resolved_metric == "total_debt"
+    assert result.best_candidate is not None
+    assert result.best_candidate.match_type == "alias"
+    assert result.best_candidate.available_in_dataset is True
+
+
 def test_metric_resolution_capex_alias() -> None:
     result = _resolution_service().resolve_best_metric("Capex")
 

@@ -67,7 +67,10 @@
       "selling and distribution cost",
       "distribution expenses",
       "total distribution expenses",
-      "reported distribution expenses"
+      "reported distribution expenses",
+      "distribution expense",
+      "selling and distribution expense",
+      "Distribution Co st"
     ],
     "category": "income_statement"
   },
@@ -376,7 +379,9 @@
       "reported staff cost",
       "staff cost amount",
       "salaries and amenities",
-      "salaries wages and benefits"
+      "salaries wages and benefits",
+      "salaries benefits and other costs",
+      "salaries benefits and other c osts"
     ],
     "category": "income_statement"
   },
@@ -396,7 +401,8 @@
       "depreciation expense",
       "total depreciation expense",
       "reported depreciation expense",
-      "depreciation expense amount"
+      "depreciation expense amount",
+      "depreciation"
     ],
     "category": "income_statement"
   },
@@ -3885,7 +3891,17 @@
     "aliases": [
       "defined benefit obligation",
       "present value of defined benefit obligation",
-      "charge for defined benefit obligation"
+      "charge for defined benefit obligation",
+      "benefit obligation",
+      "benefit obligations",
+      "benefit obligati on",
+      "benefit obligati ons",
+      "present value of obligation",
+      "executives gratuity fund benefit obligation",
+      "executives gratu ity fund benefit obligation",
+      "non executives gratuity fund benefit obligation",
+      "non executives gratuity fund benefit obligations",
+      "non executives gratuity fu nd benefit obligations"
     ],
     "category": "employee_metrics"
   },
@@ -3894,7 +3910,11 @@
     "aliases": [
       "defined benefit expense",
       "charge for defined benefit",
-      "defined benefit charge"
+      "defined benefit charge",
+      "defined benefit plan",
+      "employees defined benefit plan",
+      "employees defined benefit expense",
+      "staff retirement benefit expense"
     ],
     "category": "employee_metrics"
   },
@@ -4017,7 +4037,10 @@
     "aliases": [
       "fair value of plan assets",
       "defined benefit - fair value of plan assets",
-      "pension gratuity - fair value of plan assets"
+      "pension gratuity - fair value of plan assets",
+      "plan assets",
+      "fair value of plan asset",
+      "fair value of plan assets at"
     ],
     "category": "employee_metrics"
   },
@@ -4026,7 +4049,15 @@
     "aliases": [
       "historical information funded plans - net liability asset",
       "Historical in formation funded plans - Net liability / (asset)",
-      "net liability asset funded plans"
+      "net liability asset funded plans",
+      "net defined benefit liability asset",
+      "net defined benefit liability",
+      "defined benefit liability",
+      "defined benefit asset",
+      "defined benefit plan surplus",
+      "executives gratuity fund surplus",
+      "executives gratu ity fund surplus",
+      "employees gratuity fund surplus"
     ],
     "category": "employee_metrics"
   },
@@ -4067,7 +4098,10 @@
     "aliases": [
       "benefits paid",
       "staff gratuity paid",
-      "Staff gratuity p aid"
+      "Staff gratuity p aid",
+      "benefit payments",
+      "benefits paid by plan",
+      "payments made by plan"
     ],
     "category": "employee_metrics"
   },
@@ -4076,7 +4110,10 @@
     "aliases": [
       "defined benefit current service cost",
       "staff retirement benefit current service cost",
-      "Current service cost"
+      "Current service cost",
+      "service cost",
+      "current service cost recognized",
+      "staff retirement benefit service cost"
     ],
     "category": "employee_metrics"
   },
@@ -4117,6 +4154,387 @@
       "Capital spare s"
     ],
     "category": "balance_sheet"
+  },
+  "customer_relationships": {
+    "display_name": "Customer Relationships",
+    "aliases": [
+      "customer relationships",
+      "customer relationship",
+      "customer relation ships",
+      "customer relation ship"
+    ],
+    "category": "intangible_assets"
+  },
+  "distribution_relationships": {
+    "display_name": "Distribution Relationships",
+    "aliases": [
+      "distribution relationships",
+      "distribution relationship",
+      "distribution relation ships",
+      "distribution relatio nship"
+    ],
+    "category": "intangible_assets"
+  },
+  "principal_relationships": {
+    "display_name": "Principal Relationships",
+    "aliases": [
+      "principal relationships",
+      "principal relationship",
+      "principal relationsh ips",
+      "principal relation ship"
+    ],
+    "category": "intangible_assets"
+  },
+  "product_rights": {
+    "display_name": "Product Rights",
+    "aliases": [
+      "product rights",
+      "product right"
+    ],
+    "category": "intangible_assets"
+  },
+  "software_and_licenses": {
+    "display_name": "Software And Licenses",
+    "aliases": [
+      "software and licenses",
+      "software and license",
+      "software and licen se",
+      "software license",
+      "software licences"
+    ],
+    "category": "intangible_assets"
+  },
+  "defined_benefit_interest_cost": {
+    "display_name": "Defined Benefit Interest Cost",
+    "aliases": [
+      "interest cost",
+      "defined benefit interest cost",
+      "employee benefit interest cost",
+      "staff retirement benefit interest cost",
+      "finance cost on defined benefit obligation",
+      "interest cost on defined benefit obligation",
+      "interest cost on benefit obligation"
+    ],
+    "category": "employee_metrics"
+  },
+  "house_rent_allowance": {
+    "display_name": "House Rent Allowance",
+    "aliases": [
+      "house rent",
+      "house rent allowance"
+    ],
+    "category": "employee_metrics"
+  },
+  "medical_expenses": {
+    "display_name": "Medical Expenses",
+    "aliases": [
+      "medical expenses",
+      "medical expense",
+      "medical allowance"
+    ],
+    "category": "employee_metrics"
+  },
+  "utilities_expense": {
+    "display_name": "Utilities Expense",
+    "aliases": [
+      "utilities",
+      "utility expenses",
+      "utilities expense"
+    ],
+    "category": "income_statement"
+  },
+  "reimbursable_expenses": {
+    "display_name": "Reimbursable Expenses",
+    "aliases": [
+      "reimbursable expenses",
+      "reimbursable expense",
+      "other reimbursable expenses",
+      "other reimbursa ble expenses"
+    ],
+    "category": "employee_metrics"
+  },
+  "insurance_expense": {
+    "display_name": "Insurance Expense",
+    "aliases": [
+      "insurance",
+      "insurance expense",
+      "insurance expenses",
+      "insurance cost",
+      "insurance charges"
+    ],
+    "category": "income_statement"
+  },
+  "vehicle_running_and_maintenance": {
+    "display_name": "Vehicle Running And Maintenance",
+    "aliases": [
+      "vehicle running and maintenance",
+      "vehicle running maintenance",
+      "vehicle running and mainten ance",
+      "vehicle maintenance",
+      "vehicle running expenses",
+      "vehicle operating expenses"
+    ],
+    "category": "income_statement"
+  },
+  "communication_expense": {
+    "display_name": "Communication Expense",
+    "aliases": [
+      "communication",
+      "communication expense",
+      "communication expenses",
+      "telephone and communication",
+      "postage telephone and communication",
+      "communication cost"
+    ],
+    "category": "income_statement"
+  },
+  "rent_rates_and_taxes": {
+    "display_name": "Rent Rates And Taxes",
+    "aliases": [
+      "rent rates and taxes",
+      "rent rates taxes",
+      "rent and rates",
+      "rates and taxes",
+      "rent expense and rates"
+    ],
+    "category": "income_statement"
+  },
+  "travelling_and_conveyance": {
+    "display_name": "Travelling And Conveyance",
+    "aliases": [
+      "travelling and conveyance",
+      "traveling and conveyance",
+      "travel and conveyance",
+      "travelling and conve yance",
+      "travelling expenses",
+      "travel expenses"
+    ],
+    "category": "income_statement"
+  },
+  "printing_and_stationery": {
+    "display_name": "Printing And Stationery",
+    "aliases": [
+      "printing and stationery",
+      "printing stationery",
+      "printing and statione ry",
+      "stationery and printing",
+      "stationery expense",
+      "printing expenses"
+    ],
+    "category": "income_statement"
+  },
+  "repairs_and_maintenance": {
+    "display_name": "Repairs And Maintenance",
+    "aliases": [
+      "repairs and maintenance",
+      "repair and maintenance",
+      "repairs maintenance",
+      "repairs and mainten ance",
+      "maintenance and repairs",
+      "repair expense"
+    ],
+    "category": "income_statement"
+  },
+  "security_services": {
+    "display_name": "Security Services",
+    "aliases": [
+      "security services",
+      "security expenses",
+      "security expense",
+      "security service charges",
+      "security charges"
+    ],
+    "category": "income_statement"
+  },
+  "contract_services": {
+    "display_name": "Contract Services",
+    "aliases": [
+      "contract services",
+      "contract service",
+      "contract service expense",
+      "contracted services",
+      "contract labour",
+      "contract labor",
+      "contract services cost"
+    ],
+    "category": "income_statement"
+  },
+  "fuel_and_power": {
+    "display_name": "Fuel And Power",
+    "aliases": [
+      "fuel and power",
+      "fuel power",
+      "power and fuel",
+      "fuel and power expense",
+      "power fuel and utilities"
+    ],
+    "category": "income_statement"
+  },
+  "legal_professional_charges": {
+    "display_name": "Legal Professional Charges",
+    "aliases": [
+      "legal and professional charges",
+      "legal and professional expenses",
+      "professional charges",
+      "legal expenses",
+      "professional fee"
+    ],
+    "category": "income_statement"
+  },
+  "auditors_remuneration": {
+    "display_name": "Auditors Remuneration",
+    "aliases": [
+      "auditors remuneration",
+      "auditor remuneration",
+      "auditors fee",
+      "audit fee",
+      "audit fees"
+    ],
+    "category": "income_statement"
+  },
+  "bank_charges": {
+    "display_name": "Bank Charges",
+    "aliases": [
+      "bank charges",
+      "bank commission",
+      "bank charges and commission",
+      "bank service charges"
+    ],
+    "category": "income_statement"
+  },
+  "advertisement_and_promotion": {
+    "display_name": "Advertisement And Promotion",
+    "aliases": [
+      "advertisement and promotion",
+      "advertising and promotion",
+      "advertisement expenses",
+      "advertising expenses",
+      "sales promotion expenses"
+    ],
+    "category": "income_statement"
+  },
+  "defined_benefit_interest_income_plan_assets": {
+    "display_name": "Defined Benefit Interest Income On Plan Assets",
+    "aliases": [
+      "interest income on plan assets",
+      "interest income on plan asset",
+      "return on plan assets",
+      "expected return on plan assets",
+      "interest income from plan assets"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_actuarial_gain_loss": {
+    "display_name": "Defined Benefit Actuarial Gain Loss",
+    "aliases": [
+      "actuarial gain loss",
+      "actuarial gains losses",
+      "remeasurement gain loss on defined benefit plan",
+      "remeasurement loss on employees defined benefit plan",
+      "remeasurement gain on employees defined benefit plan",
+      "remeasurement loss of post retirement benefit obligation",
+      "re measurement loss of post retirement benefit obligation"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_experience_adjustments_obligation": {
+    "display_name": "Defined Benefit Experience Adjustments Obligation",
+    "aliases": [
+      "experience adjustments on plan obligations",
+      "experience adjustments on obligation",
+      "experience adjustments on plan obligations gain loss",
+      "experience adjustm ents on pla n obligations gain loss",
+      "experience adjustm ents on pla n obligations",
+      "experience adjustm ents on plan obligations",
+      "actuarial losses gains from experience adjustments on obligations"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_experience_adjustments_assets": {
+    "display_name": "Defined Benefit Experience Adjustments Assets",
+    "aliases": [
+      "experience adjustments on plan assets",
+      "experience adjustments on plan assets gain loss",
+      "experience adjustm ents on pla n assets gain loss",
+      "experience adjustm ents on pla n assets",
+      "actuarial losses gains from experience adjustments on assets"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_financial_assumption_gain_loss": {
+    "display_name": "Defined Benefit Financial Assumption Gain Loss",
+    "aliases": [
+      "actuarial losses gains from changes in financial assumptions",
+      "actuarial losses gains from chang es in financial assumptions",
+      "changes in financial assumptions",
+      "financial assumptions gain loss",
+      "actuarial gain loss from financial assumptions"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_benefit_experience_adjustments": {
+    "display_name": "Defined Benefit Experience Adjustments",
+    "aliases": [
+      "experience adjustments",
+      "experience adjustm ents",
+      "actuarial losses gains from experience adjustments"
+    ],
+    "category": "employee_metrics"
+  },
+  "defined_contribution_plan_provident_fund": {
+    "display_name": "Defined Contribution Plan Provident Fund",
+    "aliases": [
+      "defined contribution plan provident fund",
+      "provident fund contribution",
+      "contribution to provident fund",
+      "contribution to provident"
+    ],
+    "category": "employee_metrics"
+  },
+  "compensated_absences_provision": {
+    "display_name": "Compensated Absences Provision",
+    "aliases": [
+      "provision for compensated absences",
+      "provision for compen sated absences",
+      "compensated absences",
+      "compensated absences provision",
+      "provision for leave encashment"
+    ],
+    "category": "employee_metrics"
+  },
+  "cost_of_living_allowance": {
+    "display_name": "Cost Of Living Allowance",
+    "aliases": [
+      "cost of living allowance",
+      "cost of living all owance",
+      "cola allowance"
+    ],
+    "category": "employee_metrics"
+  },
+  "bonus_compensation": {
+    "display_name": "Bonus Compensation",
+    "aliases": [
+      "staff bonus",
+      "employee bonus",
+      "remuneration bonus",
+      "chief executive bonus",
+      "ch ief executive bonus",
+      "bonus compensation"
+    ],
+    "category": "employee_metrics"
+  },
+  "gratuity_fund": {
+    "display_name": "Gratuity Fund",
+    "aliases": [
+      "gratuity fund",
+      "staff gratuity fund",
+      "employees gratuity fund",
+      "executives gratuity fund",
+      "non executives gratuity fund",
+      "fund and gratuity funds",
+      "fund and grat uity funds"
+    ],
+    "category": "employee_metrics"
   },
   "accrued_liabilities": {
     "display_name": "Accrued Liabilities",

@@ -40,6 +40,14 @@ class _MetricNormalizationDecision:
     normalization_rule: str | None = None
 
 
+@dataclass(frozen=True)
+class _ParentChildMetric:
+    """A preserved parent context and child metric split candidate."""
+
+    parent_context: str
+    child_metric: str
+
+
 class TableMetricNormalizer(ITableMetricNormalizer):
     """Normalize raw OCR table row labels to canonical metric names.
 
@@ -249,20 +257,42 @@ class TableMetricNormalizer(ITableMetricNormalizer):
         """Normalize a metric, stripping preserved parent context when safe."""
 
         original_result = self._metric_normalizer.normalize_metric(metric_name)
-        split_metric = _split_parent_prefixed_metric(metric_name)
-        if split_metric is None:
+        split_candidates = _parent_child_metric_candidates(metric_name)
+        if not split_candidates:
             return _MetricNormalizationDecision(
                 result=original_result,
                 normalization_input_metric=metric_name,
             )
 
-        parent_context, child_metric = split_metric
-        child_result = self._metric_normalizer.normalize_metric(child_metric)
-        if not _is_strong_child_match(child_result):
+        best_candidate: tuple[_ParentChildMetric, NormalizedMetric] | None = None
+        for split_candidate in split_candidates:
+            if not _is_safe_child_metric(split_candidate.child_metric):
+                continue
+
+            child_result = self._metric_normalizer.normalize_metric(
+                split_candidate.child_metric
+            )
+            if not _is_strong_child_match(child_result):
+                continue
+
+            if (
+                best_candidate is None
+                or child_result.confidence > best_candidate[1].confidence
+                or (
+                    child_result.confidence == best_candidate[1].confidence
+                    and len(split_candidate.child_metric)
+                    > len(best_candidate[0].child_metric)
+                )
+            ):
+                best_candidate = (split_candidate, child_result)
+
+        if best_candidate is None:
             return _MetricNormalizationDecision(
                 result=original_result,
                 normalization_input_metric=metric_name,
             )
+
+        split_metric, child_result = best_candidate
 
         original_is_strong_specific_match = (
             original_result.normalized_metric is not None
@@ -279,8 +309,8 @@ class TableMetricNormalizer(ITableMetricNormalizer):
             "Parent prefix stripped before metric normalization",
             extra={
                 "original_metric": metric_name,
-                "parent_metric_context": parent_context,
-                "child_metric": child_metric,
+                "parent_metric_context": split_metric.parent_context,
+                "child_metric": split_metric.child_metric,
                 "normalized_metric": child_result.normalized_metric,
                 "confidence": child_result.confidence,
             },
@@ -292,9 +322,9 @@ class TableMetricNormalizer(ITableMetricNormalizer):
                 confidence=child_result.confidence,
                 requires_review=child_result.requires_review,
             ),
-            normalization_input_metric=child_metric,
-            parent_metric_context=parent_context,
-            child_metric=child_metric,
+            normalization_input_metric=split_metric.child_metric,
+            parent_metric_context=split_metric.parent_context,
+            child_metric=split_metric.child_metric,
             parent_prefix_stripped=True,
             normalization_rule="parent_prefix_stripping",
         )
@@ -371,23 +401,113 @@ def _error_message(exc: Exception) -> str:
 def _split_parent_prefixed_metric(metric_name: str) -> tuple[str, str] | None:
     """Return parent context and child metric for a preserved context label."""
 
-    parts = [
-        part.strip()
-        for part in re.split(r"\s+(?:-|\u2013|\u2014)\s+", metric_name)
-        if part.strip()
-    ]
-    if len(parts) < 2:
+    candidates = _parent_child_metric_candidates(metric_name)
+    if not candidates:
         return None
+    candidate = candidates[0]
+    return candidate.parent_context, candidate.child_metric
 
-    parent_context = " - ".join(parts[:-1]).strip()
-    child_metric = parts[-1].strip()
+
+def _parent_child_metric_candidates(metric_name: str) -> tuple[_ParentChildMetric, ...]:
+    """Return safe parent-child split candidates for hyphenated note labels."""
+
+    text = str(metric_name).strip()
+    if not text:
+        return ()
+
+    candidates: list[_ParentChildMetric] = []
+    seen: set[tuple[str, str]] = set()
+    for match in _PARENT_CHILD_SEPARATOR_PATTERN.finditer(text):
+        parent_context = _clean_parent_context(text[: match.start()])
+        child_metric = _clean_child_metric(text[match.end() :])
+        if (
+            not _separator_has_context_spacing(text, match.start(), match.end())
+            and len(parent_context.split()) < 2
+        ):
+            continue
+        candidate_key = (parent_context.lower(), child_metric.lower())
+        if candidate_key in seen:
+            continue
+        if not _is_valid_parent_child_split(parent_context, child_metric):
+            continue
+        candidates.append(
+            _ParentChildMetric(
+                parent_context=parent_context,
+                child_metric=child_metric,
+            )
+        )
+        seen.add(candidate_key)
+
+    return tuple(candidates)
+
+
+_PARENT_CHILD_SEPARATOR_PATTERN = re.compile(
+    r":\s*(?:-|\u2013|\u2014)+\s*"
+    r"|(?<=\s)(?:-|\u2013|\u2014)+\s*"
+    r"|\s*(?:-|\u2013|\u2014)+(?=\s)"
+    r"|(?:-|\u2013|\u2014)+"
+)
+_EDGE_CONTEXT_MARKERS_PATTERN = re.compile(r"^[\s\-:–—]+|[\s\-:–—]+$")
+_GENERIC_CHILD_METRIC_PATTERNS = (
+    re.compile(r"^(?:others?|note|horizontal analysis|vertical analysis)$", re.I),
+    re.compile(r"^(?:for|of|during)\s+the\s+year\b", re.I),
+    re.compile(r"^year\s+on\s+year\b", re.I),
+    re.compile(r"^as\s+at\b", re.I),
+    re.compile(r"^balance\s+(?:as\s+at|at|brought|carried)\b", re.I),
+    re.compile(r"^net\s+book\s+value$", re.I),
+    re.compile(r"^not\s+impaired$", re.I),
+    re.compile(r"^return\s+free$", re.I),
+)
+
+
+def _clean_parent_context(value: str) -> str:
+    """Clean parent context while preserving the source wording."""
+
+    cleaned = _EDGE_CONTEXT_MARKERS_PATTERN.sub("", value).strip()
+    return re.sub(r"\s+", " ", cleaned)
+
+
+def _separator_has_context_spacing(text: str, start: int, end: int) -> bool:
+    """Return whether a separator has whitespace or colon context."""
+
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    return before.isspace() or after.isspace() or before == ":"
+
+
+def _clean_child_metric(value: str) -> str:
+    """Clean child metric text after a parent-context separator."""
+
+    cleaned = _EDGE_CONTEXT_MARKERS_PATTERN.sub("", value).strip()
+    return re.sub(r"\s+", " ", cleaned)
+
+
+def _is_valid_parent_child_split(parent_context: str, child_metric: str) -> bool:
+    """Return whether a candidate split contains real parent and child labels."""
+
     if not parent_context or not child_metric:
-        return None
+        return False
     if not re.search(r"[A-Za-z]", parent_context):
-        return None
+        return False
     if not re.search(r"[A-Za-z]", child_metric):
-        return None
-    return parent_context, child_metric
+        return False
+    if len(re.findall(r"[A-Za-z]", parent_context)) < 3:
+        return False
+    if len(re.findall(r"[A-Za-z]", child_metric)) < 3:
+        return False
+    return True
+
+
+def _is_safe_child_metric(child_metric: str) -> bool:
+    """Return whether a child label is specific enough to normalize alone."""
+
+    normalized_child = re.sub(r"\s+", " ", child_metric.strip())
+    if not normalized_child:
+        return False
+    return not any(
+        pattern.search(normalized_child)
+        for pattern in _GENERIC_CHILD_METRIC_PATTERNS
+    )
 
 
 def _is_strong_child_match(normalized_metric: NormalizedMetric) -> bool:

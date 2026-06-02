@@ -33,8 +33,12 @@ class FakeMetricNormalizer(IMetricNormalizer):
             "Gross Profit": "gross_profit",
             "Debt": "debt",
             "Depreciation": "depreciation_expense",
+            "Insurance": "insurance_expense",
             "Goodwill": "goodwill",
             "Accrued liabilities": "accrued_liabilities",
+            "Interest cost": "defined_benefit_interest_cost",
+            "Benefit obligation": "defined_benefit_obligation",
+            "Balance as at July 1": "opening_balance",
             "REMUNERATION OF CHIEF EXECUTIVE - Managerial remuneration": (
                 "chief_executive_remuneration"
             ),
@@ -209,6 +213,124 @@ def test_normalize_tables_strips_preserved_parent_prefix_for_strong_child_match(
     assert result.mappings[0].child_metric == "Depreciation"
     assert result.mappings[0].parent_prefix_stripped is True
     assert result.mappings[0].normalization_rule == "parent_prefix_stripping"
+
+
+@pytest.mark.parametrize(
+    ("raw_metric", "expected_metric", "expected_parent", "expected_child"),
+    [
+        (
+            "TRADE AND OTHER PAYABLES - Accrued liabilities",
+            "accrued_liabilities",
+            "TRADE AND OTHER PAYABLES",
+            "Accrued liabilities",
+        ),
+        (
+            "INTANGIBLE ASSETS - Goodwill",
+            "goodwill",
+            "INTANGIBLE ASSETS",
+            "Goodwill",
+        ),
+        (
+            "COST OF SALES–Depreciation",
+            "depreciation_expense",
+            "COST OF SALES",
+            "Depreciation",
+        ),
+        (
+            "COST OF SALES - Insurance",
+            "insurance_expense",
+            "COST OF SALES",
+            "Insurance",
+        ),
+        (
+            "DEFINED BENEFIT OBLIGATION: - - Interest cost",
+            "defined_benefit_interest_cost",
+            "DEFINED BENEFIT OBLIGATION",
+            "Interest cost",
+        ),
+        (
+            "EXECUTIVES GRATUITY FUND - Benefit obligation",
+            "defined_benefit_obligation",
+            "EXECUTIVES GRATUITY FUND",
+            "Benefit obligation",
+        ),
+    ],
+)
+def test_normalize_tables_generalizes_hyphenated_parent_child_labels(
+    raw_metric: str,
+    expected_metric: str,
+    expected_parent: str,
+    expected_child: str,
+) -> None:
+    service = TableMetricNormalizer(metric_normalizer=FakeMetricNormalizer())
+    extraction_result = TableExtractionResult(
+        tables=[
+            ExtractedTable(
+                source_report_year=2025,
+                page_number=240,
+                table_type="notes",
+                table_index=0,
+                rows=[],
+                metric_values=[
+                    MetricValue(
+                        metric=raw_metric,
+                        value_year=2025,
+                        value=100,
+                        source_report_year=2025,
+                        page_number=240,
+                        table_type="notes",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = service.normalize_tables(extraction_result)
+
+    assert result.metric_values[0].metric == expected_metric
+    assert result.mappings[0].original_metric == raw_metric
+    assert result.mappings[0].normalized_metric == expected_metric
+    assert result.mappings[0].normalization_input_metric == expected_child
+    assert result.mappings[0].parent_metric_context == expected_parent
+    assert result.mappings[0].child_metric == expected_child
+    assert result.mappings[0].parent_prefix_stripped is True
+    assert result.mappings[0].normalization_rule == "parent_prefix_stripping"
+
+
+def test_normalize_tables_does_not_strip_generic_note_child_labels() -> None:
+    service = TableMetricNormalizer(metric_normalizer=FakeMetricNormalizer())
+    extraction_result = TableExtractionResult(
+        tables=[
+            ExtractedTable(
+                source_report_year=2025,
+                page_number=241,
+                table_type="notes",
+                table_index=0,
+                rows=[],
+                metric_values=[
+                    MetricValue(
+                        metric="INTANGIBLE ASSETS - Balance as at July 1",
+                        value_year=2025,
+                        value=100,
+                        source_report_year=2025,
+                        page_number=241,
+                        table_type="notes",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = service.normalize_tables(extraction_result)
+
+    assert result.metric_values[0].metric == (
+        "INTANGIBLE ASSETS - Balance as at July 1"
+    )
+    assert result.mappings[0].normalized_metric is None
+    assert result.mappings[0].requires_review is True
+    assert result.mappings[0].parent_prefix_stripped is False
+    assert result.mappings[0].parent_metric_context is None
+    assert result.mappings[0].child_metric is None
 
 
 def test_normalize_tables_keeps_parent_prefix_when_child_is_not_strong() -> None:

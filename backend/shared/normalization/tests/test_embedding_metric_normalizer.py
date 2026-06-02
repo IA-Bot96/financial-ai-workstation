@@ -344,3 +344,120 @@ def test_default_registry_normalizes_millat_labels(
     assert result.normalized_metric == expected_metric
     assert result.requires_review is False
     assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
+        ("Customer relation ships", "customer_relationships"),
+        ("Distribution relatio nship", "distribution_relationships"),
+        ("Principal relationsh ips", "principal_relationships"),
+        ("Product rights", "product_rights"),
+        ("Software and licen se", "software_and_licenses"),
+        ("Interest cost", "defined_benefit_interest_cost"),
+        ("House rent", "house_rent_allowance"),
+        ("Medical expenses", "medical_expenses"),
+        ("Utilities", "utilities_expense"),
+        ("Other reimbursa ble expenses", "reimbursable_expenses"),
+    ],
+)
+def test_default_registry_normalizes_general_parent_child_note_labels(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
+        ("Insurance", "insurance_expense"),
+        ("Vehicle running and maintenance", "vehicle_running_and_maintenance"),
+        ("Communication", "communication_expense"),
+        ("Rent, rates and taxes", "rent_rates_and_taxes"),
+        ("Travelling and conve yance", "travelling_and_conveyance"),
+        ("Printing and statione ry", "printing_and_stationery"),
+        ("Repairs and mainten ance", "repairs_and_maintenance"),
+        ("Security services", "security_services"),
+        ("Contract services", "contract_services"),
+        ("Fuel and power", "fuel_and_power"),
+        ("Legal and professional charges", "legal_professional_charges"),
+        ("Audit fees", "auditors_remuneration"),
+        ("Bank charges", "bank_charges"),
+        ("Advertisement expenses", "advertisement_and_promotion"),
+        ("Salaries benefits and other c osts", "staff_cost"),
+        ("Distribution Co st", "distribution_expenses"),
+        ("Depreciation", "depreciation_expense"),
+    ],
+)
+def test_default_registry_normalizes_operating_expense_cost_line_pack(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_metric"),
+    [
+        ("Benefit obligati on", "defined_benefit_obligation"),
+        ("Executives gratu ity fund benefit obligation", "defined_benefit_obligation"),
+        (
+            "Non executives gratuity fu nd benefit obligations",
+            "defined_benefit_obligation",
+        ),
+        ("Employees defined benefit plan", "defined_benefit_expense"),
+        ("Interest income on plan assets", "defined_benefit_interest_income_plan_assets"),
+        (
+            "Remeasurement loss on employees defined benefit plan",
+            "defined_benefit_actuarial_gain_loss",
+        ),
+        (
+            "Experience adjustm ents on pla n obligations gain loss",
+            "defined_benefit_experience_adjustments_obligation",
+        ),
+        (
+            "Experience adjustm ents on pla n assets gain loss",
+            "defined_benefit_experience_adjustments_assets",
+        ),
+        (
+            "Actuarial losses gains from chang es in financial assumptions",
+            "defined_benefit_financial_assumption_gain_loss",
+        ),
+        ("Experience adjustm ents", "defined_benefit_experience_adjustments"),
+        (
+            "Defined contribution plan - provident fund",
+            "defined_contribution_plan_provident_fund",
+        ),
+        ("Provision for compen sated absences", "compensated_absences_provision"),
+        ("Cost of living all owance", "cost_of_living_allowance"),
+        ("Ch ief Executive - Bonus", "bonus_compensation"),
+        ("Fund and grat uity funds", "gratuity_fund"),
+    ],
+)
+def test_default_registry_normalizes_benefit_actuarial_pack(
+    label: str,
+    expected_metric: str,
+) -> None:
+    embedding_generator = FakeEmbeddingGenerator()
+    normalizer = EmbeddingMetricNormalizer(embedding_generator=embedding_generator)
+
+    result = normalizer.normalize_metric(label)
+
+    assert result.normalized_metric == expected_metric
+    assert result.requires_review is False
+    assert embedding_generator.calls == []

@@ -9,7 +9,12 @@
       "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
       "Bash(python -c ' *)",
       "Bash(python -c *)",
-      "Bash(python tmp_loss_audit.py)"
+      "Bash(python tmp_loss_audit.py)",
+      "PowerShell(& python -c \"import importlib.util as u; mods=['pydantic','fastapi','pydantic_settings','torch','transformers','camelot','pdfplumber','fitz','openai','openpyxl','pandas','numpy','sentence_transformers','PIL','pytest']; [print\\(f'{m}: '+\\('yes' if u.find_spec\\(m\\) else 'NO'\\)\\) for m in mods]\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ibrahim.ijaz\\\\Desktop\\\\New folder \\(2\\)\\\\aiun-finance-intelligence-dashboard-pod-faraz\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(npx tsc *)",
+      "Bash(python -m pytest tests/test_ocr_upload_service.py -q)"
     ]
   }
 }

@@ -18,6 +18,9 @@ from ocr_engine.services.table_transformer_detector import TableTransformerDetec
 from ocr_engine.validation.financial_validation_service import (
     FinancialValidationService,
 )
+from query_engine.services.bundle_generation_service import (
+    QueryEngineBundleGenerationService,
+)
 from shared.config.settings import ConfigurationValidator, Settings, get_settings
 from shared.models.company_context import CompanyContext
 from shared.models.report import Report
@@ -36,6 +39,9 @@ def build_default_pipeline(
 
     settings = settings or get_settings()
     workbook_population_service = _build_workbook_population_service(output_xlsx)
+    query_engine_bundle_service = QueryEngineBundleGenerationService(
+        cell_mapping_provider=workbook_population_service,
+    )
     return OCRPipeline(
         table_detector=TableTransformerDetector(),
         table_classifier=OpenAITableClassifier(
@@ -51,6 +57,7 @@ def build_default_pipeline(
         ),
         financial_year_consolidator=FinancialYearConsolidator(),
         workbook_population_service=workbook_population_service,
+        query_engine_bundle_service=query_engine_bundle_service,
     )
 
 

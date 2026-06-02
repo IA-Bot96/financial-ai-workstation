@@ -48,6 +48,8 @@ class CompanyContext(BaseModel):
                     "workbook_template_path": None,
                     "workbook_result": None,
                     "generated_workbook": None,
+                    "query_engine_bundle_path": None,
+                    "query_engine_bundle_validation": {},
                     "pipeline_status": "pending",
                     "pipeline_errors": [],
                     "execution_results": [],
@@ -122,6 +124,17 @@ class CompanyContext(BaseModel):
             "Final generated Excel workbook metadata exposed to Electron, "
             "FastAPI, Query Engine, and future services."
         ),
+    )
+    query_engine_bundle_path: str | None = Field(
+        default=None,
+        description=(
+            "Path to the serialized Query Engine input bundle generated after "
+            "workbook population."
+        ),
+    )
+    query_engine_bundle_validation: dict[str, object] = Field(
+        default_factory=dict,
+        description="Validation result for the generated Query Engine input bundle.",
     )
     pipeline_status: PipelineStatus = Field(
         default=PipelineStatus.PENDING,

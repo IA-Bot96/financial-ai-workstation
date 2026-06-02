@@ -103,6 +103,39 @@ def test_ocr_pipeline_runs_layers_in_order_and_marks_completed() -> None:
     assert all(item.success for item in result.execution_results)
 
 
+def test_ocr_pipeline_runs_query_engine_bundle_step_after_workbook_population() -> None:
+    calls: list[str] = []
+    layer_names = [
+        "Table Detection",
+        "Classification",
+        "Table Extraction",
+        "Validation",
+        "Metric Normalization",
+        "Insights Extraction",
+        "Financial Year Consolidation",
+        "Workbook Population",
+        "Query Engine Bundle Generation",
+    ]
+    layers = [FakeLayer(name, calls) for name in layer_names]
+    pipeline = OCRPipeline(
+        table_detector=layers[0],
+        table_classifier=layers[1],
+        table_extractor=layers[2],
+        validator=layers[3],
+        metric_normalizer=layers[4],
+        insights_extractor=layers[5],
+        financial_year_consolidator=layers[6],
+        workbook_population_service=layers[7],
+        query_engine_bundle_service=layers[8],
+    )
+
+    result = pipeline.process(_context())
+
+    assert result.pipeline_status is PipelineStatus.COMPLETED
+    assert calls == layer_names
+    assert [item.layer_name for item in result.execution_results] == layer_names
+
+
 def test_ocr_pipeline_records_layer_error_and_continues() -> None:
     calls: list[str] = []
     layers: list[object] = [

@@ -21,6 +21,7 @@ from workbook_population.constants.workbook_constants import (
     INSIGHTS_SHEET_NAME,
 )
 from workbook_population.models.sheet_validation_result import SheetValidationResult
+from workbook_population.models.workbook_cell_mapping import WorkbookCellMappingDraft
 from workbook_population.services.sheet_name_sanitizer import sanitize_sheet_name
 from workbook_population.services.workbook_mapper import WorkbookMapper, _normalize_key
 
@@ -45,6 +46,13 @@ class TemplatePopulationService:
         self._mapper = mapper or WorkbookMapper()
         self._logger = log or logger
         self._insight_governance = InsightConfidenceGovernance()
+        self._last_cell_mapping_drafts: list[WorkbookCellMappingDraft] = []
+
+    @property
+    def last_cell_mapping_drafts(self) -> list[WorkbookCellMappingDraft]:
+        """Return workbook cell mappings captured by the most recent populate call."""
+
+        return list(self._last_cell_mapping_drafts)
 
     def populate(
         self,
@@ -57,6 +65,7 @@ class TemplatePopulationService:
     ) -> tuple[list[str], list[str], list[str], int, list[str]]:
         """Populate, replace, or create sheets based on sheet-level compatibility."""
 
+        self._last_cell_mapping_drafts = []
         workbook = load_workbook(template_path, data_only=False)
         metrics_written = 0
         warnings: list[str] = []
@@ -213,9 +222,37 @@ class TemplatePopulationService:
                 warnings.append(
                     "Skipped formula cell " f"{mapping.sheet_name}!{cell.coordinate}."
                 )
+                self._last_cell_mapping_drafts.append(
+                    WorkbookCellMappingDraft(
+                        metric=metric_value.metric,
+                        value_year=metric_value.value_year,
+                        source_report_year=metric_value.source_report_year,
+                        table_type=metric_value.table_type,
+                        sheet_name=mapping.sheet_name,
+                        row=mapping.row,
+                        column=mapping.column,
+                        cell_reference=cell.coordinate,
+                        write_status="skipped_formula",
+                        written_value=metric_value.value,
+                    )
+                )
                 continue
 
             cell.value = metric_value.value
+            self._last_cell_mapping_drafts.append(
+                WorkbookCellMappingDraft(
+                    metric=metric_value.metric,
+                    value_year=metric_value.value_year,
+                    source_report_year=metric_value.source_report_year,
+                    table_type=metric_value.table_type,
+                    sheet_name=mapping.sheet_name,
+                    row=mapping.row,
+                    column=mapping.column,
+                    cell_reference=cell.coordinate,
+                    write_status="written",
+                    written_value=metric_value.value,
+                )
+            )
             metrics_written += 1
 
         return metrics_written, warnings
@@ -248,8 +285,8 @@ class TemplatePopulationService:
                 return existing_sheet_name
         return None
 
-    @staticmethod
     def _write_generated_metric_sheet(
+        self,
         worksheet: Worksheet,
         metric_values: list[MetricValue],
     ) -> int:
@@ -267,6 +304,14 @@ class TemplatePopulationService:
             ): metric_value.value
             for metric_value in metric_values
         }
+        metric_value_by_key = {
+            (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            ): metric_value
+            for metric_value in metric_values
+        }
 
         worksheet.append(["Metric", *years])
         written = 0
@@ -278,6 +323,25 @@ class TemplatePopulationService:
                 if value is not None:
                     written += 1
             worksheet.append(row)
+            row_number = worksheet.max_row
+            for year_index, year in enumerate(years, start=2):
+                metric_value = metric_value_by_key.get((metric, year, table_type))
+                if metric_value is None or metric_value.value is None:
+                    continue
+                self._last_cell_mapping_drafts.append(
+                    WorkbookCellMappingDraft(
+                        metric=metric_value.metric,
+                        value_year=metric_value.value_year,
+                        source_report_year=metric_value.source_report_year,
+                        table_type=metric_value.table_type,
+                        sheet_name=worksheet.title,
+                        row=row_number,
+                        column=year_index,
+                        cell_reference=f"{get_column_letter(year_index)}{row_number}",
+                        write_status="written",
+                        written_value=metric_value.value,
+                    )
+                )
 
         _autosize_columns(worksheet)
         return written

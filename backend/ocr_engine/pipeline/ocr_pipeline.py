@@ -44,12 +44,13 @@ class OCRPipeline(IOCRPipeline):
         insights_extractor: Any,
         financial_year_consolidator: Any,
         workbook_population_service: Any,
+        query_engine_bundle_service: Any | None = None,
         *,
         log: logging.Logger | None = None,
     ) -> None:
         """Initialize the pipeline with injected OCR workflow dependencies."""
 
-        self._layers = (
+        layers = [
             _PipelineLayer("Table Detection", table_detector, "detect_tables_for_context"),
             _PipelineLayer(
                 "Classification",
@@ -82,7 +83,17 @@ class OCRPipeline(IOCRPipeline):
                 workbook_population_service,
                 "process",
             ),
-        )
+        ]
+        if query_engine_bundle_service is not None:
+            layers.append(
+                _PipelineLayer(
+                    "Query Engine Bundle Generation",
+                    query_engine_bundle_service,
+                    "process",
+                )
+            )
+
+        self._layers = tuple(layers)
         self._logger = log or logger
 
     def process(self, context: CompanyContext) -> CompanyContext:

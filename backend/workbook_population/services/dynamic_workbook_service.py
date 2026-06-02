@@ -19,6 +19,7 @@ from workbook_population.constants.workbook_constants import (
     INSIGHTS_REVIEW_SHEET_NAME,
     INSIGHTS_SHEET_NAME,
 )
+from workbook_population.models.workbook_cell_mapping import WorkbookCellMappingDraft
 from workbook_population.services.sheet_name_sanitizer import sanitize_sheet_name
 from workbook_population.services.workbook_mapper import WorkbookMapper
 
@@ -31,6 +32,13 @@ class DynamicWorkbookService:
 
         self._mapper = mapper or WorkbookMapper()
         self._insight_governance = InsightConfidenceGovernance()
+        self._last_cell_mapping_drafts: list[WorkbookCellMappingDraft] = []
+
+    @property
+    def last_cell_mapping_drafts(self) -> list[WorkbookCellMappingDraft]:
+        """Return cell mappings captured during the most recent generation."""
+
+        return list(self._last_cell_mapping_drafts)
 
     def generate(
         self,
@@ -41,6 +49,7 @@ class DynamicWorkbookService:
     ) -> tuple[list[str], int, list[str]]:
         """Generate a workbook from scratch and save it to output_file_path."""
 
+        self._last_cell_mapping_drafts = []
         workbook = Workbook()
         default_sheet = workbook.active
         workbook.remove(default_sheet)
@@ -111,8 +120,7 @@ class DynamicWorkbookService:
             )
         return dict(grouped)
 
-    @staticmethod
-    def _write_metric_sheet(worksheet: object, metric_values: list[MetricValue]) -> int:
+    def _write_metric_sheet(self, worksheet: object, metric_values: list[MetricValue]) -> int:
         years = sorted({metric_value.value_year for metric_value in metric_values})
         row_keys = _ordered_unique(
             (metric_value.metric, metric_value.table_type)
@@ -125,6 +133,14 @@ class DynamicWorkbookService:
                 metric_value.value_year,
                 metric_value.table_type,
             ): metric_value.value
+            for metric_value in metric_values
+        }
+        metric_value_by_key = {
+            (
+                metric_value.metric,
+                metric_value.value_year,
+                metric_value.table_type,
+            ): metric_value
             for metric_value in metric_values
         }
 
@@ -140,6 +156,25 @@ class DynamicWorkbookService:
                 if value is not None:
                     written += 1
             worksheet.append(row)
+            row_number = worksheet.max_row
+            for year_index, year in enumerate(years, start=2):
+                metric_value = metric_value_by_key.get((metric, year, table_type))
+                if metric_value is None or metric_value.value is None:
+                    continue
+                self._last_cell_mapping_drafts.append(
+                    WorkbookCellMappingDraft(
+                        metric=metric_value.metric,
+                        value_year=metric_value.value_year,
+                        source_report_year=metric_value.source_report_year,
+                        table_type=metric_value.table_type,
+                        sheet_name=worksheet.title,
+                        row=row_number,
+                        column=year_index,
+                        cell_reference=f"{get_column_letter(year_index)}{row_number}",
+                        write_status="written",
+                        written_value=metric_value.value,
+                    )
+                )
 
         _autosize_columns(worksheet)
         return written

@@ -21,6 +21,7 @@ from workbook_population.interfaces.workbook_population_service import (
     IWorkbookPopulationService,
 )
 from workbook_population.models.sheet_validation_result import SheetValidationResult
+from workbook_population.models.workbook_cell_mapping import WorkbookCellMappingDraft
 from workbook_population.models.workbook_result import WorkbookResult
 from workbook_population.services.dynamic_workbook_service import DynamicWorkbookService
 from workbook_population.services.template_population_service import (
@@ -61,6 +62,13 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
             dynamic_workbook_service or DynamicWorkbookService()
         )
         self._logger = log or logger
+        self._last_cell_mapping_drafts: list[WorkbookCellMappingDraft] = []
+
+    @property
+    def last_cell_mapping_drafts(self) -> list[WorkbookCellMappingDraft]:
+        """Return authoritative cell mappings from the most recent workbook run."""
+
+        return list(self._last_cell_mapping_drafts)
 
     def generate_workbook(
         self,
@@ -71,6 +79,7 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
         """Generate or populate an Excel workbook from normalized financial data."""
 
         self._validate_inputs(metric_values)
+        self._last_cell_mapping_drafts = []
         output_file_path = str(self._build_unique_output_file_path())
         warnings: list[str] = []
         workbook_match_score = 0.0
@@ -109,6 +118,9 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
                     )
                 )
                 warnings.extend(populate_warnings)
+                self._last_cell_mapping_drafts = (
+                    self._template_population_service.last_cell_mapping_drafts
+                )
                 return self._result(
                     output_file_path=output_file_path,
                     workbook_mode=self._workbook_mode_for_validation(
@@ -130,6 +142,9 @@ class OpenPyXLWorkbookPopulationService(IWorkbookPopulationService):
             )
         )
         warnings.extend(dynamic_warnings)
+        self._last_cell_mapping_drafts = (
+            self._dynamic_workbook_service.last_cell_mapping_drafts
+        )
         return self._result(
             output_file_path=output_file_path,
             workbook_mode=DYNAMIC_WORKBOOK_MODE,

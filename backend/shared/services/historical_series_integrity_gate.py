@@ -87,6 +87,7 @@ class HistoricalSeriesIntegrityGate:
     growth, calculate CAGR, or repair OCR output.
     """
 
+    gate_version: str = "1.0.0"
     default_metrics: tuple[str, ...] = MVP_HISTORICAL_SERIES_METRICS
 
     def evaluate(

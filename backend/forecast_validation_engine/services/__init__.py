@@ -1,5 +1,7 @@
 """Forecast Validation Engine framework services."""
 
+from .forecast_validation_orchestrator import ForecastValidationOrchestrator
+from .revenue_validation_service import RevenueValidationService
 from .validation_framework import (
     ConfidenceComposer,
     ForecastValidationFramework,
@@ -12,6 +14,8 @@ from .validation_framework import (
 __all__ = [
     "ConfidenceComposer",
     "ForecastValidationFramework",
+    "ForecastValidationOrchestrator",
+    "RevenueValidationService",
     "ValidationAdmissionService",
     "ValidationRule",
     "ValidationRuleRegistry",

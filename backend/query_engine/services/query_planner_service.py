@@ -30,14 +30,16 @@ _COMPARISON_SPLIT_PATTERN = re.compile(r"\b(?:and|vs|versus|with|to)\b")
 _STOPWORD_PATTERN = re.compile(
     r"\b("
     r"what|was|were|is|are|the|a|an|of|for|in|during|as|at|on|by|"
+    r"this|that|there|"
     r"to|"
     r"show|me|please|value|values|metric|metrics|financial|financials|"
     r"calculate|cagr|compound|annual|rate|rates|last|years|"
     r"growth|grew|increase|increased|decrease|decreased|decline|declined|"
     r"trend|history|historical|series|over|time|compare|comparison|"
-    r"conflict|conflicts|conflicting|competing|candidate|candidates|"
+    r"conflict|conflicts|conflicting|competing|candidate|candidates|unresolved|"
     r"why|selected|select|selection|source|provenance|citation|citations|"
-    r"where|from|explain|did|does|do|come|came|origin|originate|originated"
+    r"where|from|explain|did|does|do|come|came|origin|originate|originated|"
+    r"chosen|choose|choosing"
     r")\b"
 )
 

@@ -267,6 +267,18 @@ def test_comparison_query_plan() -> None:
     assert plan.is_valid is True
 
 
+def test_cash_and_debt_comparison_query_plan() -> None:
+    plan = _planner_service().plan(QueryRequest(raw_query="Compare cash and debt."))
+
+    assert isinstance(plan, MetricComparisonPlan)
+    assert plan.intent == QueryIntent.METRIC_COMPARISON
+    assert plan.requested_metric == "cash"
+    assert plan.comparison_metric == "debt"
+    assert plan.resolved_metric == "cash_and_cash_equivalents"
+    assert plan.resolved_comparison_metric == "total_debt"
+    assert plan.is_valid is True
+
+
 def test_conflict_query_plan() -> None:
     plan = _planner_service().plan(
         QueryRequest(raw_query="Show conflicting values for cash.")
@@ -279,6 +291,18 @@ def test_conflict_query_plan() -> None:
     assert plan.is_valid is True
 
 
+def test_unresolved_debt_conflict_query_plan() -> None:
+    plan = _planner_service().plan(
+        QueryRequest(raw_query="Are there unresolved debt conflicts?")
+    )
+
+    assert isinstance(plan, ConflictPlan)
+    assert plan.intent == QueryIntent.CONFLICT_EXPLANATION
+    assert plan.requested_metric == "debt"
+    assert plan.resolved_metric == "total_debt"
+    assert plan.is_valid is True
+
+
 def test_provenance_query_plan() -> None:
     plan = _planner_service().plan(QueryRequest(raw_query="Why was EPS selected?"))
 
@@ -286,6 +310,18 @@ def test_provenance_query_plan() -> None:
     assert plan.intent == QueryIntent.PROVENANCE_LOOKUP
     assert plan.requested_metric == "eps"
     assert plan.resolved_metric == "earnings_per_share"
+    assert plan.is_valid is True
+
+
+def test_contextual_cash_provenance_query_plan() -> None:
+    plan = _planner_service().plan(
+        QueryRequest(raw_query="Why was this cash value chosen?")
+    )
+
+    assert isinstance(plan, ProvenancePlan)
+    assert plan.intent == QueryIntent.PROVENANCE_LOOKUP
+    assert plan.requested_metric == "cash"
+    assert plan.resolved_metric == "cash_and_cash_equivalents"
     assert plan.is_valid is True
 
 

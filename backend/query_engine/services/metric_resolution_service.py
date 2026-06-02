@@ -40,7 +40,14 @@ _PREFERRED_CANONICAL_BY_QUERY = {
 
 _BROAD_PARENT_PREFERENCES_BY_QUERY = {
     "cash": ("cash_and_cash_equivalents", "cash_and_bank_balances"),
-    "debt": ("total_debt",),
+    "debt": (
+        "total_debt",
+        "net_debt",
+        "gross_debt",
+        "long_term_debt",
+        "short_term_debt",
+        "current_portion_long_term_debt",
+    ),
     "equity": ("total_equity", "equity"),
     "revenue": ("revenue",),
     "total_debt": ("total_debt",),

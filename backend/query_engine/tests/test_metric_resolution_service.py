@@ -57,9 +57,11 @@ def _mapping(
     ).to_record(workbook_fingerprint)
 
 
-def _resolution_service() -> MetricResolutionService:
+def _resolution_service(
+    metrics: list[str] | None = None,
+) -> MetricResolutionService:
     workbook_fingerprint = "fp_phase2_5"
-    metrics = [
+    metrics = metrics or [
         "revenue",
         "revenue_per_employee",
         "earnings_per_share",
@@ -138,6 +140,21 @@ def test_metric_resolution_debt_returns_candidates() -> None:
     assert "total_debt" in candidate_metrics
     assert "current_portion_long_term_debt" in candidate_metrics
     assert "debt_to_equity" in candidate_metrics
+
+
+def test_metric_resolution_debt_falls_back_to_representative_aggregate() -> None:
+    result = _resolution_service(
+        metrics=[
+            "current_portion_long_term_debt",
+            "debt_to_equity",
+            "cash_and_cash_equivalents",
+        ]
+    ).resolve_metric("Debt")
+
+    assert result.resolved_metric == "current_portion_long_term_debt"
+    assert result.best_candidate is not None
+    assert result.best_candidate.confidence == 0.99
+    assert result.best_candidate.available_in_dataset is True
 
 
 def test_metric_resolution_total_debt_with_punctuation() -> None:

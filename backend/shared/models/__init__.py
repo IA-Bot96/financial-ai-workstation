@@ -7,15 +7,33 @@ from .financial_year_consolidation import (
     ConsolidationGroup,
     FinancialYearConsolidationResult,
 )
+from .historical_series_integrity import (
+    CandidateSpreadEvidence,
+    HistoricalSeriesIntegrityGateResult,
+    HistoricalSeriesIntegrityIssue,
+    HistoricalSeriesIntegrityResult,
+    IntegrityEvidence,
+    ScaleConsistencyResult,
+    SeriesValueCandidateEvidence,
+    YoYScaleEvidence,
+)
 from .metric_value import MetricValue
 from .report import Report
 
 __all__ = [
+    "CandidateSpreadEvidence",
     "CompanyContext",
     "ConsolidationCandidate",
     "ConsolidationGroup",
     "FinancialFact",
     "FinancialYearConsolidationResult",
+    "HistoricalSeriesIntegrityGateResult",
+    "HistoricalSeriesIntegrityIssue",
+    "HistoricalSeriesIntegrityResult",
+    "IntegrityEvidence",
     "MetricValue",
     "Report",
+    "ScaleConsistencyResult",
+    "SeriesValueCandidateEvidence",
+    "YoYScaleEvidence",
 ]

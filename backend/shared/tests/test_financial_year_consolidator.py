@@ -647,6 +647,186 @@ def test_consolidator_prefers_statement_source_over_note_for_millat_metric(
     )
 
 
+def test_consolidator_prefers_headline_statement_over_high_confidence_note(
+) -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "revenue",
+                2025,
+                25_417_143,
+                2025,
+                page_number=320,
+                table_type="revenue_note",
+            ),
+            _metric_value(
+                "revenue",
+                2025,
+                124_511_744_000,
+                2025,
+                page_number=164,
+                table_type="income_statement",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "and liabilities is as follows: - Revenue",
+                "revenue",
+                2025,
+                2025,
+                1.0,
+            ),
+            _mapping("Turnover", "revenue", 2025, 2025, 0.96),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 124_511_744_000
+    assert consolidated[0].table_type == "income_statement"
+    group = consolidator.last_diagnostics.groups[0]
+    assert group.selected["table_type"] == "income_statement"
+    assert group.removed[0]["table_type"] == "revenue_note"
+    assert group.resolution_reason == "preferred_financial_statement_source"
+
+
+def test_consolidator_prefers_headline_statement_over_analysis_table(
+) -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "total_assets",
+                2025,
+                100,
+                2025,
+                page_number=163,
+                table_type="vertical_analysis",
+            ),
+            _metric_value(
+                "total_assets",
+                2025,
+                266_748_030_000,
+                2025,
+                page_number=163,
+                table_type="balance_sheet",
+            ),
+        ],
+        mappings=[
+            _mapping("Total Assets", "total_assets", 2025, 2025, 1.0),
+            _mapping("Total Assets", "total_assets", 2025, 2025, 0.96),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 266_748_030_000
+    assert consolidated[0].table_type == "balance_sheet"
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "preferred_financial_statement_source"
+    )
+
+
+def test_consolidator_prefers_cash_flow_statement_for_operating_cash_flow(
+) -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "operating_cash_flow",
+                2025,
+                27_573,
+                2025,
+                page_number=162,
+                table_type="balance_sheet",
+            ),
+            _metric_value(
+                "operating_cash_flow",
+                2025,
+                27_572_567,
+                2025,
+                page_number=243,
+                table_type="cash_flow_statement",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "Net Cash from Operating Activities",
+                "operating_cash_flow",
+                2025,
+                2025,
+                1.0,
+            ),
+            _mapping(
+                "Net cash generated from operating activities",
+                "operating_cash_flow",
+                2025,
+                2025,
+                0.96,
+            ),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 27_572_567
+    assert consolidated[0].table_type == "cash_flow_statement"
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "preferred_financial_statement_source"
+    )
+
+
+def test_consolidator_preserves_unresolved_statement_conflict_after_source_policy(
+) -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "profit_after_tax",
+                2025,
+                84_498_377,
+                2025,
+                page_number=293,
+                table_type="taxation_note",
+            ),
+            _metric_value(
+                "profit_after_tax",
+                2025,
+                33_092_162_000,
+                2025,
+                page_number=164,
+                table_type="income_statement",
+            ),
+            _metric_value(
+                "profit_after_tax",
+                2025,
+                26_580,
+                2025,
+                page_number=164,
+                table_type="income_statement",
+            ),
+        ],
+        mappings=[
+            _mapping("Profit after taxation", "profit_after_tax", 2025, 2025, 1.0),
+            _mapping("Profit after taxation", "profit_after_tax", 2025, 2025, 0.96),
+            _mapping("Profit after taxation", "profit_after_tax", 2025, 2025, 0.96),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].table_type == "income_statement"
+    assert consolidator.last_diagnostics.unresolved_conflict_groups == 1
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "unresolved_equal_precedence_conflict"
+    )
+
+
 def test_consolidator_marks_unresolved_equal_precedence_conflicts() -> None:
     result = NormalizationResult(
         tables=[],

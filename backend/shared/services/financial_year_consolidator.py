@@ -19,6 +19,37 @@ from shared.models.metric_value import MetricValue
 
 logger = logging.getLogger(__name__)
 
+_HEADLINE_METRIC_PRIMARY_TABLES: dict[str, tuple[str, ...]] = {
+    "revenue": ("income_statement", "statement_of_profit_or_loss"),
+    "profit_after_tax": ("income_statement", "statement_of_profit_or_loss"),
+    "operating_profit": ("income_statement", "statement_of_profit_or_loss"),
+    "gross_profit": ("income_statement", "statement_of_profit_or_loss"),
+    "total_assets": ("balance_sheet", "statement_of_financial_position"),
+    "cash_and_cash_equivalents": (
+        "balance_sheet",
+        "statement_of_financial_position",
+    ),
+    "operating_cash_flow": ("cash_flow_statement", "statement_of_cash_flows"),
+}
+
+_HEADLINE_METRIC_LABEL_PATTERNS: dict[str, str] = {
+    "revenue": r"\b(?:turnover|net revenue|revenue|sales)\b",
+    "profit_after_tax": (
+        r"\b(?:profit after tax(?:ation)?|profit for the year|"
+        r"net profit|profit attributable)\b"
+    ),
+    "operating_profit": (
+        r"\b(?:operating profit|operating income|profit from operations|ebit)\b"
+    ),
+    "gross_profit": r"\bgross profit\b",
+    "total_assets": r"\btotal assets\b",
+    "cash_and_cash_equivalents": r"\bcash (?:and|&) cash equivalents\b",
+    "operating_cash_flow": (
+        r"\b(?:net cash (?:generated|from|provided)|"
+        r"cash generated from operating|operating activities)\b"
+    ),
+}
+
 
 @dataclass(frozen=True)
 class _MetricValueCandidate:
@@ -375,6 +406,7 @@ def _deterministic_auto_resolution(
         _select_statement_eps,
         _select_cash_bank_primary_consensus,
         _select_revenue_full_statement_amount,
+        _select_headline_financial_statement_source,
     )
     for selector in selectors:
         selected = selector(candidates)
@@ -404,7 +436,12 @@ def _is_audited_non_tie_resolution_signature(
             )
         )
     if metric_value.metric == "revenue":
-        return metric_value.value_year in {2021, 2022}
+        return (
+            metric_value.value_year in {2021, 2022}
+            or _has_headline_source_precedence_candidate(candidates)
+        )
+    if metric_value.metric in _HEADLINE_METRIC_PRIMARY_TABLES:
+        return _has_headline_source_precedence_candidate(candidates)
     return False
 
 
@@ -577,6 +614,112 @@ def _select_revenue_full_statement_amount(
         ),
         "auto_revenue_full_statement_scale_reconciliation",
     )
+
+
+def _select_headline_financial_statement_source(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Prefer statement-level candidates for audited headline metrics."""
+
+    if not candidates:
+        return None
+
+    metric = candidates[0].metric_value.metric
+    if metric not in _HEADLINE_METRIC_PRIMARY_TABLES:
+        return None
+    if not _has_headline_source_precedence_candidate(candidates):
+        return None
+
+    ranked_candidates = [
+        (candidate, _headline_source_tier(candidate))
+        for candidate in candidates
+    ]
+    max_tier = max(tier for _, tier in ranked_candidates)
+    current_best_tier = max_tier
+    if max_tier < 4:
+        return None
+
+    top_candidates = [
+        candidate
+        for candidate, tier in ranked_candidates
+        if tier == max_tier
+    ]
+    if not top_candidates:
+        return None
+
+    selected = _best_candidate(
+        top_candidates,
+        table_preference=_HEADLINE_METRIC_PRIMARY_TABLES[metric],
+    )
+    if _headline_source_tier(selected) < current_best_tier:
+        return None
+
+    return (
+        selected,
+        "preferred_financial_statement_source",
+    )
+
+
+def _has_headline_source_precedence_candidate(
+    candidates: list[_MetricValueCandidate],
+) -> bool:
+    """Return whether headline source precedence can improve candidate selection."""
+
+    if not candidates:
+        return False
+
+    best_tier = max(_headline_source_family_tier(candidate) for candidate in candidates)
+    if best_tier < 4:
+        return False
+    return any(
+        _headline_source_family_tier(candidate) < best_tier
+        for candidate in candidates
+    )
+
+
+def _headline_source_tier(candidate: _MetricValueCandidate) -> int:
+    """Return metric-specific source tier for audited headline metrics."""
+
+    metric = candidate.metric_value.metric
+    table_type = candidate.metric_value.table_type.strip().lower()
+    if metric not in _HEADLINE_METRIC_PRIMARY_TABLES:
+        return 0
+
+    if (
+        table_type in _HEADLINE_METRIC_PRIMARY_TABLES[metric]
+        and _headline_label_matches(candidate)
+    ):
+        return 4
+    if _source_class(candidate.metric_value.table_type) == "note_disclosure":
+        return 3
+    if _is_ratio_or_analysis_source(candidate):
+        return 1
+    return 2
+
+
+def _headline_label_matches(candidate: _MetricValueCandidate) -> bool:
+    """Return whether the source label matches its headline metric semantics."""
+
+    pattern = _HEADLINE_METRIC_LABEL_PATTERNS.get(candidate.metric_value.metric)
+    if pattern is None:
+        return False
+    return bool(re.search(pattern, candidate.original_metric, re.IGNORECASE))
+
+
+def _headline_source_family_tier(candidate: _MetricValueCandidate) -> int:
+    """Return source-family tier without using label quality as a source proxy."""
+
+    metric = candidate.metric_value.metric
+    table_type = candidate.metric_value.table_type.strip().lower()
+    if metric not in _HEADLINE_METRIC_PRIMARY_TABLES:
+        return 0
+    if table_type in _HEADLINE_METRIC_PRIMARY_TABLES[metric]:
+        return 4
+    if _source_class(candidate.metric_value.table_type) == "note_disclosure":
+        return 3
+    if _is_ratio_or_analysis_source(candidate):
+        return 1
+    return 2
 
 
 def _candidate_quality_key(
@@ -919,6 +1062,14 @@ def _has_unresolved_top_tie(
         auto_resolution is not None
         and auto_resolution[0] is selected_candidate
     ):
+        if (
+            auto_resolution[1] == "preferred_financial_statement_source"
+            and _has_unresolved_headline_top_tier_conflict(
+                candidates,
+                selected_candidate,
+            )
+        ):
+            return True
         return False
 
     return _has_base_unresolved_top_tie(candidates, selected_candidate)
@@ -945,6 +1096,29 @@ def _has_base_unresolved_top_tie(
     return len(tied_values) > 1
 
 
+def _has_unresolved_headline_top_tier_conflict(
+    candidates: list[_MetricValueCandidate],
+    selected_candidate: _MetricValueCandidate,
+) -> bool:
+    """Return whether headline source precedence left top-tier values conflicted."""
+
+    selected_tier = _headline_source_tier(selected_candidate)
+    if selected_tier < 4:
+        return False
+    top_tier_candidates = [
+        candidate
+        for candidate in candidates
+        if _headline_source_tier(candidate) == selected_tier
+        and candidate.metric_value.source_report_year
+        == selected_candidate.metric_value.source_report_year
+    ]
+    top_tier_values = {
+        _stable_value_text(candidate.metric_value.value)
+        for candidate in top_tier_candidates
+    }
+    return len(top_tier_values) > 1
+
+
 def _resolution_reason(
     *,
     selected_candidate: _MetricValueCandidate,
@@ -958,6 +1132,11 @@ def _resolution_reason(
         auto_resolution is not None
         and auto_resolution[0] is selected_candidate
     ):
+        if (
+            unresolved_conflict
+            and auto_resolution[1] == "preferred_financial_statement_source"
+        ):
+            return "unresolved_equal_precedence_conflict"
         return auto_resolution[1]
 
     if unresolved_conflict:

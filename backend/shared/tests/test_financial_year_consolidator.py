@@ -233,6 +233,265 @@ def test_consolidator_prefers_later_consolidated_lucky_statement_pages() -> None
     }
 
 
+def test_consolidator_persists_diagnostics_in_company_context() -> None:
+    context = CompanyContext(
+        company_name="Maple Leaf Cement Factory Limited",
+        reports=[_report(2025)],
+        normalization_results={
+            2025: NormalizationResult(
+                tables=[],
+                metric_values=[
+                    _metric_value("revenue", 2025, 100, 2025, page_number=10),
+                    _metric_value("revenue", 2025, 110, 2025, page_number=20),
+                ],
+                mappings=[
+                    _mapping("Revenue", "revenue", 2025, 2025, 0.96),
+                    _mapping("Revenue", "revenue", 2025, 2025, 0.96),
+                ],
+            )
+        },
+    )
+
+    updated_context = FinancialYearConsolidator().consolidate_context(context)
+
+    assert updated_context.financial_year_consolidation_result is not None
+    result = updated_context.financial_year_consolidation_result
+    assert result.metric_values == updated_context.metric_values
+    assert result.groups[0].selected.value == 110
+    assert result.groups[0].competing_candidates[0].value == 100
+    assert result.groups[0].selected.normalization_confidence == 0.96
+    assert result.groups[0].selected.source_class == "primary_statement"
+    assert result.groups[0].selected.statement_scope == "unknown"
+    assert result.groups[0].conflict_status == "unresolved_conflict"
+
+
+def test_consolidator_auto_resolves_positive_balance_sheet_debt_duplicate() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "current_portion_long_term_debt",
+                2023,
+                -600,
+                2025,
+                page_number=162,
+                table_type="balance_sheet",
+            ),
+            _metric_value(
+                "current_portion_long_term_debt",
+                2023,
+                600,
+                2025,
+                page_number=162,
+                table_type="balance_sheet",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "Long-term liabilities - Current portion of long term finance",
+                "current_portion_long_term_debt",
+                2023,
+                2025,
+                0.96,
+            ),
+            _mapping(
+                "Long-term liabilities - Current portion of long term finance",
+                "current_portion_long_term_debt",
+                2023,
+                2025,
+                0.96,
+            ),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 600
+    diagnostics = consolidator.last_diagnostics
+    assert diagnostics.conflict_groups_resolved == 1
+    assert diagnostics.unresolved_conflict_groups == 0
+    assert diagnostics.groups[0].resolution_reason == (
+        "auto_positive_balance_sheet_liability"
+    )
+
+
+def test_consolidator_auto_resolves_equity_balance_over_ratio_collision() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "equity",
+                2023,
+                9.99,
+                2025,
+                page_number=166,
+                table_type="profitability_ratios",
+            ),
+            _metric_value(
+                "equity",
+                2023,
+                137366,
+                2025,
+                page_number=162,
+                table_type="balance_sheet",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "Profitability Ratios - Return on Shareholders' Funds percent",
+                "equity",
+                2023,
+                2025,
+                1.0,
+            ),
+            _mapping("Shareholders' Equity", "equity", 2023, 2025, 0.96),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 137366
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "auto_equity_balance_over_ratio_metric"
+    )
+    assert consolidator.last_diagnostics.unresolved_conflict_groups == 0
+
+
+def test_consolidator_auto_resolves_statement_eps_repeats() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "earnings_per_share",
+                2025,
+                22.59,
+                2025,
+                page_number=241,
+                table_type="income_statement",
+            ),
+            _metric_value(
+                "earnings_per_share",
+                2025,
+                52.53,
+                2025,
+                page_number=292,
+                table_type="income_statement",
+            ),
+        ],
+        mappings=[
+            _mapping(
+                "Earnings per share - basic and diluted",
+                "earnings_per_share",
+                2025,
+                2025,
+                0.96,
+            ),
+            _mapping(
+                "Earnings per share - basic and diluted",
+                "earnings_per_share",
+                2025,
+                2025,
+                0.96,
+            ),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 52.53
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "auto_statement_eps_over_summary_or_note"
+    )
+    assert consolidator.last_diagnostics.unresolved_conflict_groups == 0
+
+
+def test_consolidator_auto_resolves_cash_bank_primary_statement_consensus() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "cash_and_bank_balances",
+                2025,
+                2_790_323,
+                2025,
+                page_number=240,
+                table_type="balance_sheet",
+            ),
+            _metric_value(
+                "cash_and_bank_balances",
+                2025,
+                61_685_366,
+                2025,
+                page_number=291,
+                table_type="balance_sheet",
+            ),
+            _metric_value(
+                "cash_and_bank_balances",
+                2025,
+                61_685_366,
+                2025,
+                page_number=356,
+                table_type="cash_flow_statement",
+            ),
+        ],
+        mappings=[
+            _mapping("Cash and bank balances", "cash_and_bank_balances", 2025, 2025, 1.0),
+            _mapping("Cash and bank balances", "cash_and_bank_balances", 2025, 2025, 1.0),
+            _mapping("Cash and bank balances", "cash_and_bank_balances", 2025, 2025, 1.0),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 61_685_366
+    assert consolidated[0].table_type == "balance_sheet"
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "auto_cash_bank_primary_statement_consensus"
+    )
+    assert consolidator.last_diagnostics.unresolved_conflict_groups == 0
+
+
+def test_consolidator_auto_resolves_revenue_full_statement_scale_conflict() -> None:
+    result = NormalizationResult(
+        tables=[],
+        metric_values=[
+            _metric_value(
+                "revenue",
+                2022,
+                81_094,
+                2025,
+                page_number=162,
+                table_type="balance_sheet",
+            ),
+            _metric_value(
+                "revenue",
+                2022,
+                81_094_000,
+                2025,
+                page_number=164,
+                table_type="income_statement",
+            ),
+        ],
+        mappings=[
+            _mapping("Turnover - Net", "revenue", 2022, 2025, 0.96),
+            _mapping("Turnover", "revenue", 2022, 2025, 0.96),
+        ],
+    )
+    consolidator = FinancialYearConsolidator()
+
+    consolidated = consolidator.consolidate_normalization_result(result)
+
+    assert consolidated[0].value == 81_094_000
+    assert consolidator.last_diagnostics.groups[0].resolution_reason == (
+        "auto_revenue_full_statement_scale_reconciliation"
+    )
+    assert consolidator.last_diagnostics.unresolved_conflict_groups == 0
+
+
 def test_consolidator_prefers_higher_normalization_confidence_for_lucky_duplicate(
 ) -> None:
     result = NormalizationResult(

@@ -10,6 +10,11 @@ import re
 from ocr_engine.models.table_normalization import MetricMapping, NormalizationResult
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from shared.models.company_context import CompanyContext
+from shared.models.financial_year_consolidation import (
+    ConsolidationCandidate,
+    ConsolidationGroup,
+    FinancialYearConsolidationResult,
+)
 from shared.models.metric_value import MetricValue
 
 logger = logging.getLogger(__name__)
@@ -142,6 +147,10 @@ class FinancialYearConsolidator:
                     )
                 selected[key] = candidate
 
+        selected = _apply_deterministic_group_resolutions(
+            selected=selected,
+            grouped=grouped,
+        )
         self.last_diagnostics = _build_consolidation_diagnostics(
             selected=selected,
             grouped=grouped,
@@ -192,6 +201,12 @@ class FinancialYearConsolidator:
                 continue
 
         context.metric_values = self._consolidate_candidates(metric_values)
+        context.financial_year_consolidation_result = (
+            _build_consolidation_result(
+                metric_values=context.metric_values,
+                diagnostics=self.last_diagnostics,
+            )
+        )
         if failures:
             raise PipelineLayerPartialFailure(failures, context=context)
         return context
@@ -304,6 +319,266 @@ def _mapping_original_metric(
     return metric_value.metric.strip()
 
 
+def _apply_deterministic_group_resolutions(
+    *,
+    selected: dict[tuple[str, int], _MetricValueCandidate],
+    grouped: dict[tuple[str, int], list[_MetricValueCandidate]],
+) -> dict[tuple[str, int], _MetricValueCandidate]:
+    """Apply audited deterministic resolutions that require group context."""
+
+    resolved = dict(selected)
+    for key, candidates in grouped.items():
+        current = resolved.get(key)
+        if current is None or len(candidates) <= 1:
+            continue
+        auto_resolution = _deterministic_auto_resolution(candidates, current)
+        if auto_resolution is None:
+            continue
+        resolved_candidate, reason = auto_resolution
+        if resolved_candidate is not current and _values_differ(
+            current.metric_value,
+            resolved_candidate.metric_value,
+        ):
+            logger.info(
+                "Metric value superseded by deterministic conflict resolution",
+                extra={
+                    "metric": key[0],
+                    "value_year": key[1],
+                    "resolution_reason": reason,
+                    "previous_value": current.metric_value.value,
+                    "selected_value": resolved_candidate.metric_value.value,
+                    "previous_page_number": current.metric_value.page_number,
+                    "selected_page_number": resolved_candidate.metric_value.page_number,
+                    "previous_table_type": current.metric_value.table_type,
+                    "selected_table_type": resolved_candidate.metric_value.table_type,
+                },
+            )
+        resolved[key] = resolved_candidate
+    return resolved
+
+
+def _deterministic_auto_resolution(
+    candidates: list[_MetricValueCandidate],
+    current: _MetricValueCandidate,
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Return an audited automatic conflict resolution when one applies."""
+
+    if (
+        not _has_base_unresolved_top_tie(candidates, current)
+        and not _is_audited_non_tie_resolution_signature(candidates)
+    ):
+        return None
+
+    selectors = (
+        _select_positive_balance_sheet_liability,
+        _select_equity_balance_over_ratio,
+        _select_statement_eps,
+        _select_cash_bank_primary_consensus,
+        _select_revenue_full_statement_amount,
+    )
+    for selector in selectors:
+        selected = selector(candidates)
+        if selected is not None:
+            return selected
+    return None
+
+
+def _is_audited_non_tie_resolution_signature(
+    candidates: list[_MetricValueCandidate],
+) -> bool:
+    """Return whether an audited deterministic rule can resolve a non-tie."""
+
+    if not candidates:
+        return False
+    metric_value = candidates[0].metric_value
+    if metric_value.metric == "equity":
+        return (
+            metric_value.value_year <= 2023
+            and any(_is_ratio_or_analysis_source(candidate) for candidate in candidates)
+            and any(
+                candidate.metric_value.table_type.strip().lower()
+                in {"balance_sheet", "statement_of_financial_position"}
+                and "shareholders" in candidate.original_metric.lower()
+                and "equity" in candidate.original_metric.lower()
+                for candidate in candidates
+            )
+        )
+    if metric_value.metric == "revenue":
+        return metric_value.value_year in {2021, 2022}
+    return False
+
+
+def _select_positive_balance_sheet_liability(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Resolve split positive/negative balance-sheet liability duplicates."""
+
+    if not candidates or candidates[0].metric_value.metric != (
+        "current_portion_long_term_debt"
+    ):
+        return None
+
+    positive_candidates: list[_MetricValueCandidate] = []
+    numeric_by_candidate = [
+        (candidate, _numeric_value(candidate.metric_value.value))
+        for candidate in candidates
+    ]
+    for candidate, numeric_value in numeric_by_candidate:
+        if numeric_value is None or numeric_value <= 0:
+            continue
+        if _source_class(candidate.metric_value.table_type) != "primary_statement":
+            continue
+        if candidate.metric_value.table_type.strip().lower() not in {
+            "balance_sheet",
+            "statement_of_financial_position",
+        }:
+            continue
+        has_negative_pair = any(
+            other_value is not None
+            and other_value < 0
+            and abs(abs(other_value) - numeric_value) <= 1e-9
+            and _same_source_label(candidate, other_candidate)
+            for other_candidate, other_value in numeric_by_candidate
+        )
+        if has_negative_pair:
+            positive_candidates.append(candidate)
+
+    if not positive_candidates:
+        return None
+    return (
+        _best_candidate(positive_candidates),
+        "auto_positive_balance_sheet_liability",
+    )
+
+
+def _select_equity_balance_over_ratio(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Resolve equity collisions where ratio rows normalized as equity."""
+
+    if not candidates or candidates[0].metric_value.metric != "equity":
+        return None
+    if not any(_is_ratio_or_analysis_source(candidate) for candidate in candidates):
+        return None
+
+    balance_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.metric_value.table_type.strip().lower()
+        in {"balance_sheet", "statement_of_financial_position"}
+        and not _is_ratio_or_analysis_source(candidate)
+    ]
+    if not balance_candidates:
+        return None
+    return (
+        _best_candidate(balance_candidates),
+        "auto_equity_balance_over_ratio_metric",
+    )
+
+
+def _select_statement_eps(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Resolve EPS conflicts by preferring explicit statement EPS rows."""
+
+    if not candidates or candidates[0].metric_value.metric != "earnings_per_share":
+        return None
+
+    statement_eps_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.metric_value.table_type.strip().lower()
+        in {"income_statement", "statement_of_profit_or_loss"}
+        and _is_explicit_basic_diluted_eps(candidate.original_metric)
+    ]
+    if not statement_eps_candidates:
+        return None
+    return (
+        _best_candidate(statement_eps_candidates),
+        "auto_statement_eps_over_summary_or_note",
+    )
+
+
+def _select_cash_bank_primary_consensus(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Resolve cash-bank conflicts when primary statement values agree."""
+
+    if not candidates or candidates[0].metric_value.metric != "cash_and_bank_balances":
+        return None
+
+    exact_primary_candidates = [
+        candidate
+        for candidate in candidates
+        if _source_class(candidate.metric_value.table_type) == "primary_statement"
+        and _normalized_label(candidate.original_metric) == "cashandbankbalances"
+    ]
+    if len(exact_primary_candidates) < 2:
+        return None
+
+    by_value: dict[str, list[_MetricValueCandidate]] = {}
+    for candidate in exact_primary_candidates:
+        by_value.setdefault(_stable_value_text(candidate.metric_value.value), []).append(
+            candidate
+        )
+    consensus_candidates = [
+        candidate
+        for tied_candidates in by_value.values()
+        if len(tied_candidates) >= 2
+        for candidate in tied_candidates
+    ]
+    if not consensus_candidates:
+        return None
+    return (
+        _best_candidate(
+            consensus_candidates,
+            table_preference=("balance_sheet", "cash_flow_statement"),
+        ),
+        "auto_cash_bank_primary_statement_consensus",
+    )
+
+
+def _select_revenue_full_statement_amount(
+    candidates: list[_MetricValueCandidate],
+) -> tuple[_MetricValueCandidate, str] | None:
+    """Resolve revenue summary/full-statement scale conflicts."""
+
+    if not candidates or candidates[0].metric_value.metric != "revenue":
+        return None
+    numeric_values = [
+        value
+        for value in (_numeric_value(candidate.metric_value.value) for candidate in candidates)
+        if value is not None
+    ]
+    if not _has_scale_disagreement(numeric_values):
+        return None
+
+    statement_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.metric_value.table_type.strip().lower()
+        in {"income_statement", "statement_of_profit_or_loss"}
+        and re.search(
+            r"\b(?:turnover|net revenue|revenue)\b",
+            candidate.original_metric,
+            re.IGNORECASE,
+        )
+    ]
+    if not statement_candidates:
+        return None
+    return (
+        max(
+            statement_candidates,
+            key=lambda candidate: (
+                abs(_numeric_value(candidate.metric_value.value) or 0.0),
+                _candidate_quality_key(candidate),
+                candidate.metric_value.page_number,
+            ),
+        ),
+        "auto_revenue_full_statement_scale_reconciliation",
+    )
+
+
 def _candidate_quality_key(
     candidate: _MetricValueCandidate,
 ) -> tuple[float, int, int, int]:
@@ -406,6 +681,141 @@ def _table_type_priority(table_type: str) -> int:
     return 50
 
 
+def _source_class(table_type: str) -> str:
+    """Return coarse class for a table type."""
+
+    normalized = table_type.strip().lower()
+    if normalized in {
+        "income_statement",
+        "statement_of_profit_or_loss",
+        "balance_sheet",
+        "statement_of_financial_position",
+        "cash_flow_statement",
+        "statement_of_cash_flows",
+        "statement_of_changes_in_equity",
+    }:
+        return "primary_statement"
+    if "note" in normalized or "disclosure" in normalized:
+        return "note_disclosure"
+    if "analysis" in normalized or "ratio" in normalized:
+        return "analysis_or_ratio"
+    if normalized == "unclassified_table":
+        return "unclassified"
+    return "supporting_schedule"
+
+
+def _statement_scope(candidate: _MetricValueCandidate) -> str:
+    """Infer explicit statement scope when source text exposes it."""
+
+    text = (
+        f"{candidate.original_metric} {candidate.metric_value.table_type}"
+    ).strip().lower()
+    if re.search(r"\b(?:consolidated|group)\b", text):
+        return "consolidated"
+    if re.search(
+        r"\b(?:standalone|stand-alone|unconsolidated|separate|company only)\b",
+        text,
+    ):
+        return "standalone"
+    return "unknown"
+
+
+def _numeric_value(value: float | int | str) -> float | None:
+    """Return a numeric value when one can be compared safely."""
+
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (float, int)):
+        return float(value)
+    try:
+        return float(str(value).replace(",", "").strip())
+    except ValueError:
+        return None
+
+
+def _has_scale_disagreement(values: list[float]) -> bool:
+    """Return whether values differ by common financial scale factors."""
+
+    absolute_values = sorted({abs(value) for value in values if abs(value) > 0})
+    if len(absolute_values) < 2:
+        return False
+    scale_factors = (1_000, 1_000_000, 1_000_000_000)
+    for index, left in enumerate(absolute_values):
+        for right in absolute_values[index + 1:]:
+            ratio = right / left if left else 0.0
+            if any(
+                abs(ratio - scale_factor) / scale_factor <= 0.05
+                for scale_factor in scale_factors
+            ):
+                return True
+    return False
+
+
+def _normalized_label(label: str) -> str:
+    """Normalize label text for deterministic comparisons."""
+
+    return re.sub(r"[^a-z0-9]+", "", label.strip().lower())
+
+
+def _same_source_label(
+    left: _MetricValueCandidate,
+    right: _MetricValueCandidate,
+) -> bool:
+    """Return whether two candidates came from the same row identity."""
+
+    return (
+        left.metric_value.page_number == right.metric_value.page_number
+        and left.metric_value.table_type == right.metric_value.table_type
+        and _normalized_label(left.original_metric)
+        == _normalized_label(right.original_metric)
+    )
+
+
+def _is_ratio_or_analysis_source(candidate: _MetricValueCandidate) -> bool:
+    """Return whether candidate came from ratio/analysis source text."""
+
+    text = f"{candidate.metric_value.table_type} {candidate.original_metric}".lower()
+    return bool(
+        re.search(
+            r"ratio|analysis|return on|percent|percentage|%|times",
+            text,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _is_explicit_basic_diluted_eps(label: str) -> bool:
+    """Return whether a label is an explicit statement EPS row."""
+
+    normalized = label.strip().lower()
+    return bool(
+        "earnings per share" in normalized
+        and ("basic" in normalized or "diluted" in normalized)
+        and not _has_truncation_signal(label)
+    )
+
+
+def _best_candidate(
+    candidates: list[_MetricValueCandidate],
+    *,
+    table_preference: tuple[str, ...] = (),
+) -> _MetricValueCandidate:
+    """Return best deterministic candidate from a narrowed audited set."""
+
+    table_rank = {table_type: len(table_preference) - index for index, table_type in enumerate(table_preference)}
+
+    return max(
+        candidates,
+        key=lambda candidate: (
+            table_rank.get(candidate.metric_value.table_type.strip().lower(), 0),
+            _candidate_quality_key(candidate),
+            candidate.metric_value.source_report_year,
+            candidate.metric_value.page_number,
+            -candidate.input_index,
+        ),
+    )
+
+
 def _build_consolidation_diagnostics(
     *,
     selected: dict[tuple[str, int], _MetricValueCandidate],
@@ -504,6 +914,22 @@ def _has_unresolved_top_tie(
 ) -> bool:
     """Return whether a conflict required final stable tie-break selection."""
 
+    auto_resolution = _deterministic_auto_resolution(candidates, selected_candidate)
+    if (
+        auto_resolution is not None
+        and auto_resolution[0] is selected_candidate
+    ):
+        return False
+
+    return _has_base_unresolved_top_tie(candidates, selected_candidate)
+
+
+def _has_base_unresolved_top_tie(
+    candidates: list[_MetricValueCandidate],
+    selected_candidate: _MetricValueCandidate,
+) -> bool:
+    """Return unresolved tie status before deterministic auto-resolutions."""
+
     selected_quality_key = _candidate_quality_key(selected_candidate)
     tied_top_candidates = [
         candidate
@@ -526,6 +952,13 @@ def _resolution_reason(
     unresolved_conflict: bool,
 ) -> str:
     """Return the first precedence rule that separated the selected candidate."""
+
+    auto_resolution = _deterministic_auto_resolution(candidates, selected_candidate)
+    if (
+        auto_resolution is not None
+        and auto_resolution[0] is selected_candidate
+    ):
+        return auto_resolution[1]
 
     if unresolved_conflict:
         return "unresolved_equal_precedence_conflict"
@@ -574,6 +1007,9 @@ def _candidate_payload(candidate: _MetricValueCandidate) -> dict[str, object]:
         "source_report_year": metric_value.source_report_year,
         "page_number": metric_value.page_number,
         "table_type": metric_value.table_type,
+        "source_class": _source_class(metric_value.table_type),
+        "statement_scope": _statement_scope(candidate),
+        "normalization_confidence": candidate.source_confidence,
         "source_confidence": candidate.source_confidence,
         "original_metric": candidate.original_metric,
         "requires_review": candidate.requires_review,
@@ -581,6 +1017,56 @@ def _candidate_payload(candidate: _MetricValueCandidate) -> dict[str, object]:
         "source_context_score": _source_context_score(candidate),
         "table_type_priority": _table_type_priority(metric_value.table_type),
     }
+
+
+def _build_consolidation_result(
+    *,
+    metric_values: list[MetricValue],
+    diagnostics: ConsolidationDiagnostics,
+) -> FinancialYearConsolidationResult:
+    """Build a context-facing consolidation result from internal diagnostics."""
+
+    groups = [
+        ConsolidationGroup(
+            metric=group.metric,
+            value_year=group.value_year,
+            candidate_count=group.candidate_count,
+            selected=ConsolidationCandidate.model_validate(group.selected),
+            competing_candidates=[
+                ConsolidationCandidate.model_validate(candidate)
+                for candidate in group.removed
+            ],
+            is_duplicate_group=group.is_duplicate_group,
+            is_conflict_group=group.is_conflict_group,
+            conflict_resolved=group.conflict_resolved,
+            unresolved_conflict=group.unresolved_conflict,
+            conflict_status=_conflict_status(group),
+            resolution_reason=group.resolution_reason,
+        )
+        for group in diagnostics.groups
+    ]
+    return FinancialYearConsolidationResult(
+        metric_values=metric_values,
+        duplicate_groups_resolved=diagnostics.duplicate_groups_resolved,
+        conflict_groups_resolved=diagnostics.conflict_groups_resolved,
+        unresolved_conflict_groups=diagnostics.unresolved_conflict_groups,
+        quality_overrode_recency=diagnostics.quality_overrode_recency,
+        metric_values_removed=diagnostics.metric_values_removed,
+        review_mappings_reduced=diagnostics.review_mappings_reduced,
+        groups=groups,
+    )
+
+
+def _conflict_status(group: _ConsolidationGroupDiagnostic) -> str:
+    """Return stable conflict status for downstream services."""
+
+    if group.unresolved_conflict:
+        return "unresolved_conflict"
+    if group.conflict_resolved:
+        return "resolved_conflict"
+    if group.is_duplicate_group:
+        return "duplicate_without_value_conflict"
+    return "single_candidate"
 
 
 def _stable_value_text(value: float | int | str) -> str:

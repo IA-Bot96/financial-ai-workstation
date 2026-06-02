@@ -13,6 +13,7 @@ from ocr_engine.models.validation_result import ValidationResult
 from ocr_engine.pipeline.models.layer_execution_result import LayerExecutionResult
 from ocr_engine.pipeline.models.pipeline_error import PipelineError
 from ocr_engine.pipeline.models.pipeline_status import PipelineStatus
+from shared.models.financial_year_consolidation import FinancialYearConsolidationResult
 from shared.models.metric_value import MetricValue
 from shared.models.report import Report
 from workbook_population.models.workbook_result import WorkbookResult
@@ -43,6 +44,7 @@ class CompanyContext(BaseModel):
                     "normalization_results": {},
                     "insights_results": {},
                     "metric_values": [],
+                    "financial_year_consolidation_result": None,
                     "workbook_template_path": None,
                     "workbook_result": None,
                     "generated_workbook": None,
@@ -94,6 +96,16 @@ class CompanyContext(BaseModel):
             "Consolidated financial metric values used by Excel population, "
             "trend analysis, querying, forecasting, charting, and copilots."
         ),
+    )
+    financial_year_consolidation_result: FinancialYearConsolidationResult | None = (
+        Field(
+            default=None,
+            description=(
+                "Auditable financial-year consolidation output, including selected "
+                "values, competing candidates, conflict status, and resolution "
+                "provenance."
+            ),
+        )
     )
     workbook_template_path: str | None = Field(
         default=None,

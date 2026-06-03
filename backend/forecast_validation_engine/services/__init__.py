@@ -6,6 +6,7 @@ from .numeric_admission_gate import (
     NumericAdmissionPolicy,
     build_numeric_admission_audit,
 )
+from .msil_numeric_evidence_consumer import MSILNumericEvidenceConsumer
 from .revenue_validation_service import RevenueValidationService
 from .validation_framework import (
     ConfidenceComposer,
@@ -22,6 +23,7 @@ __all__ = [
     "ForecastValidationOrchestrator",
     "NumericAdmissionGate",
     "NumericAdmissionPolicy",
+    "MSILNumericEvidenceConsumer",
     "RevenueValidationService",
     "ValidationAdmissionService",
     "ValidationRule",

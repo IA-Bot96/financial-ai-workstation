@@ -10,6 +10,13 @@ from .coverage_gate import (
 from .insight_to_signal_adapter import InsightToSignalAdapter
 from .mapping_audit import TaxonomyMappingAuditService
 from .mapping_confidence import MappingConfidenceComposer
+from .msil_evidence_adapter import (
+    QAEMSILConsumptionResult,
+    QAEMSILCorroborationApplication,
+    QAEMSILEvidenceAdapter,
+    QAEMSILEvidenceReference,
+    QAEMSILThemeApplicationResult,
+)
 from .orchestrator import (
     QualitativeAnalysisOrchestrator,
     QualitativeAnalysisRunArtifacts,
@@ -36,6 +43,11 @@ __all__ = [
     "CategoryCoverageDecision",
     "InsightToSignalAdapter",
     "MappingConfidenceComposer",
+    "QAEMSILConsumptionResult",
+    "QAEMSILCorroborationApplication",
+    "QAEMSILEvidenceAdapter",
+    "QAEMSILEvidenceReference",
+    "QAEMSILThemeApplicationResult",
     "QualitativeAnalysisOrchestrator",
     "QualitativeAnalysisRunArtifacts",
     "QualitativeCoverageGate",

@@ -24,9 +24,13 @@ from forecast_validation_engine.models.framework import (
     ValidationExecutionResult,
     ValidationRuleResult,
 )
+from forecast_validation_engine.models.numeric_admission import NumericAdmissionGateResult
 from forecast_validation_engine.models.orchestration import (
     ForecastValidationRunResult,
     ForecastValidationRunScorecard,
+)
+from forecast_validation_engine.services.msil_numeric_evidence_consumer import (
+    MSILNumericEvidenceConsumer,
 )
 from forecast_validation_engine.services.validation_framework import (
     ForecastValidationFramework,
@@ -57,10 +61,14 @@ class ForecastValidationOrchestrator:
         self,
         *,
         integrity_gate: HistoricalSeriesIntegrityGate | None = None,
+        msil_numeric_evidence_consumer: MSILNumericEvidenceConsumer | None = None,
     ) -> None:
         """Initialize orchestrator with the historical-series integrity gate."""
 
         self._integrity_gate = integrity_gate or HistoricalSeriesIntegrityGate()
+        self._msil_numeric_evidence_consumer = (
+            msil_numeric_evidence_consumer or MSILNumericEvidenceConsumer()
+        )
 
     def run(
         self,
@@ -73,6 +81,7 @@ class ForecastValidationOrchestrator:
         workbook_fingerprint: str | None = None,
         bundle_fingerprint: str | None = None,
         metrics: Iterable[str] | None = None,
+        numeric_admission_result: NumericAdmissionGateResult | None = None,
     ) -> ForecastValidationRunResult:
         """Execute MVP Forecast Validation orchestration."""
 
@@ -103,6 +112,7 @@ class ForecastValidationOrchestrator:
         warnings: list[str] = []
         executed_categories: list[str] = []
         skipped_categories: list[str] = []
+        msil_numeric_consumption = None
 
         readiness_result = _historical_readiness_category(gate_result)
         _record_category(
@@ -189,6 +199,14 @@ class ForecastValidationOrchestrator:
                 )
             )
 
+        if numeric_admission_result is not None:
+            msil_numeric_consumption = self._msil_numeric_evidence_consumer.consume(
+                numeric_admission_result,
+                forecast_inputs=forecast_input_tuple,
+            )
+            evidence.extend(msil_numeric_consumption.validation_evidence)
+            warnings.extend(msil_numeric_consumption.warnings)
+
         deduped_evidence = _dedupe_evidence(evidence)
         deduped_citations = _dedupe_citations(
             citation
@@ -239,6 +257,12 @@ class ForecastValidationOrchestrator:
                 "category_outcomes": {
                     name: outcome.value for name, outcome in category_outcomes.items()
                 },
+                "msil_phase8c_stage1": msil_numeric_consumption.model_dump(mode="json")
+                if msil_numeric_consumption is not None
+                else None,
+                "msil_phase8c_stage2": msil_numeric_consumption.model_dump(mode="json")
+                if msil_numeric_consumption is not None
+                else None,
             },
         )
 

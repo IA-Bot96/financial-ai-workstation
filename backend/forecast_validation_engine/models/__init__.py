@@ -24,6 +24,14 @@ from .framework import (
     ValidationRuleResult,
 )
 from .metric_validation import MetricValidationContext, MetricValidationResult
+from .msil_integration import (
+    ForecastContextBenchmark,
+    ForecastContextPlausibilityAssessment,
+    ForecastContextPlausibilityStatus,
+    MSILNumericConfidenceAdjustment,
+    MSILNumericEvidenceConsumptionResult,
+    MSILNumericInfluence,
+)
 from .numeric_admission import (
     NumericAdmissionDecision,
     NumericAdmissionGateResult,
@@ -50,6 +58,12 @@ __all__ = [
     "HistoricalBaselineStatus",
     "MetricValidationContext",
     "MetricValidationResult",
+    "ForecastContextBenchmark",
+    "ForecastContextPlausibilityAssessment",
+    "ForecastContextPlausibilityStatus",
+    "MSILNumericConfidenceAdjustment",
+    "MSILNumericEvidenceConsumptionResult",
+    "MSILNumericInfluence",
     "NumericAdmissionDecision",
     "NumericAdmissionGateResult",
     "NumericEvidence",

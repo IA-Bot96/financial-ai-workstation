@@ -24,6 +24,13 @@ from .framework import (
     ValidationRuleResult,
 )
 from .metric_validation import MetricValidationContext, MetricValidationResult
+from .numeric_admission import (
+    NumericAdmissionDecision,
+    NumericAdmissionGateResult,
+    NumericEvidence,
+    NumericEvidenceStatus,
+    NumericRole,
+)
 from .orchestration import (
     ForecastValidationRunResult,
     ForecastValidationRunScorecard,
@@ -43,6 +50,11 @@ __all__ = [
     "HistoricalBaselineStatus",
     "MetricValidationContext",
     "MetricValidationResult",
+    "NumericAdmissionDecision",
+    "NumericAdmissionGateResult",
+    "NumericEvidence",
+    "NumericEvidenceStatus",
+    "NumericRole",
     "RevenueForecastPlausibilityResult",
     "RevenueGrowthValidationResult",
     "RevenueTrendBreakResult",

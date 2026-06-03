@@ -37,6 +37,11 @@ class EvidenceComparisonReason(str, Enum):
     INCOMPATIBLE_TIMELINE_CONTEXT = "incompatible_timeline_context"
     NO_MATERIAL_CONFLICT = "no_material_conflict"
     MISSING_ASSERTION_VALUE = "missing_assertion_value"
+    REFERENCE_ONLY_NUMERIC = "reference_only_numeric"
+    MISSING_FACT_IDENTITY = "missing_fact_identity"
+    DIFFERENT_FACT_IDENTITY = "different_fact_identity"
+    SAME_SOURCE_COMPARISON = "same_source_comparison"
+    SAME_AUTHORITY_COMPARISON = "same_authority_comparison"
 
 
 class CorroborationReference(BaseModel):

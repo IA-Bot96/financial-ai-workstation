@@ -193,12 +193,27 @@ class DivergenceService:
         divergences: list[Divergence] = []
         unresolved: list[DivergenceCandidateDiagnostic] = []
         candidates_evaluated = 0
+        guardrail_triggers: Counter[str] = Counter()
+        skipped_candidates = 0
 
         for members in grouped.values():
             if len(members) < 2:
                 continue
             for left, right in combinations(sorted(members, key=_signal_sort_key), 2):
                 candidates_evaluated += 1
+                eligibility = _divergence_eligibility(left, right)
+                guardrail_triggers.update(reason.value for reason in eligibility["guardrails"])
+                if eligibility["reason"] is not None:
+                    skipped_candidates += 1
+                    unresolved.append(
+                        DivergenceCandidateDiagnostic(
+                            signal_ref_a=left.signal_id or "",
+                            signal_ref_b=right.signal_id or "",
+                            reason=eligibility["reason"],
+                            details=eligibility["details"],
+                        )
+                    )
+                    continue
                 comparison = _material_conflict(left, right)
                 if not comparison["is_conflict"]:
                     unresolved.append(
@@ -265,6 +280,17 @@ class DivergenceService:
                         signal.classification.authority_class.value
                         for signal in signal_list
                     )
+                ),
+                "skipped_divergence_candidates": skipped_candidates,
+                "guardrail_triggers": dict(guardrail_triggers),
+                "same_source_comparisons_skipped": guardrail_triggers.get(
+                    EvidenceComparisonReason.SAME_SOURCE_COMPARISON.value, 0
+                ),
+                "same_authority_comparisons_skipped": guardrail_triggers.get(
+                    EvidenceComparisonReason.SAME_AUTHORITY_COMPARISON.value, 0
+                ),
+                "reference_only_comparisons_skipped": guardrail_triggers.get(
+                    EvidenceComparisonReason.REFERENCE_ONLY_NUMERIC.value, 0
                 ),
             },
         )
@@ -338,6 +364,10 @@ def build_divergence_audit(result: DivergenceResult) -> dict[str, Any]:
         "unresolved_divergence_details": [
             item.model_dump(mode="json") for item in result.unresolved_candidates
         ],
+        "skipped_divergence_candidates": result.diagnostics.get(
+            "skipped_divergence_candidates", 0
+        ),
+        "guardrail_triggers": result.diagnostics.get("guardrail_triggers", {}),
         "status_distribution": dict(
             Counter(divergence.status.value for divergence in divergences)
         ),
@@ -549,6 +579,122 @@ def _payload_tuple(signal: IntelligenceSignal, key: str) -> tuple[str, ...]:
 
 def _normalize_lineage_token(value: Any) -> str:
     return str(value).strip().lower()
+
+
+def _divergence_eligibility(
+    left: IntelligenceSignal,
+    right: IntelligenceSignal,
+) -> dict[str, Any]:
+    """Return deterministic divergence eligibility for one candidate pair."""
+
+    if (
+        left.content.content_class != ContentClass.NUMERIC_CLAIM
+        or right.content.content_class != ContentClass.NUMERIC_CLAIM
+    ):
+        return {
+            "reason": None,
+            "details": "non-numeric divergence eligibility unchanged",
+            "guardrails": (),
+        }
+
+    guardrails: list[EvidenceComparisonReason] = []
+    if left.classification.source_type == right.classification.source_type:
+        guardrails.append(EvidenceComparisonReason.SAME_SOURCE_COMPARISON)
+    if left.classification.authority_class == right.classification.authority_class:
+        guardrails.append(EvidenceComparisonReason.SAME_AUTHORITY_COMPARISON)
+    if _is_reference_only_numeric(left) or _is_reference_only_numeric(right):
+        guardrails.append(EvidenceComparisonReason.REFERENCE_ONLY_NUMERIC)
+
+    if EvidenceComparisonReason.REFERENCE_ONLY_NUMERIC in guardrails:
+        return {
+            "reason": EvidenceComparisonReason.REFERENCE_ONLY_NUMERIC,
+            "details": (
+                "reference-only numeric signals are not eligible for fact_vs_fact "
+                "divergence unless explicitly marked authoritative"
+            ),
+            "guardrails": tuple(guardrails),
+        }
+
+    left_fact_key = _numeric_fact_key(left)
+    right_fact_key = _numeric_fact_key(right)
+    if left_fact_key is None or right_fact_key is None:
+        guardrails.append(EvidenceComparisonReason.MISSING_FACT_IDENTITY)
+        return {
+            "reason": EvidenceComparisonReason.MISSING_FACT_IDENTITY,
+            "details": (
+                "numeric divergence requires a precise fact identity such as "
+                "canonical_metric plus value_year; topic labels are insufficient"
+            ),
+            "guardrails": tuple(guardrails),
+        }
+    if left_fact_key != right_fact_key:
+        guardrails.append(EvidenceComparisonReason.DIFFERENT_FACT_IDENTITY)
+        return {
+            "reason": EvidenceComparisonReason.DIFFERENT_FACT_IDENTITY,
+            "details": (
+                "numeric signals do not describe the same deterministic fact: "
+                f"{left_fact_key} != {right_fact_key}"
+            ),
+            "guardrails": tuple(guardrails),
+        }
+    if EvidenceComparisonReason.SAME_SOURCE_COMPARISON in guardrails:
+        return {
+            "reason": EvidenceComparisonReason.SAME_SOURCE_COMPARISON,
+            "details": "numeric fact_vs_fact divergence requires cross-source evidence",
+            "guardrails": tuple(guardrails),
+        }
+    if EvidenceComparisonReason.SAME_AUTHORITY_COMPARISON in guardrails:
+        return {
+            "reason": EvidenceComparisonReason.SAME_AUTHORITY_COMPARISON,
+            "details": (
+                "numeric fact_vs_fact divergence requires differing authority "
+                "classes before it is surfaced"
+            ),
+            "guardrails": tuple(guardrails),
+        }
+    return {
+        "reason": None,
+        "details": "eligible numeric fact comparison",
+        "guardrails": tuple(guardrails),
+    }
+
+
+def _is_reference_only_numeric(signal: IntelligenceSignal) -> bool:
+    if signal.content.payload.get("authoritative_numeric_value") is True:
+        return False
+    if signal.content.payload.get("numeric_reference_only") is True:
+        return True
+    if signal.content.payload.get("not_authoritative_value") is True:
+        return True
+    return signal.classification.creation_eligible is False
+
+
+def _numeric_fact_key(signal: IntelligenceSignal) -> str | None:
+    for key in ("fact_key", "same_fact_key", "canonical_fact_key"):
+        value = signal.content.payload.get(key)
+        if value not in (None, ""):
+            return f"fact:{normalize_identifier(str(value))}"
+
+    metric = (
+        signal.content.payload.get("canonical_metric")
+        or signal.content.payload.get("normalized_metric")
+        or signal.content.payload.get("metric")
+        or signal.content.metric_ref
+    )
+    if not metric:
+        return None
+    normalized_metric = normalize_identifier(str(metric))
+    if normalized_metric.startswith("annual report numeric reference"):
+        return None
+
+    value_year = (
+        signal.content.payload.get("value_year")
+        or signal.content.payload.get("year")
+        or signal.metadata.subject_period
+    )
+    if value_year in (None, ""):
+        return None
+    return f"metric:{normalized_metric}:value_year:{normalize_identifier(str(value_year))}"
 
 
 def _material_conflict(

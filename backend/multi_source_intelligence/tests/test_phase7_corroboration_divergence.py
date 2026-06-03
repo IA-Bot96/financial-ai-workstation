@@ -191,6 +191,121 @@ def test_divergence_surfaces_numeric_fact_conflict_with_authority_metadata() -> 
     }
 
 
+def test_divergence_skips_reference_only_numeric_fact_candidates() -> None:
+    left = _numeric_signal(
+        source_type=SourceType.ANNUAL_REPORT,
+        authority_class=AuthorityClass.AUDITED_ISSUER,
+        record_id="annual-energy-ref-a",
+        metric_ref="annual_report_numeric_reference:renewable_energy_capacity_details",
+        value=50,
+        subject="renewable energy capacity details",
+        creation_eligible=False,
+        payload_extra={
+            "numeric_reference_only": True,
+            "not_authoritative_value": True,
+        },
+    )
+    right = _numeric_signal(
+        source_type=SourceType.ANNUAL_REPORT,
+        authority_class=AuthorityClass.AUDITED_ISSUER,
+        record_id="annual-energy-ref-b",
+        metric_ref="annual_report_numeric_reference:renewable_energy_capacity_details",
+        value=100,
+        subject="renewable energy capacity details",
+        creation_eligible=False,
+        payload_extra={
+            "numeric_reference_only": True,
+            "not_authoritative_value": True,
+        },
+    )
+
+    result = DivergenceService().evaluate_signals((left, right))
+
+    assert result.divergences == ()
+    assert len(result.unresolved_candidates) == 1
+    assert result.unresolved_candidates[0].reason.value == "reference_only_numeric"
+    assert result.diagnostics["reference_only_comparisons_skipped"] == 1
+    assert result.diagnostics["same_source_comparisons_skipped"] == 1
+    assert result.diagnostics["same_authority_comparisons_skipped"] == 1
+
+
+def test_divergence_requires_precise_numeric_fact_identity() -> None:
+    left = _numeric_signal(
+        source_type=SourceType.ANNUAL_REPORT,
+        authority_class=AuthorityClass.AUDITED_ISSUER,
+        record_id="annual-topic-ref-a",
+        metric_ref="annual_report_numeric_reference:renewable_energy_capacity_details",
+        value=50,
+        subject="renewable energy capacity details",
+        payload_extra={"authoritative_numeric_value": True},
+    )
+    right = _numeric_signal(
+        source_type=SourceType.COMPANY_PAYOUTS,
+        authority_class=AuthorityClass.EXCHANGE_OFFICIAL,
+        record_id="payout-topic-ref-b",
+        metric_ref="annual_report_numeric_reference:renewable_energy_capacity_details",
+        value=100,
+        subject="renewable energy capacity details",
+        payload_extra={"authoritative_numeric_value": True},
+    )
+
+    result = DivergenceService().evaluate_signals((left, right))
+
+    assert result.divergences == ()
+    assert len(result.unresolved_candidates) == 1
+    assert result.unresolved_candidates[0].reason.value == "missing_fact_identity"
+
+
+def test_divergence_skips_same_source_numeric_fact_candidates() -> None:
+    left = _numeric_signal(
+        source_type=SourceType.ANNUAL_REPORT,
+        authority_class=AuthorityClass.AUDITED_ISSUER,
+        record_id="annual-revenue-a",
+        metric_ref="revenue",
+        value=100,
+        subject="revenue fy2025",
+    )
+    right = _numeric_signal(
+        source_type=SourceType.ANNUAL_REPORT,
+        authority_class=AuthorityClass.AUDITED_ISSUER,
+        record_id="annual-revenue-b",
+        metric_ref="revenue",
+        value=90,
+        subject="revenue fy2025",
+    )
+
+    result = DivergenceService().evaluate_signals((left, right))
+
+    assert result.divergences == ()
+    assert result.unresolved_candidates[0].reason.value == "same_source_comparison"
+    assert result.diagnostics["same_source_comparisons_skipped"] == 1
+
+
+def test_divergence_skips_same_authority_numeric_fact_candidates() -> None:
+    psx_value = _numeric_signal(
+        source_type=SourceType.PSX_ANNOUNCEMENTS,
+        authority_class=AuthorityClass.EXCHANGE_OFFICIAL,
+        record_id="psx-payout-value",
+        metric_ref="payout_amount",
+        value=15,
+        subject="dividend payout amount fy2025",
+    )
+    payout_value = _numeric_signal(
+        source_type=SourceType.COMPANY_PAYOUTS,
+        authority_class=AuthorityClass.EXCHANGE_OFFICIAL,
+        record_id="payout-value",
+        metric_ref="payout_amount",
+        value=10,
+        subject="dividend payout amount fy2025",
+    )
+
+    result = DivergenceService().evaluate_signals((psx_value, payout_value))
+
+    assert result.divergences == ()
+    assert result.unresolved_candidates[0].reason.value == "same_authority_comparison"
+    assert result.diagnostics["same_authority_comparisons_skipped"] == 1
+
+
 def test_divergence_preserves_narrative_disagreement() -> None:
     annual_report_claim = _narrative_signal(
         source_type=SourceType.ANNUAL_REPORT,
@@ -352,6 +467,8 @@ def _numeric_signal(
     value: float | int,
     subject: str,
     observation_time: datetime = NOW,
+    creation_eligible: bool = True,
+    payload_extra: dict[str, object] | None = None,
 ) -> IntelligenceSignal:
     return _signal(
         source_type=source_type,
@@ -365,8 +482,13 @@ def _numeric_signal(
             metric_ref=metric_ref,
             value=value,
             unit="PKR/share",
-            payload={"subject": subject, "record_id": record_id},
+            payload={
+                "subject": subject,
+                "record_id": record_id,
+                **(payload_extra or {}),
+            },
         ),
+        creation_eligible=creation_eligible,
     )
 
 
@@ -408,6 +530,7 @@ def _signal(
     record_id: str,
     observation_time: datetime,
     content: IntelligenceSignalContent,
+    creation_eligible: bool = True,
 ) -> IntelligenceSignal:
     return IntelligenceSignal(
         entity_ref="lucky_cement",
@@ -419,7 +542,7 @@ def _signal(
             source_type=source_type,
             claim_type=claim_type,
             authority_class=authority_class,
-            creation_eligible=True,
+            creation_eligible=creation_eligible,
             mapping_confidence=1.0,
             authority_confidence=1.0,
         ),

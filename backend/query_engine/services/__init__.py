@@ -9,6 +9,7 @@ from .fingerprint_service import QueryEngineFingerprintService
 from .insight_retrieval_service import InsightRetrievalService
 from .knowledge_base_builder import KnowledgeBaseBuilder, QueryEnginePhase1Report
 from .metric_resolution_service import MetricResolutionService
+from .msil_evidence_adapter import QueryMSILEvidenceAdapter
 from .query_planner_service import QueryPlannerService
 from .response_renderer_service import ResponseRendererService
 
@@ -19,6 +20,7 @@ __all__ = [
     "InsightRetrievalService",
     "KnowledgeBaseBuilder",
     "MetricResolutionService",
+    "QueryMSILEvidenceAdapter",
     "QueryEngineBundleGenerationService",
     "QueryEngineBundleLoader",
     "QueryEngineBundleSerializer",

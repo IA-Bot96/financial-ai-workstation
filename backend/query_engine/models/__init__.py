@@ -43,6 +43,15 @@ from .metric_resolution import (
     MetricResolutionCandidate,
     MetricResolutionResult,
 )
+from .msil_evidence import (
+    QueryMSILAuthority,
+    QueryMSILCitation,
+    QueryMSILDivergenceReference,
+    QueryMSILEvidence,
+    QueryMSILEvidenceCollection,
+    QueryMSILEvidenceRetrievalResult,
+    QueryMSILTimelineReference,
+)
 from .query_planner import (
     CAGRPlan,
     ConflictPlan,
@@ -116,6 +125,13 @@ __all__ = [
     "MetricValuePlan",
     "ProvenancePlan",
     "QueryIntent",
+    "QueryMSILAuthority",
+    "QueryMSILCitation",
+    "QueryMSILDivergenceReference",
+    "QueryMSILEvidence",
+    "QueryMSILEvidenceCollection",
+    "QueryMSILEvidenceRetrievalResult",
+    "QueryMSILTimelineReference",
     "QueryPlan",
     "QueryEngineInputBundle",
     "QueryRequest",

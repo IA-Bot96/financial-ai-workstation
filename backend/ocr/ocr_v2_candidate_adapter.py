@@ -19,6 +19,12 @@ from .ocr_v2_bridge_config import (
     default_ocr_v2_bridge_config,
 )
 from .ocr_v2_candidate_capture import CandidateCaptureInput
+from .ocr_v2_context_derivers import (
+    UNKNOWN_DERIVED_TAG,
+    BasisDeriver,
+    EntityScopeDeriver,
+    StatementTypeDeriver,
+)
 from .ocr_v2_table_adapter import (
     DEFAULT_BBOX_TABLES_DIR,
     ExtractedTableCell,
@@ -99,6 +105,9 @@ class OCRV2CandidateAdapter:
 
     def __init__(self, config: OCRV2BridgeConfig | None = None) -> None:
         self._config = config or default_ocr_v2_bridge_config()
+        self._basis_deriver = BasisDeriver()
+        self._statement_type_deriver = StatementTypeDeriver()
+        self._entity_scope_deriver = EntityScopeDeriver()
 
     @property
     def config(self) -> OCRV2BridgeConfig:
@@ -230,6 +239,9 @@ class OCRV2CandidateAdapter:
         return report
 
     def _input_from_cell(self, cell: ExtractedTableCell) -> CandidateCaptureInput:
+        statement_type = self._statement_type_for_cell(cell)
+        basis = self._basis_for_cell(cell)
+        entity_scope = self._entity_scope_for_cell(cell)
         return CandidateCaptureInput(
             raw_value=cell.raw_value,
             raw_label=self._config.canonical_metric_for_cell(
@@ -242,16 +254,37 @@ class OCRV2CandidateAdapter:
             table_reference=cell.table_reference,
             document_fingerprint=self._config.document_fingerprint,
             locator=cell.locator,
-            statement_type=self._config.statement_type_for_cell(
-                cell.page_number,
-                section_label=cell.section_label,
-                table_reference=cell.table_reference,
-            ),
-            basis=self._config.basis_for_page(cell.page_number),
-            entity_scope=self._config.entity_scope_for_page(cell.page_number),
+            statement_type=statement_type,
+            basis=basis,
+            entity_scope=entity_scope,
             source_scale=cell.source_scale,
             source_unit=cell.source_unit,
         )
+
+    def _statement_type_for_cell(self, cell: ExtractedTableCell) -> str:
+        legacy_statement_type = self._config.statement_type_for_cell(
+            cell.page_number,
+            section_label=cell.section_label,
+            table_reference=cell.table_reference,
+        )
+        derived = self._statement_type_deriver.derive(cell.document_context)
+        if legacy_statement_type == "ANALYSIS_TABLE" and derived.value != "ANALYSIS_TABLE":
+            return legacy_statement_type
+        if not _is_unknown_tag(derived.value):
+            return derived.value
+        return legacy_statement_type
+
+    def _basis_for_cell(self, cell: ExtractedTableCell) -> str:
+        derived = self._basis_deriver.derive(cell.document_context)
+        if not _is_unknown_tag(derived.value):
+            return derived.value
+        return self._config.basis_for_page(cell.page_number)
+
+    def _entity_scope_for_cell(self, cell: ExtractedTableCell) -> str:
+        derived = self._entity_scope_deriver.derive(cell.document_context)
+        if not _is_unknown_tag(derived.value):
+            return derived.value
+        return self._config.entity_scope_for_page(cell.page_number)
 
 
 def write_ocr_v2_bridge_phase_report(
@@ -290,6 +323,10 @@ def _has_missing_required_metadata(row: CandidateCaptureInput) -> bool:
 
 def _present(value: str | None) -> bool:
     return value not in (None, "")
+
+
+def _is_unknown_tag(value: str | None) -> bool:
+    return value in (None, "", UNKNOWN_DERIVED_TAG, "UNKNOWN")
 
 
 def _audit_integrity_violations(

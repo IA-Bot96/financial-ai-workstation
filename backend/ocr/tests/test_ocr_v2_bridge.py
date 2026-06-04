@@ -14,6 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from ocr import (  # noqa: E402
     CandidateCaptureInput,
+    ExtractedTableDocumentContext,
     LUCKY_PRODUCTION_WORKBOOK_FINGERPRINT,
     OCRV2Basis,
     OCRV2CandidateAdapter,
@@ -79,6 +80,8 @@ def test_table_adapter_extracts_raw_numeric_cells_from_bbox_csvs() -> None:
     assert first.table_reference == "page_0164_bbox_00_bbox_camelot_stream_table_00"
     assert first.source_scale == "source_header:PKR thousands"
     assert first.source_unit == "PKR"
+    assert isinstance(first.document_context, ExtractedTableDocumentContext)
+    assert first.document_context.units_scale_text is not None
 
 
 def test_candidate_adapter_preserves_candidate_multiplicity() -> None:
@@ -100,6 +103,13 @@ def test_candidate_adapter_preserves_candidate_multiplicity() -> None:
     assert stream.candidate_removals == 0
     assert stream.governance_invocations == 0
     assert stream.canonical_selection_attempts == 0
+    first_revenue = revenue_2025[0]
+    assert first_revenue.basis == OCRV2Basis.UNCONSOLIDATED.value
+    assert first_revenue.statement_type in {
+        OCRV2StatementType.SUPPORTING_SCHEDULE.value,
+        OCRV2StatementType.ANALYSIS_TABLE.value,
+        OCRV2StatementType.NOTE.value,
+    }
 
 
 def test_bridge_page_statement_and_entity_mappings_are_deterministic() -> None:

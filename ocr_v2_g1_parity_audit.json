@@ -1,0 +1,52 @@
+{
+  "audit": "ocr_v2_g1_parity_audit",
+  "basis_matches": 2113,
+  "candidate_rows_with_tag_mismatch": 0,
+  "derived_non_unknown": {
+    "basis": 549,
+    "entity_scope": 1168,
+    "statement_type": 1525
+  },
+  "document_context": {
+    "context_objects_present": 2113,
+    "context_present_for_all_candidates": true,
+    "named_entities_present": 2015,
+    "notes_to_marker_true": 309,
+    "section_heading_present": 2101,
+    "statement_title_present": 1789,
+    "units_scale_text_present": 2113
+  },
+  "entity_scope_matches": 2113,
+  "fallback_applied": {
+    "basis": 1564,
+    "entity_scope": 945,
+    "statement_type": 588
+  },
+  "final_determination": "G1_PARITY_PASSED",
+  "integrity_violations": [],
+  "lucky_coverage": {
+    "coverage_percent": 100.0,
+    "covered_cells": 66,
+    "exact_matches": 52,
+    "missing_cells": 0,
+    "scale_mismatches": 0,
+    "source_insufficient_correct_abstentions": 14,
+    "total_cells": 66,
+    "value_mismatches": 0
+  },
+  "mismatch_examples": [],
+  "phase": "G1.0-G1.2",
+  "scope": "document_context_derivation_with_deprecated_page_range_fallback",
+  "statement_type_matches": 2113,
+  "success_criteria": {
+    "coverage_remains_100_percent": true,
+    "lucky_remains_66_of_66": true,
+    "scale_mismatches_zero": true,
+    "total_tag_mismatches_zero": true,
+    "value_mismatches_zero": true
+  },
+  "tables_dir": "output\\ocr_v2_final_validation_tables",
+  "total_candidates": 2113,
+  "total_tag_mismatches": 0,
+  "workbook_path": "output\\ocr_v2_g1_workbook.xlsx"
+}

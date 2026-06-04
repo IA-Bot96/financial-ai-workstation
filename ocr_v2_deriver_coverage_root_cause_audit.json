@@ -1,0 +1,101 @@
+{
+ "total_cells": 1905,
+ "context_presence": {
+  "statement_title": 156,
+  "section_heading": 1893,
+  "named_entities": 523,
+  "notes_to_marker": 0
+ },
+ "per_tag": {
+  "basis": {
+   "derived": 82,
+   "derived_pct": 4.3,
+   "fallback": 1823,
+   "fallback_causes": {
+    "unsupported_pattern": 156,
+    "missing_statement_title": 1667
+   }
+  },
+  "statement_type": {
+   "derived": 757,
+   "derived_pct": 39.7,
+   "fallback": 1148,
+   "fallback_causes": {
+    "unsupported_pattern": 156,
+    "missing_statement_title": 980,
+    "missing_section_header": 12
+   }
+  },
+  "entity_scope": {
+   "derived": 0,
+   "derived_pct": 0.0,
+   "fallback": 1905,
+   "fallback_causes": {
+    "missing_entity_context": 156,
+    "missing_statement_title": 1226,
+    "unsupported_pattern": 523
+   }
+  }
+ },
+ "artifact": "ocr_v2_deriver_coverage_root_cause_audit",
+ "version": "1.0.0",
+ "date": "2026-06-04",
+ "root_cause_summary": {
+  "dominant_cause": "missing_statement_title",
+  "evidence": "statement_title present on only 156/1905 (8.2%); notes_to_marker never set (0/1905). The adapter's _statement_title_from_rows reads the TABLE GRID only; the statement title ('Unconsolidated Statement of Profit or Loss', 'Notes to the ... Financial Statements', 'Investment in associates') is PAGE-LEVEL text above the table, so it is absent for 92% of cells.",
+  "consequence": "Basis word, NOTE marker, and issuer/investee signals are all carried in that title -> derivers return UNKNOWN -> the Lucky page-range fallback silently classifies (basis 96%, entity_scope 100%). section_heading is present (1893/1905) but carries table-row text (e.g. 'property plant and equipment'), not basis/entity signals."
+ },
+ "minimum_enrichment_changes": [
+  {
+   "id": "E1",
+   "change": "Capture the page-level statement title into document_context.statement_title (from page text above the table, not only _statement_title_from_rows on the grid).",
+   "fixes": [
+    "missing_statement_title (basis 1667, statement_type 980, entity_scope 1226)"
+   ],
+   "file": "ocr_v2_table_adapter.py (statement_title population) + extraction stage that has page text",
+   "leverage": "HIGHEST - single change addresses the dominant cause for all three tags"
+  },
+  {
+   "id": "E2",
+   "change": "Set document_context.notes_to_marker from the page title 'Notes to the ... Financial Statements'.",
+   "fixes": [
+    "statement_type NOTE detection (notes_to_marker currently 0/1905)"
+   ],
+   "file": "ocr_v2_table_adapter.py (_notes_to_marker_from_rows -> use page title)",
+   "leverage": "HIGH for NOTE cells"
+  },
+  {
+   "id": "E3",
+   "change": "Capture the investee/associate note-section title (e.g. 'Investment in associates and joint ventures') into context for cells under that note.",
+   "fixes": [
+    "entity_scope INVESTEE derivation (currently 0)"
+   ],
+   "file": "ocr_v2_table_adapter.py (section/note title capture)",
+   "leverage": "HIGH for investee cells; rest default ISSUER once title present"
+  },
+  {
+   "id": "E4",
+   "change": "(supporting) once titles are present, the ISSUER default fires via 'statement of'; optionally broaden the ISSUER default so primary/issuer cells without explicit markers still resolve ISSUER rather than UNKNOWN.",
+   "fixes": [
+    "entity_scope ISSUER default reach"
+   ],
+   "file": "ocr_v2_context_derivers.py (EntityScopeDeriver default)",
+   "leverage": "MEDIUM - reduces residual UNKNOWN"
+  }
+ ],
+ "post_fix_estimated_coverage": {
+  "method": "estimate assuming E1-E3 populate statement title / notes marker / note-section title for cells under a titled statement or note (every statement/note page carries a title)",
+  "basis": "~60-80% derived (primary + note + consolidated cells carry 'unconsolidated'/'consolidated' in the page title; six-year-summary/analysis pages may lack an explicit basis word -> residual fallback). NOTE: Millat primary statements explicitly say 'Unconsolidated' -> Millat basis coverage likely HIGHER than Lucky's summary pages.",
+  "statement_type": "~85-95% derived (titles + notes_to_marker + existing analysis/summary markers cover primary/note/summary/analysis)",
+  "entity_scope": "~85-100% derived (most cells ISSUER once title present; investee note pages -> INVESTEE via E3)",
+  "residual": "cells with no basis word in title (summary/analysis) still fall back to page ranges -> on Millat (no Lucky ranges) these would be UNKNOWN; residual must be validated as non-load-bearing for governance"
+ },
+ "g1_3_feasible_after_enrichment_alone": {
+  "answer": "NO_NOT_BY_ENRICHMENT_ALONE",
+  "reasons": [
+   "B1 unchanged: no Millat extraction tables exist; enrichment does not produce Millat input.",
+   "Enrichment is NECESSARY and high-leverage but residual basis-UNKNOWN cells (titles lacking a basis word) still fall back to Lucky page ranges, which do not apply to Millat -> those cells UNKNOWN. Must validate the residual is small / non-load-bearing.",
+   "Therefore G1.3 feasibility requires: (1) implement E1-E3 enrichment, (2) re-validate Lucky that derived coverage is high and the page-range fallback is no longer load-bearing, (3) produce Millat extraction tables."
+  ]
+ }
+}

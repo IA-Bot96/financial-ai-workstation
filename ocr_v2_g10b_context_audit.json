@@ -1,0 +1,132 @@
+{
+  "audit": "ocr_v2_g10b_context_audit",
+  "constraints_observed": {
+    "alias_handling_modified": false,
+    "fallback_removed": false,
+    "governance_modified": false,
+    "msil_export_modified": false,
+    "production_integration_performed": false,
+    "selection_modified": false,
+    "source_precedence_modified": false,
+    "workbook_generation_modified": false
+  },
+  "context_presence_after": {
+    "entity_context": {
+      "count": 489,
+      "percent": 23.14,
+      "total": 2113
+    },
+    "named_entities": {
+      "count": 2015,
+      "percent": 95.36,
+      "total": 2113
+    },
+    "notes_to_marker": {
+      "count": 309,
+      "percent": 14.62,
+      "total": 2113
+    },
+    "section_heading": {
+      "count": 2101,
+      "percent": 99.43,
+      "total": 2113
+    },
+    "statement_title": {
+      "count": 1789,
+      "percent": 84.67,
+      "total": 2113
+    },
+    "total_candidates": 2113,
+    "units_scale_text": {
+      "count": 2113,
+      "percent": 100.0,
+      "total": 2113
+    }
+  },
+  "context_presence_before": {
+    "entity_context": {
+      "count": 0,
+      "percent": 0.0,
+      "total": 2113
+    },
+    "named_entities": {
+      "count": 731,
+      "percent": 34.6,
+      "total": 2113
+    },
+    "notes_to_marker": {
+      "count": 0,
+      "percent": 0.0,
+      "total": 2113
+    },
+    "section_heading": {
+      "count": 2101,
+      "percent": 99.43,
+      "total": 2113
+    },
+    "statement_title": {
+      "count": 204,
+      "percent": 9.65,
+      "total": 2113
+    },
+    "total_candidates": 2113,
+    "units_scale_text": {
+      "count": 2113,
+      "percent": 100.0,
+      "total": 2113
+    }
+  },
+  "entity_context_after": {
+    "count": 489,
+    "percent": 23.14,
+    "total": 2113
+  },
+  "entity_context_before": {
+    "count": 0,
+    "percent": 0.0,
+    "total": 2113
+  },
+  "final_determination": "G10B_CONTEXT_ENRICHMENT_PASSED",
+  "lucky_validation": {
+    "coverage_percent": 100.0,
+    "covered_cells": 66,
+    "exact_matches": 52,
+    "missing_cells": 0,
+    "scale_mismatches": 0,
+    "source_insufficient_correct_abstentions": 14,
+    "total_cells": 66,
+    "value_mismatches": 0
+  },
+  "notes_to_marker_after": {
+    "count": 309,
+    "percent": 14.62,
+    "total": 2113
+  },
+  "notes_to_marker_before": {
+    "count": 0,
+    "percent": 0.0,
+    "total": 2113
+  },
+  "phase": "G1.0b",
+  "scope": "context_enrichment_only",
+  "statement_title_presence_after": {
+    "count": 1789,
+    "percent": 84.67,
+    "total": 2113
+  },
+  "statement_title_presence_before": {
+    "count": 204,
+    "percent": 9.65,
+    "total": 2113
+  },
+  "success_criteria": {
+    "entity_context_populated": true,
+    "lucky_still_66_of_66": true,
+    "notes_markers_populated": true,
+    "statement_title_coverage_materially_increased": true
+  },
+  "tables_dir": "output\\ocr_v2_final_validation_tables",
+  "total_candidates_after": 2113,
+  "total_candidates_before": 2113,
+  "workbook_path": "output\\ocr_v2_g10b_workbook.xlsx"
+}

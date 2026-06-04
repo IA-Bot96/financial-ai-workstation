@@ -1,0 +1,87 @@
+{
+ "artifact": "ocr_v2_statement_rendering_audit",
+ "version": "1.0.0",
+ "date": "2026-06-04",
+ "objective": "Why does the 49-sheet human-readable statement workbook diverge from the validated 66/66 canonical OCR V2 workbook?",
+ "task1_lineage": {
+  "canonical_workbook": {
+   "file": "output/ocr_v2_r2_workbook.xlsx",
+   "sheets": 1,
+   "sheet_name": "OCR V2 Canonical Metrics",
+   "source_inputs": "V2 candidate registry -> statement/scale/entity governance -> canonical selection",
+   "generation_module": "ocr_v2_workbook_generator.OCRV2WorkbookGenerator",
+   "generated_from": "CANONICAL_SELECTED_VALUES",
+   "status": "66/66 validated, governed"
+  },
+  "human_readable_workbook": {
+   "file": "output/lucky_2025_shadow_20260604T161415401563_42b6f676.xlsx",
+   "sheets": 49,
+   "source_inputs": "V1 ocr_engine pipeline output (CompanyContext populated by V1)",
+   "generation_module": "ocr_engine OpenPyXLWorkbookPopulationService via ocr_engine.pipeline.shadow_ocr_pipeline.ShadowOCRPipeline (primary=V1)",
+   "generated_from": "V1_WORKBOOK_STRUCTURES",
+   "evidence": "ShadowOCRPipeline.process() runs primary=V1 + shadow=V2, returns primary_result (V1), sets v2_output_consumed_by_caller=False. The 49-sheet workbook is the V1 served output; it never consumes V2 canonical values, registry, or selection."
+  }
+ },
+ "task2_value_divergence": {
+  "divergence_stage": "OUTPUT SOURCE (engine), not a transform of V2 output",
+  "explanation": "The human-readable workbook is produced by V1, which never passes through V2 governance/selection/scale-normalization. Divergence is therefore introduced at the source: a different engine, carrying V1's original CV1 failures.",
+  "revenue_example": {
+   "canonical_v2_thousands": {
+    "2020": "41,870,796",
+    "2021": "62,940,805",
+    "2022": "81,093,525",
+    "2023": "95,832,147",
+    "2024": "115,324,942",
+    "2025": "124,511,744"
+   },
+   "human_readable_v1": {
+    "2020": "41,870,796,000 (x1000 scale)",
+    "2021": "62,940,805,000 (x1000)",
+    "2022": "95,000,000 (WRONG value)",
+    "2023": "95,832,147,000 (x1000)",
+    "2024": "115,324,942,000 (x1000)",
+    "2025": "528,651,878,000 (WRONG value, not unconsolidated revenue)"
+   },
+   "divergence_types_seen": [
+    "scale_x1000",
+    "wrong_value_selection"
+   ]
+  },
+  "per_headline_metric": "All 7 headline metrics (revenue, gross_profit, operating_profit, profit_after_tax, eps, operating_cash_flow, long_term_debt) diverge uniformly for the same root reason: the human-readable workbook is V1, not a rendering of V2 canonical. Per-metric divergence type follows V1's known CV1 failure pattern (scale corruption + wrong-statement/wrong-value selection)."
+ },
+ "task3_governance_preserved": {
+  "in_canonical_v2_workbook": {
+   "canonical_selections_respected": true,
+   "source_insufficient_abstentions_respected": true,
+   "source_precedence_respected": true,
+   "scale_normalization_preserved": true
+  },
+  "in_human_readable_v1_workbook": {
+   "canonical_selections_respected": false,
+   "source_insufficient_abstentions_respected": false,
+   "source_precedence_respected": false,
+   "scale_normalization_preserved": false
+  },
+  "note": "V2 governance is preserved ONLY in the canonical workbook. The human-readable workbook is V1 output and reflects none of V2's governance (it predates/bypasses it entirely)."
+ },
+ "task4_root_cause": {
+  "classification": "source_bypass (architectural)",
+  "detail": "The human-readable statement workbook does not consume V2 canonical output at all; it is the V1 engine's served output under the shadow design (v2_output_consumed_by_caller=False). Not a V2 rendering_bug, scaling_bug, or workbook_mapping_bug -- there is no V2 multi-sheet statement renderer. The single-sheet canonical V2 workbook is the only V2 workbook, and it is correct.",
+  "ruled_out": [
+   "rendering_bug (no V2 statement renderer exists)",
+   "scaling_bug in V2 (V2 canonical scale correct)",
+   "candidate_selection_bypass within V2 (V2 selection correct)"
+  ],
+  "confirmed": [
+   "source_bypass: human-readable output sourced from V1, not V2 canonical",
+   "architectural_split: two engines, two workbooks"
+  ]
+ },
+ "task5_production_impact": {
+  "canonical_v2": "CORRECT (66/66, governed)",
+  "human_readable_served": "V1 ungoverned output -- scale-corrupted + wrong-selection (the original CV1 failures)",
+  "classification": "Closest to A (canonical correct; the human-facing/served output is wrong) -- but the cause is an architectural output split, not a renderer defect. Users currently see V1's values because shadow mode serves V1; the validated V2 values are NOT rendered into any human-readable statement workbook.",
+  "expected_by_design": "Partly: shadow design intentionally serves V1 and keeps V2 non-serving. The divergence is the expected V1-vs-V2 gap, NOT a new bug. The risk is mislabeling the V1 shadow workbook as 'OCR V2' output."
+ },
+ "final_determination": "ARCHITECTURAL_OUTPUT_SPLIT"
+}

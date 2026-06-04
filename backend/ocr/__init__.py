@@ -28,6 +28,13 @@ from .ocr_v2_candidate_adapter import (
     OCRV2CandidateAdapter,
     write_ocr_v2_bridge_phase_report,
 )
+from .ocr_v2_context_derivers import (
+    UNKNOWN_DERIVED_TAG,
+    BasisDeriver,
+    DerivedTagResult,
+    EntityScopeDeriver,
+    StatementTypeDeriver,
+)
 from .ocr_v2_candidate_registry import (
     CandidateRegistry,
     CandidateRegistryAppendResult,
@@ -80,7 +87,9 @@ from .ocr_v2_workbook_generator import (
 )
 from .ocr_v2_table_adapter import (
     DEFAULT_BBOX_TABLES_DIR,
+    ExtractedTableDocumentContext,
     ExtractedTableCell,
+    OCRV2PageContextProvider,
     OCRV2RawTableIngestionResult,
     OCRV2TableAdapter,
 )
@@ -177,6 +186,20 @@ from .ocr_v2_foundation_config import (
     OCRV2FoundationConfig,
     default_ocr_v2_foundation_config,
 )
+from .ocr_v2_g1_parity import (
+    DEFAULT_G1_AUDIT_PATH,
+    DEFAULT_G1_REPORT_PATH,
+    DEFAULT_G1_TABLES_DIR,
+    DEFAULT_G1_WORKBOOK_PATH,
+    write_ocr_v2_g1_parity_artifacts,
+)
+from .ocr_v2_g10b_context import (
+    DEFAULT_G10B_AUDIT_PATH,
+    DEFAULT_G10B_REPORT_PATH,
+    DEFAULT_G10B_TABLES_DIR,
+    DEFAULT_G10B_WORKBOOK_PATH,
+    write_ocr_v2_g10b_context_artifacts,
+)
 
 __all__ = [
     "FROZEN_OCR_V2_CONTRACTS",
@@ -185,6 +208,8 @@ __all__ = [
     "FROZEN_OCR_V2_REQUIRED_FIELDS",
     "FROZEN_OCR_V2_VERSION_PIN_FIELDS",
     "UNKNOWN_CLASSIFICATION",
+    "UNKNOWN_DERIVED_TAG",
+    "BasisDeriver",
     "CandidateCapture",
     "CandidateCaptureInput",
     "CandidateCaptureResult",
@@ -217,6 +242,14 @@ __all__ = [
     "DEFAULT_BBOX_TABLES_DIR",
     "DEFAULT_CANDIDATE_DEDUP_AUDIT_PATH",
     "DEFAULT_EPS_ALIAS_AUDIT_PATH",
+    "DEFAULT_G1_AUDIT_PATH",
+    "DEFAULT_G1_REPORT_PATH",
+    "DEFAULT_G1_TABLES_DIR",
+    "DEFAULT_G1_WORKBOOK_PATH",
+    "DEFAULT_G10B_AUDIT_PATH",
+    "DEFAULT_G10B_REPORT_PATH",
+    "DEFAULT_G10B_TABLES_DIR",
+    "DEFAULT_G10B_WORKBOOK_PATH",
     "DEFAULT_LUCKY_AUDIT_PATH",
     "DEFAULT_LUCKY_B3_REPORT_PATH",
     "DEFAULT_LUCKY_CANDIDATES_PATH",
@@ -233,7 +266,10 @@ __all__ = [
     "DEFAULT_SCALE_CAPTURE_AUDIT_PATH",
     "DEFAULT_SOURCE_INSUFFICIENT_AUDIT_PATH",
     "DEFAULT_SOURCE_PRECEDENCE_AUDIT_PATH",
+    "DerivedTagResult",
+    "EntityScopeDeriver",
     "ExtractedTableCell",
+    "ExtractedTableDocumentContext",
     "LUCKY_PRODUCTION_WORKBOOK_FINGERPRINT",
     "OCRExportContract",
     "OCRV2Basis",
@@ -263,6 +299,7 @@ __all__ = [
     "OCRV2MSILExportAudit",
     "OCRV2MSILExportBundle",
     "OCRV2MSILExporter",
+    "OCRV2PageContextProvider",
     "OCRV2LuckyRun",
     "OCRV2LuckyRunAudit",
     "OCRV2LuckyRunResult",
@@ -297,6 +334,7 @@ __all__ = [
     "StatementGovernanceOutcome",
     "StatementGovernanceReason",
     "StatementGovernanceResult",
+    "StatementTypeDeriver",
     "WORKBOOK_HEADERS",
     "WORKBOOK_SHEET_NAME",
     "candidates_from_regression_cases",
@@ -312,6 +350,8 @@ __all__ = [
     "write_ocr_v2_regression_fixture_audit",
     "write_ocr_v2_bridge_phase_report",
     "write_ocr_v2_b3_report",
+    "write_ocr_v2_g1_parity_artifacts",
+    "write_ocr_v2_g10b_context_artifacts",
     "write_ocr_v2_remediation_r1_artifacts",
     "write_phase3_report",
     "write_phase4_report",

@@ -1,0 +1,89 @@
+{
+ "artifact": "ocr_v2_g13_readiness_audit",
+ "version": "1.0.0",
+ "date": "2026-06-04",
+ "objective": "Determine if Millat can execute via the G1 document-derived path without a Millat-specific bridge config.",
+ "evidence": {
+  "g1_parity": "G1_PARITY_PASSED (Lucky 66/66; 0 tag mismatches over 2113 candidates)",
+  "derived_non_unknown": {
+   "basis": 82,
+   "entity_scope": 0,
+   "statement_type": 757
+  },
+  "deprecated_fallback_applied": {
+   "basis": 2031,
+   "entity_scope": 2113,
+   "statement_type": 1356
+  },
+  "total_candidates": 2113,
+  "document_context_presence": {
+   "statement_title": 204,
+   "section_heading": 2101,
+   "units_scale": 2113
+  },
+  "interpretation": "Lucky parity is carried by the Lucky page-range FALLBACK, not the derivers: basis 96.1% fallback, entity_scope 100% fallback, statement_type 64.2% fallback. Derivers fire on a small minority because statement_title/investee context is rarely in the extracted cell (204/2113)."
+ },
+ "dependency_classification": [
+  {
+   "dependency": "basis derivation",
+   "status": "PARTIALLY_ELIMINATED",
+   "detail": "deriver fires 82/2113 (3.9%); page-range fallback active for 2031 (96.1%). On Millat the fallback (Lucky ranges) yields UNKNOWN -> effectively STILL ACTIVE / blocking."
+  },
+  {
+   "dependency": "statement-type derivation",
+   "status": "PARTIALLY_ELIMINATED",
+   "detail": "deriver 757/2113 (35.8%); fallback 64.2%. Majority still page-range -> blocking-risk on Millat."
+  },
+  {
+   "dependency": "entity-scope derivation",
+   "status": "NOT_ELIMINATED",
+   "detail": "deriver 0/2113 (0%); 100% page-range fallback. Entity scope is entirely page-range-dependent. BLOCKING on Millat."
+  },
+  {
+   "dependency": "page-range config (A1/A2/A3)",
+   "status": "STILL_ACTIVE_DEFACTO_PRIMARY",
+   "detail": "Intended fallback-only, but in practice the primary path for basis (96%) and entity_scope (100%). For Millat, Lucky ranges do not match -> UNKNOWN tags -> governance collapse. BLOCKING."
+  },
+  {
+   "dependency": "page/year alias guards (A6)",
+   "status": "STILL_ACTIVE_BUT_INERT_FOR_MILLAT",
+   "detail": "canonical_metric_for_cell still consults them; keys are Lucky page-162+years+labels; will not match Millat. NON-BLOCKING."
+  },
+  {
+   "dependency": "document fingerprint (A10)",
+   "status": "STILL_ACTIVE_NON_BLOCKING",
+   "detail": "adapter stamps config.document_fingerprint (Lucky default); NOT validated anywhere (grep confirms). Cosmetic mis-stamp on a non-Lucky run; implementation-only fix (parameterize per document)."
+  },
+  {
+   "dependency": "duplicate-page assumptions (A9)",
+   "status": "STILL_ACTIVE_CORRECTNESS_RISK",
+   "detail": "duplicate_extraction_artifact_pages=(162,163,164). Millat (298pp) also has pages 162-164, so the Lucky page list could mis-fire on Millat. NON-BLOCKING for execution; correctness risk; should key on provenance not page numbers."
+  }
+ ],
+ "can_millat_execute": {
+  "deriver_first_enabled": true,
+  "fallback_override_enabled": true,
+  "without_millat_specific_config": false,
+  "reason": "Two blockers below. The classification path is content-capable but under-fed; and there is no Millat extraction input."
+ },
+ "blockers": [
+  {
+   "id": "B1",
+   "file": "backend/ocr/ocr_v2_table_adapter.py (DEFAULT_BBOX_TABLES_DIR) / output/bbox_extraction_poc/tables",
+   "component": "extraction input",
+   "reason": "No Millat bbox extraction tables exist (0 found). There is no Millat input to run on.",
+   "type": "IMPLEMENTATION",
+   "note": "camelot/pdfplumber available; producing Millat tables is mechanical (not a Millat-specific config). Forbidden to execute in this audit."
+  },
+  {
+   "id": "B2",
+   "file": "backend/ocr/ocr_v2_table_adapter.py (_statement_title_from_rows / document_context population) + extraction stage",
+   "component": "G1.0 context enrichment (feeds the derivers)",
+   "reason": "document_context is under-populated: statement_title present on only 204/2113 cells; investee context absent (entity deriver fires 0). So BasisDeriver/EntityScopeDeriver return UNKNOWN for most cells and the Lucky page-range fallback silently classifies them. On Millat the fallback cannot rescue this -> basis ~UNKNOWN (96%), entity_scope UNKNOWN (100%) -> governance collapse.",
+   "type": "ARCHITECTURAL_AND_IMPLEMENTATION",
+   "note": "The derivers are sound; their INPUT signal (page-level statement title + investee-note context) is not captured into the cell. This is the true generalization blocker. Fix = complete the context enrichment to capture page-text title/section/entity context; NOT a Millat-specific rule."
+  }
+ ],
+ "determination": "BLOCKED_FOR_G1_3_MILLAT_EXECUTION",
+ "headline": "G1 wired deriver-first and preserved Lucky 66/66, but did NOT actually eliminate the page-range dependence: Lucky parity is fallback-driven (basis 96%, entity_scope 100% via Lucky page ranges). Millat is blocked by (B1) missing extraction tables and (B2) incomplete context enrichment that leaves the derivers firing on a small minority. Neither requires a Millat-specific config to fix."
+}

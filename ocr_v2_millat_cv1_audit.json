@@ -1,0 +1,87 @@
+{
+ "artifact": "ocr_v2_millat_cv1_audit",
+ "version": "1.0.0",
+ "date": "2026-06-04",
+ "issuer": "millat_tractors",
+ "validation_type": "first_blind_cv1_of_ocr_v2_on_second_issuer",
+ "truth_set": {
+  "file": "cv1_truth_set_millat_v1_0_0.csv",
+  "total_cells": 40,
+  "metrics": 10,
+  "intended_years": [
+   2022,
+   2023,
+   2024,
+   2025
+  ],
+  "verified_value_cells": 18,
+  "source_insufficient_cells": 2,
+  "pending_extraction_cells": 20,
+  "verified_years": [
+   2024,
+   2025
+  ],
+  "pending_years": [
+   2022,
+   2023
+  ],
+  "verified_source": "millat-2025.pdf unconsolidated primary statements (P&L p110, BS p108, CF p112), read directly",
+  "structural_observations": [
+   "Millat is four separate per-year reports (no Lucky-style six-year summary).",
+   "Standalone balance sheet has NO explicit total-liabilities line AND NO unlabeled subtotal before TOTAL EQUITY AND LIABILITIES (-> total_liabilities = SOURCE_INSUFFICIENT).",
+   "Same OCF ambiguity as Lucky: 'Cash generated from operations' vs 'Net cash flows generated from operating activities'.",
+   "Millat 2025 is restated; FY ends June 30; consolidated statements also present (NCI)."
+  ]
+ },
+ "ocr_v2_run": {
+  "executed": false,
+  "status": "BLOCKED_CANNOT_RUN_UNCHANGED",
+  "blockers": [
+   {
+    "id": "B1",
+    "type": "EXTRACTION_INPUT_ABSENT",
+    "detail": "No Millat bbox extraction tables exist. The V2 pipeline (ocr_v2_lucky_run / table_adapter) reads output/bbox_extraction_poc/tables, which contains Lucky tables only."
+   },
+   {
+    "id": "B2",
+    "type": "BRIDGE_CONFIG_ISSUER_COUPLED",
+    "detail": "default bridge config is Lucky-hardcoded: page ranges 162-164 (summary/analysis), 236-283 (unconsolidated), 286-375 (consolidated), Lucky fingerprint, Lucky label aliases. No generic derivation, no Millat config. Millat statements are on different pages (unconsolidated P&L p110, BS p108, CF p112 in a 298-page report), so the Lucky config tags every Millat page UNKNOWN -> governance cannot classify -> selection collapses."
+   },
+   {
+    "id": "B3",
+    "type": "CONSTRAINT_CONFLICT",
+    "detail": "Producing a Millat bridge config (Millat page ranges/label aliases) would be required to run, but that is Millat-specific configuration which this task explicitly prohibits ('No Millat-specific heuristics / Do not add Millat-specific rules'). Therefore 'run unchanged' is unsatisfiable on Millat in the current architecture."
+   }
+  ]
+ },
+ "comparison_metrics": {
+  "total_cells": 40,
+  "exact_matches": "NOT_COMPUTABLE",
+  "source_insufficient_matches": "NOT_COMPUTABLE",
+  "value_mismatches": "NOT_COMPUTABLE",
+  "scale_mismatches": "NOT_COMPUTABLE",
+  "missing_cells": "NOT_COMPUTABLE",
+  "coverage_percent": "NOT_COMPUTABLE",
+  "reason": "OCR V2 produced no Millat output; there is nothing to compare against the truth set."
+ },
+ "miss_root_cause_classification": {
+  "applicable": false,
+  "reason": "No V2 run -> no per-cell misses to classify. The program-level blocker is classified instead:",
+  "blocker_classification": {
+   "EXTRACTION_FAILURE": "B1 (no Millat extraction input)",
+   "CONFIGURATION_GAP": "B2 (Lucky-coupled bridge config)",
+   "CONSTRAINT_CONFLICT": "B3 (Millat config forbidden by task)"
+  }
+ },
+ "generalization_finding": {
+  "lucky_66_66_generalizes_unchanged": false,
+  "explanation": "OCR V2 has no issuer-general execution path. The general governance/selection CORE may generalize, but the executable pipeline is coupled to a per-issuer bridge config + staged extraction input. Lucky 66/66 is the result of a Lucky-tuned bridge config over the general core, not a demonstrated multi-issuer property.",
+  "determination": "GENERALIZATION_NOT_DEMONSTRATED / VALIDATION_BLOCKED"
+ },
+ "prerequisites_to_unblock": [
+  "Create Millat bbox extraction tables (camelot/pdfplumber available) for the metric-bearing pages of the 4 reports.",
+  "Create a Millat bridge config (page ranges -> basis/statement_type/entity_scope + label aliases) -- per the Millat validation plan (MISSING_MUST_CREATE).",
+  "Complete the truth set for FY2022/2023 from millat-2022.pdf / millat-2023.pdf.",
+  "Re-run: only then can the unchanged governance/selection core be tested on Millat -- and whether the SAME KIND of config generalizes is the real over-fit test."
+ ]
+}

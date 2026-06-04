@@ -1,0 +1,159 @@
+{
+ "artifact": "ocr_v2_generalization_inventory",
+ "version": "1.0.0",
+ "date": "2026-06-04",
+ "source": "backend/ocr/ocr_v2_bridge_config.py default_ocr_v2_bridge_config() + statement governance + R2 remediation",
+ "classification_legend": [
+  "GENERIC",
+  "ISSUER_SPECIFIC",
+  "DERIVABLE_FROM_DOCUMENT",
+  "REQUIRES_EXTERNAL_CONFIGURATION"
+ ],
+ "assumptions": [
+  {
+   "id": "A1",
+   "component": "basis_page_ranges",
+   "lucky_value": "162-164 & 236-283 -> unconsolidated; 286-375 -> consolidated",
+   "classification": [
+    "ISSUER_SPECIFIC",
+    "DERIVABLE_FROM_DOCUMENT"
+   ],
+   "note": "Lucky pagination. Basis is stated in statement headers ('Unconsolidated'/'Consolidated') -> derivable without page ranges."
+  },
+  {
+   "id": "A2",
+   "component": "statement_type_page_ranges",
+   "lucky_value": "162 SUMMARY;163-164 SUPPORTING;236-243 & 286-294 PRIMARY;244-283 & 295-375 NOTE",
+   "classification": [
+    "ISSUER_SPECIFIC",
+    "DERIVABLE_FROM_DOCUMENT"
+   ],
+   "note": "Lucky pagination. Statement type derivable from statement titles + 'Notes to' markers + analysis-section headers."
+  },
+  {
+   "id": "A3",
+   "component": "entity_scope_page_ranges",
+   "lucky_value": "162-320 ISSUER;321-324 INVESTEE;325-375 ISSUER",
+   "classification": [
+    "ISSUER_SPECIFIC",
+    "DERIVABLE_FROM_DOCUMENT"
+   ],
+   "note": "Lucky investee note pages (NutriCo/ASIL). Derivable but harder: requires entity-name detection / MSIL identity on investment-note tables."
+  },
+  {
+   "id": "A4",
+   "component": "label_aliases",
+   "lucky_value": "turnover->revenue, gross profit->gross_profit, net cash from operating activities->operating_cash_flow, share capital & reserves->total_equity, long-term financing->long_term_debt, ... (+OCR-garble variants)",
+   "classification": [
+    "GENERIC"
+   ],
+   "note": "Standard financial-statement vocabulary; applies to any issuer. The OCR-garble variants are noise patterns, not issuer-specific. REUSABLE."
+  },
+  {
+   "id": "A5",
+   "component": "section_statement_type_overrides",
+   "lucky_value": "'vertical/horizontal analysis','cumulative','year on year' -> ANALYSIS_TABLE",
+   "classification": [
+    "GENERIC",
+    "DERIVABLE_FROM_DOCUMENT"
+   ],
+   "note": "Section-header markers are issuer-independent; this is already a generic document-derived rule."
+  },
+  {
+   "id": "A6",
+   "component": "label_page_year_aliases",
+   "lucky_value": "page 162 + 'Long term finance' (2020-25) -> long_term_debt_summary_reference; page 162 + 'Net Cash from Operating Activities' (2024-25) -> operating_cash_flow_summary_reference",
+   "classification": [
+    "ISSUER_SPECIFIC",
+    "REQUIRES_EXTERNAL_CONFIGURATION"
+   ],
+   "note": "Most over-fit: hardcoded to Lucky page 162 + specific years; 'source-reference guards from the CV1 Lucky truth set'. Not derivable; pure Lucky tuning."
+  },
+  {
+   "id": "A7",
+   "component": "statement_type_precedence",
+   "lucky_value": "ANALYSIS_TABLE->INELIGIBLE; SUMMARY_TABLE->REVIEW_REQUIRED; NOTE->NOTE_ONLY; PRIMARY/SUPPORTING->ELIGIBLE",
+   "classification": [
+    "GENERIC"
+   ],
+   "note": "Issuer-independent governance logic (the general core). REUSABLE as-is."
+  },
+  {
+   "id": "A8",
+   "component": "total_liabilities_subtotal_heuristic (R2)",
+   "lucky_value": "label the unlabeled subtotal immediately before TOTAL EQUITY AND LIABILITIES as total_liabilities",
+   "classification": [
+    "DERIVABLE_FROM_DOCUMENT"
+   ],
+   "note": "Structural/positional; issuer-independent in principle BUT fragile: Millat's standalone BS has no such unlabeled subtotal, so it correctly yields SOURCE_INSUFFICIENT. Over-fit-prone; must be validated cross-issuer."
+  },
+  {
+   "id": "A9",
+   "component": "duplicate_extraction_artifact_pages + markers",
+   "lucky_value": "pages (162,163,164) + marker 'bbox_pdfplumber_text_table'",
+   "classification": [
+    "GENERIC",
+    "ISSUER_SPECIFIC"
+   ],
+   "note": "Dedup MECHANISM (camelot vs pdfplumber double-extraction) is generic; the PAGE LIST is Lucky-specific. Dedup should key on (value,year,provenance), not a page list."
+  },
+  {
+   "id": "A10",
+   "component": "document_fingerprint default",
+   "lucky_value": "Lucky 97c3123...",
+   "classification": [
+    "ISSUER_SPECIFIC"
+   ],
+   "note": "Per-document; expected to vary by bundle (not a defect, but confirms single-document binding)."
+  }
+ ],
+ "summary_counts": {
+  "generic_or_derivable": [
+   "A4",
+   "A5",
+   "A7",
+   "A8"
+  ],
+  "issuer_specific_or_external_config": [
+   "A1",
+   "A2",
+   "A3",
+   "A6",
+   "A9(page-list)",
+   "A10"
+  ],
+  "dominant_blocker": "A1/A2/A3 page ranges + A6 page/year aliases -> these are what make an unseen issuer collapse to UNKNOWN tags"
+ },
+ "current_support": {
+  "unseen_issuer_execution": false,
+  "multi_issuer_execution": false,
+  "issuer_configured_execution_only": true,
+  "evidence": "default_ocr_v2_bridge_config() is a single Lucky config; page ranges + page/year aliases + dedup pages are Lucky-hardcoded; no config-selection mechanism; Millat collapses (UNKNOWN tags) without a Millat config."
+ },
+ "architectural_options": {
+  "A_per_issuer_configs": {
+   "effort": "low_per_issuer_but_recurring",
+   "operational_burden": "high (manual config per issuer + per filing-year pagination drift)",
+   "validation": "each issuer config + truth set must be validated; config itself is unvalidated over-fit-prone input",
+   "production_suitability": "low (does not scale to arbitrary issuers/filings)"
+  },
+  "B_generic_document_derived": {
+   "effort": "high (derive basis/statement_type from headers+markers; entity_scope from entity resolution; dedup generically)",
+   "operational_burden": "low (no per-issuer config)",
+   "validation": "validate the derivation once across multiple issuers; generalization is the tested property",
+   "production_suitability": "high (scales to unseen issuers; the platform goal)"
+  },
+  "C_hybrid": {
+   "effort": "medium (generic derivation as default + retain bounded per-issuer override for hard cases)",
+   "operational_burden": "low_medium (overrides only when derivation fails)",
+   "validation": "validate generic derivation cross-issuer; overrides are logged exceptions, individually validated; bounded over-fit",
+   "production_suitability": "high (scales + handles edge cases); pragmatic"
+  }
+ },
+ "final_determination": {
+  "current_state": "ISSUER_SPECIFIC_CONFIGURATION_REQUIRED",
+  "production_requirement": "GENERIC_EXECUTION_PATH_REQUIRED",
+  "recommended_form": "C_hybrid (generic document-derived bridge + bounded validated per-issuer overrides)",
+  "feasibility_note": "Generic path is feasible: the dominant issuer-specific component (page ranges A1-A3) is DERIVABLE_FROM_DOCUMENT, and A4/A5 already prove generic derivation works for aliases and section types. A6 (page/year aliases) must be eliminated, not generalized."
+ }
+}

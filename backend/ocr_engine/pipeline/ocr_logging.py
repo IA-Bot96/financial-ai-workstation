@@ -133,9 +133,11 @@ class OCRRunLogger:
         """Append a final run-summary section to the run log."""
 
         normalized_stage_timings = normalize_stage_timings(stage_timings)
+        self.info("OCR RUN SUMMARY")
         self.info("Run Summary")
         self.info(f"Summary document: {document}")
         self.info(f"Summary runtime seconds: {runtime_seconds:.6f}")
+        self.info("Stage timing summary")
         for stage_name in OCR_STAGE_NAMES:
             self.info(
                 f"Summary stage {stage_name}: "

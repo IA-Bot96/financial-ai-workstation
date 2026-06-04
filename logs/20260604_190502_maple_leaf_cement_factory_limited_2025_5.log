@@ -1,0 +1,37 @@
+2026-06-04 19:05:02.454 | INFO | OCRPipeline | Starting OCR run
+2026-06-04 19:05:02.455 | INFO | OCRPipeline | Pipeline Started
+2026-06-04 19:05:02.455 | INFO | OCRPipeline | Table Detection Started
+2026-06-04 19:05:02.455 | INFO | OCRPipeline | Table Detection Completed
+2026-06-04 19:05:02.455 | INFO | OCRPipeline | Classification Started
+2026-06-04 19:05:02.455 | WARNING | OCRPipeline | Layer Partially Failed: Classification
+2026-06-04 19:05:02.455 | INFO | OCRPipeline | Table Extraction Started
+2026-06-04 19:05:02.455 | ERROR | OCRPipeline | Layer Failed: Table Extraction\nTraceback (most recent call last):\n  File "C:\AI Financial Intelligence\backend\ocr_engine\pipeline\ocr_pipeline.py", line 174, in _execute_layer\n    updated_context = layer_callable(context)\n                      ^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\AI Financial Intelligence\backend\ocr_engine\tests\test_ocr_pipeline.py", line 41, in process\n    raise RuntimeError("planned failure")\nRuntimeError: planned failure
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Validation Started
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Validation Completed
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Metric Normalization Started
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Metric Normalization Completed
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Insights Extraction Started
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Insights Extraction Completed
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Financial Year Consolidation Started
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Financial Year Consolidation Completed
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Workbook Population Started
+2026-06-04 19:05:02.456 | INFO | OCRPipeline | Workbook Population Completed
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Pipeline Completed
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | OCR RUN SUMMARY
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Run Summary
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary document: maple_leaf_cement_factory_limited_2025
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary runtime seconds: 0.002856
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Stage timing summary
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Extraction: 0.000444s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Capture: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Registry: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Statement Governance: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Scale Governance: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Entity Governance: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Selection: 0.000000s
+2026-06-04 19:05:02.457 | INFO | OCRPipeline | Summary stage Workbook: 0.000109s
+2026-06-04 19:05:02.458 | INFO | OCRPipeline | Summary stage MSIL Export: 0.000000s
+2026-06-04 19:05:02.458 | INFO | OCRPipeline | Summary candidate count: 0
+2026-06-04 19:05:02.458 | INFO | OCRPipeline | Summary canonical count: 0
+2026-06-04 19:05:02.458 | INFO | OCRPipeline | Summary workbook rows: 0
+2026-06-04 19:05:02.458 | INFO | OCRPipeline | Summary status: failed

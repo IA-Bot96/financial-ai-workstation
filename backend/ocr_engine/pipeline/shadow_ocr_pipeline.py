@@ -8,6 +8,7 @@ V2 output visible to callers.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from datetime import datetime, timezone
@@ -16,6 +17,8 @@ from typing import Any
 
 from ocr_engine.pipeline.interfaces.ocr_pipeline import IOCRPipeline
 from shared.models.company_context import CompanyContext
+
+logger = logging.getLogger(__name__)
 
 
 class ShadowOCRPipeline(IOCRPipeline):
@@ -41,6 +44,14 @@ class ShadowOCRPipeline(IOCRPipeline):
     def process(self, context: CompanyContext) -> CompanyContext:
         """Run both engines and return only the primary/V1 result."""
 
+        logger.info(
+            "Running V1 + V2",
+            extra={
+                "component": "ShadowOCRPipeline",
+                "company_name": context.company_name,
+                "report_years": [report.year for report in context.reports],
+            },
+        )
         run_id = _run_id(context)
         primary_context = context.model_copy(deep=True)
         shadow_context = context.model_copy(deep=True)
@@ -68,6 +79,14 @@ class ShadowOCRPipeline(IOCRPipeline):
             shadow_runtime_seconds=shadow_runtime_seconds,
             shadow_timing_breakdown=_shadow_timing_breakdown(self._shadow_pipeline),
             shadow_run_audit=_shadow_run_audit(self._shadow_pipeline),
+        )
+        logger.info(
+            "Serving V1 output",
+            extra={
+                "component": "ShadowOCRPipeline",
+                "run_id": run_id,
+                "v2_output_consumed_by_caller": False,
+            },
         )
         return primary_result
 

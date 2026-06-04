@@ -84,6 +84,8 @@ def test_ocr_run_logger_writes_timestamped_log_and_artifacts(tmp_path: Path) -> 
         for line in log_lines
     )
     assert any("Candidate debug detail" in line for line in log_lines)
+    assert any("OCR RUN SUMMARY" in line for line in log_lines)
+    assert any("Stage timing summary" in line for line in log_lines)
     assert any("Summary stage MSIL Export: 0.900000s" in line for line in log_lines)
 
     audit = write_ocr_logging_artifacts(

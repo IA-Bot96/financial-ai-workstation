@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from pathlib import Path
 from typing import Callable
@@ -22,6 +23,8 @@ from shared.services.financial_year_consolidator import FinancialYearConsolidato
 from workbook_population.services.workbook_population_service import (
     OpenPyXLWorkbookPopulationService,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class OCREngineVersion(str, Enum):
@@ -48,14 +51,25 @@ def build_ocr_pipeline(
     version = OCREngineVersion(settings.ocr_engine_version)
     build_v1 = v1_builder or build_v1_pipeline
     build_v2 = v2_builder or build_v2_pipeline
+    logger.info(
+        "OCR_ENGINE_VERSION=%s",
+        version.value,
+        extra={"component": "OCRPipelineFactory"},
+    )
 
     if version is OCREngineVersion.V1:
+        logger.info("Using OCRPipeline", extra={"component": "OCRPipelineFactory"})
         return build_v1(settings, output_xlsx)
     if version is OCREngineVersion.V2:
+        logger.info("Using OCRV2Pipeline", extra={"component": "OCRPipelineFactory"})
         return build_v2(settings, output_xlsx)
     if version is OCREngineVersion.SHADOW:
         from ocr_engine.pipeline.shadow_ocr_pipeline import ShadowOCRPipeline
 
+        logger.info(
+            "Using ShadowOCRPipeline",
+            extra={"component": "OCRPipelineFactory"},
+        )
         return ShadowOCRPipeline(
             primary_pipeline=build_v1(settings, output_xlsx),
             shadow_pipeline=build_v2(settings, None),

@@ -1,0 +1,497 @@
+{
+  "fixture_version": "1.0.0",
+  "fixture_name": "ocr_v2_cv1_lucky_regression_oracle",
+  "entity_ref": "lucky_cement",
+  "declared_basis": "unconsolidated",
+  "evidence_sources": [
+    "output/PDF_TRUTH_SET_lucky_2025.md",
+    "output/PHASE_2_COMPARISON_lucky_cv1.md",
+    "output/PHASE_3_ERROR_ANALYSIS_lucky_cv1.md",
+    "output/cv1_s1_root_cause_analysis.md",
+    "output/ocr_v2_architecture_review.md",
+    "output/classification_matching_root_cause_audit.json",
+    "output/bbox_extraction_poc/tables"
+  ],
+  "cases": [
+    {
+      "case_id": "revenue_2021_scale",
+      "metric": "revenue",
+      "value_year": 2021,
+      "failure_class": "scale_governance",
+      "correct_candidate": {
+        "value": "62,940,805",
+        "basis": "unconsolidated",
+        "statement_type": "SUPPORTING_SCHEDULE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 164,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2021:p164:Analysis P&L Turnover"
+      },
+      "incorrect_candidate": {
+        "value": "62,940,805,000",
+        "basis": "unconsolidated",
+        "statement_type": "SUPPORTING_SCHEDULE",
+        "entity_scope": "ISSUER",
+        "source_scale": "magnitude_inferred_full_rupees",
+        "source_unit": "PKR",
+        "page_number": 164,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-02:workbook_full_rupees"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "SCALE_VALID",
+        "incorrect_candidate_expected": "SCALE_REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-02; output/PDF_TRUTH_SET_lucky_2025.md:Revenue"
+    },
+    {
+      "case_id": "revenue_2024",
+      "metric": "revenue",
+      "value_year": 2024,
+      "failure_class": "note_contamination",
+      "correct_candidate": {
+        "value": "115,324,942",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2024:p241:Unconsolidated P&L Net Revenue"
+      },
+      "incorrect_candidate": {
+        "value": "26,282,162",
+        "basis": "unconsolidated",
+        "statement_type": "NOTE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 320,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-05:notes_sheet_revenue_row_exact_pdf_page_not_identified"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-05; output/PDF_TRUTH_SET_lucky_2025.md:Revenue"
+    },
+    {
+      "case_id": "revenue_2025",
+      "metric": "revenue",
+      "value_year": 2025,
+      "failure_class": "note_contamination",
+      "correct_candidate": {
+        "value": "124,511,744",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2025:p241:Unconsolidated P&L Net Revenue"
+      },
+      "incorrect_candidate": {
+        "value": "25,417,143",
+        "basis": "unconsolidated",
+        "statement_type": "NOTE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 320,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-06:notes_sheet_revenue_row_exact_pdf_page_not_identified"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-06; output/PDF_TRUTH_SET_lucky_2025.md:Revenue"
+    },
+    {
+      "case_id": "gross_profit_2024",
+      "metric": "gross_profit",
+      "value_year": 2024,
+      "failure_class": "statement_basis",
+      "correct_candidate": {
+        "value": "38,804,572",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Gross Profit:2024:p241:Unconsolidated P&L"
+      },
+      "incorrect_candidate": {
+        "value": "123,516,941",
+        "basis": "consolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 292,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-11:consolidated_gross_profit_2024"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-11; output/PDF_TRUTH_SET_lucky_2025.md:Gross Profit"
+    },
+    {
+      "case_id": "gross_profit_2025",
+      "metric": "gross_profit",
+      "value_year": 2025,
+      "failure_class": "statement_basis",
+      "correct_candidate": {
+        "value": "42,684,684",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Gross Profit:2025:p241:Unconsolidated P&L"
+      },
+      "incorrect_candidate": {
+        "value": "122,737,896",
+        "basis": "consolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 292,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-12:consolidated_gross_profit_2025"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-12; output/PDF_TRUTH_SET_lucky_2025.md:Gross Profit"
+    },
+    {
+      "case_id": "net_profit_2024",
+      "metric": "profit_after_tax",
+      "value_year": 2024,
+      "failure_class": "statement_basis",
+      "correct_candidate": {
+        "value": "28,106,539",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Net Profit:2024:p241:Profit after taxation"
+      },
+      "incorrect_candidate": {
+        "value": "72,336,747",
+        "basis": "consolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 292,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-23:consolidated_PAT_2024"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-23; output/PDF_TRUTH_SET_lucky_2025.md:Net Profit"
+    },
+    {
+      "case_id": "net_profit_2025",
+      "metric": "profit_after_tax",
+      "value_year": 2025,
+      "failure_class": "statement_basis",
+      "correct_candidate": {
+        "value": "33,092,162",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Net Profit:2025:p241:Profit after taxation"
+      },
+      "incorrect_candidate": {
+        "value": "84,498,377",
+        "basis": "consolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 292,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-24:consolidated_PAT_2025"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-24; output/PDF_TRUTH_SET_lucky_2025.md:Net Profit"
+    },
+    {
+      "case_id": "ocf_2025",
+      "metric": "operating_cash_flow",
+      "value_year": 2025,
+      "failure_class": "statement_basis",
+      "correct_candidate": {
+        "value": "27,572,567",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 243,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Operating Cash Flow:2025:p243:Unconsolidated cash flow"
+      },
+      "incorrect_candidate": {
+        "value": "96,742,214",
+        "basis": "consolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 294,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-36:consolidated_OCF_2025"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-36; output/PDF_TRUTH_SET_lucky_2025.md:Operating Cash Flow"
+    },
+    {
+      "case_id": "total_assets_2025",
+      "metric": "total_assets",
+      "value_year": 2025,
+      "failure_class": "investee_contamination",
+      "correct_candidate": {
+        "value": "266,748,030",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 240,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Total Assets:2025:p240:Statement of Financial Position"
+      },
+      "incorrect_candidate": {
+        "value": "16,845,584",
+        "basis": "unknown",
+        "statement_type": "NOTE",
+        "entity_scope": "INVESTEE",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 323,
+        "provenance_reference": "classification_matching_root_cause_audit.json:8.5.1:NutriCo_total_assets_2025"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification and OCR V2 architecture review",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-32; output/ocr_v2_architecture_review.md:entity_scope_examples; output/classification_matching_root_cause_audit.json:NutriCo total assets"
+    },
+    {
+      "case_id": "total_equity_2025",
+      "metric": "total_equity",
+      "value_year": 2025,
+      "failure_class": "scale_governance",
+      "correct_candidate": {
+        "value": "175,910,400",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 240,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Total Equity:2025:p240:Share capital and reserves"
+      },
+      "incorrect_candidate": {
+        "value": "175,910,400,000",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "magnitude_inferred_full_rupees",
+        "source_unit": "PKR",
+        "page_number": 240,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-44:workbook_full_rupees"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "SCALE_VALID",
+        "incorrect_candidate_expected": "SCALE_REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-44; output/PDF_TRUTH_SET_lucky_2025.md:Total Equity"
+    },
+    {
+      "case_id": "long_term_debt_2024",
+      "metric": "long_term_debt",
+      "value_year": 2024,
+      "failure_class": "source_selection",
+      "correct_candidate": {
+        "value": "12,760,637",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 240,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Long Term Debt:2024:p240:Long-term financing"
+      },
+      "incorrect_candidate": {
+        "value": "1,000",
+        "basis": "unconsolidated",
+        "statement_type": "NOTE",
+        "entity_scope": "ISSUER",
+        "source_scale": "magnitude_inferred_note_number",
+        "source_unit": "PKR",
+        "page_number": 240,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-37:debt_schedule_structural_corruption"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "SCALE_REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-37; output/PDF_TRUTH_SET_lucky_2025.md:Long Term Debt"
+    },
+    {
+      "case_id": "revenue_note_vs_statement",
+      "metric": "revenue",
+      "value_year": 2025,
+      "failure_class": "note_contamination",
+      "correct_candidate": {
+        "value": "124,511,744",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2025:p241:statement_precedence_oracle"
+      },
+      "incorrect_candidate": {
+        "value": "25,417,143",
+        "basis": "unconsolidated",
+        "statement_type": "NOTE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 320,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-06:note_vs_statement_oracle"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-06 and note-over-statement risk note"
+    },
+    {
+      "case_id": "investee_contamination_case",
+      "metric": "revenue",
+      "value_year": 2025,
+      "failure_class": "investee_contamination",
+      "correct_candidate": {
+        "value": "124,511,744",
+        "basis": "unconsolidated",
+        "statement_type": "PRIMARY_STATEMENT",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 241,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2025:p241:issuer_revenue"
+      },
+      "incorrect_candidate": {
+        "value": "27,828,317",
+        "basis": "unknown",
+        "statement_type": "NOTE",
+        "entity_scope": "INVESTEE",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 322,
+        "provenance_reference": "bbox_extraction_poc/tables/page_0322_bbox_00_bbox_camelot_stream_table_00.csv:ASIL_revenue_2025"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification and OCR V2 architecture review",
+      "verification_source": "output/ocr_v2_architecture_review.md:entity_scope_examples; output/bbox_extraction_poc/tables/page_0322_bbox_00_bbox_camelot_stream_table_00.csv"
+    },
+    {
+      "case_id": "analysis_table_case",
+      "metric": "operating_profit",
+      "value_year": 2025,
+      "failure_class": "analysis_table_contamination",
+      "correct_candidate": {
+        "value": "31,284,620",
+        "basis": "unconsolidated",
+        "statement_type": "SUPPORTING_SCHEDULE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 164,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Operating Profit:2025:p164:Analysis of P&L value table"
+      },
+      "incorrect_candidate": {
+        "value": "25,130",
+        "basis": "unconsolidated",
+        "statement_type": "ANALYSIS_TABLE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:percentage_ingested_as_value",
+        "source_unit": "%",
+        "page_number": 164,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-18:vertical_OP_percentage_25.13_ingested_as_25130"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "INELIGIBLE"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-18; output/PDF_TRUTH_SET_lucky_2025.md:Operating Profit"
+    },
+    {
+      "case_id": "summary_table_case",
+      "metric": "revenue",
+      "value_year": 2023,
+      "failure_class": "summary_table_contamination",
+      "correct_candidate": {
+        "value": "95,832,147",
+        "basis": "unconsolidated",
+        "statement_type": "SUPPORTING_SCHEDULE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "page_number": 164,
+        "provenance_reference": "PDF_TRUTH_SET_lucky_2025.md:Revenue:2023:p164:Analysis P&L Turnover"
+      },
+      "incorrect_candidate": {
+        "value": "95,832",
+        "basis": "unconsolidated",
+        "statement_type": "SUMMARY_TABLE",
+        "entity_scope": "ISSUER",
+        "source_scale": "source_header:PKR millions",
+        "source_unit": "PKR",
+        "page_number": 162,
+        "provenance_reference": "cv1_s1_root_cause_analysis.md:S1-04:six_year_summary_millions"
+      },
+      "expected_governance_result": {
+        "correct_candidate_expected": "ELIGIBLE",
+        "incorrect_candidate_expected": "REVIEW_REQUIRED"
+      },
+      "verified_by": "CV1 manual verification",
+      "verification_source": "output/cv1_s1_root_cause_analysis.md:S1-04; output/PDF_TRUTH_SET_lucky_2025.md:Revenue"
+    }
+  ]
+}

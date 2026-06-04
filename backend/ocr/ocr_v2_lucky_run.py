@@ -108,6 +108,9 @@ class OCRV2TimingBreakdown(BaseModel):
     capture_time_seconds: float = Field(..., ge=0)
     registry_time_seconds: float = Field(..., ge=0)
     governance_time_seconds: float = Field(..., ge=0)
+    statement_governance_time_seconds: float = Field(..., ge=0)
+    scale_governance_time_seconds: float = Field(..., ge=0)
+    entity_governance_time_seconds: float = Field(..., ge=0)
     selection_time_seconds: float = Field(..., ge=0)
     workbook_time_seconds: float = Field(..., ge=0)
     export_time_seconds: float = Field(..., ge=0)
@@ -167,16 +170,24 @@ class OCRV2LuckyRun:
         registry_snapshot = registry.snapshot()
         registry_time_seconds = time.perf_counter() - phase_start
 
+        governance_start = time.perf_counter()
         phase_start = time.perf_counter()
         statement_result = StatementGovernance().govern(registry_snapshot.candidates)
+        statement_governance_time_seconds = time.perf_counter() - phase_start
+
+        phase_start = time.perf_counter()
         scale_result = ScaleGovernance().govern(statement_result.governed_candidates)
+        scale_governance_time_seconds = time.perf_counter() - phase_start
+
+        phase_start = time.perf_counter()
         entity_result = EntityGovernance().govern(scale_result.governed_candidates)
+        entity_governance_time_seconds = time.perf_counter() - phase_start
+        governance_time_seconds = time.perf_counter() - governance_start
+
+        phase_start = time.perf_counter()
         preselection_result = prepare_candidates_for_canonical_selection(
             entity_result.entity_governed_candidates
         )
-        governance_time_seconds = time.perf_counter() - phase_start
-
-        phase_start = time.perf_counter()
         selection_results = _select_metric_year_groups(
             preselection_result.candidates
         )
@@ -194,6 +205,9 @@ class OCRV2LuckyRun:
             capture_time_seconds=capture_time_seconds,
             registry_time_seconds=registry_time_seconds,
             governance_time_seconds=governance_time_seconds,
+            statement_governance_time_seconds=statement_governance_time_seconds,
+            scale_governance_time_seconds=scale_governance_time_seconds,
+            entity_governance_time_seconds=entity_governance_time_seconds,
             selection_time_seconds=selection_time_seconds,
             workbook_time_seconds=workbook_time_seconds,
             export_time_seconds=0.0,

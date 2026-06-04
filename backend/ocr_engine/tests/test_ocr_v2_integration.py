@@ -86,6 +86,9 @@ class _FakeOCRV2Runner:
                     "capture_time_seconds": 0.2,
                     "registry_time_seconds": 0.05,
                     "governance_time_seconds": 0.3,
+                    "statement_governance_time_seconds": 0.1,
+                    "scale_governance_time_seconds": 0.1,
+                    "entity_governance_time_seconds": 0.1,
                     "selection_time_seconds": 0.4,
                     "workbook_time_seconds": 0.5,
                     "export_time_seconds": 0.0,
@@ -154,6 +157,7 @@ def test_ocr_v2_pipeline_satisfies_interface_and_populates_context(
         tables_dir=tmp_path / "tables",
         output_xlsx=workbook_path,
         runner_factory=_FakeOCRV2Runner,
+        log_dir=tmp_path / "logs",
     )
 
     result = pipeline.process(_context())
@@ -171,10 +175,20 @@ def test_ocr_v2_pipeline_satisfies_interface_and_populates_context(
         "capture_time_seconds": 0.2,
         "registry_time_seconds": 0.05,
         "governance_time_seconds": 0.3,
+        "statement_governance_time_seconds": 0.1,
+        "scale_governance_time_seconds": 0.1,
+        "entity_governance_time_seconds": 0.1,
         "selection_time_seconds": 0.4,
         "workbook_time_seconds": 0.5,
         "export_time_seconds": 0.0,
     }
+    log_files = list((tmp_path / "logs").glob("*.log"))
+    assert len(log_files) == 1
+    log_text = log_files[0].read_text(encoding="utf-8")
+    assert " | INFO | OCRV2Pipeline | Starting OCR run" in log_text
+    assert " | INFO | OCRV2Pipeline | Run Summary" in log_text
+    assert "Summary stage Statement Governance: 0.100000s" in log_text
+    assert "Summary canonical count: 0" in log_text
     assert pipeline.last_run_audit == {"integrity_violations": ()}
     assert [entry.layer_name for entry in result.execution_results] == [
         "OCR V2 Pipeline"

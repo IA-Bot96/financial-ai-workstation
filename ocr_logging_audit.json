@@ -1,0 +1,29 @@
+{
+  "artifact": "ocr_logging_audit",
+  "candidate_level_logging": "DEBUG-only",
+  "dedicated_log_file_per_run": true,
+  "default_level": "INFO",
+  "integrity_violations": [],
+  "latest_log_file": "logs\\20260604_185208_maple_leaf_cement_factory_limited_2025_5.log",
+  "log_dir": "logs",
+  "log_file_count": 5,
+  "log_format": "YYYY-MM-DD HH:MM:SS.mmm | LEVEL | COMPONENT | MESSAGE",
+  "stage_timing_fields": [
+    "Extraction",
+    "Capture",
+    "Registry",
+    "Statement Governance",
+    "Scale Governance",
+    "Entity Governance",
+    "Selection",
+    "Workbook",
+    "MSIL Export"
+  ],
+  "summary_section_count": 5,
+  "supported_levels": [
+    "INFO",
+    "DEBUG"
+  ],
+  "timestamped_console_output_configured": true,
+  "timestamped_log_files": 5
+}

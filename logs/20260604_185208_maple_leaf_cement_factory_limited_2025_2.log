@@ -1,0 +1,37 @@
+2026-06-04 18:52:08.247 | INFO | OCRPipeline | Starting OCR run
+2026-06-04 18:52:08.247 | INFO | OCRPipeline | Pipeline Started
+2026-06-04 18:52:08.247 | INFO | OCRPipeline | Table Detection Started
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Table Detection Completed
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Classification Started
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Classification Completed
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Table Extraction Started
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Table Extraction Completed
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Validation Started
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Validation Completed
+2026-06-04 18:52:08.248 | INFO | OCRPipeline | Metric Normalization Started
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Metric Normalization Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Insights Extraction Started
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Insights Extraction Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Financial Year Consolidation Started
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Financial Year Consolidation Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Workbook Population Started
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Workbook Population Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Query Engine Bundle Generation Started
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Query Engine Bundle Generation Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Pipeline Completed
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Run Summary
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Summary document: maple_leaf_cement_factory_limited_2025
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Summary runtime seconds: 0.001946
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Summary stage Extraction: 0.000274s
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Summary stage Capture: 0.000000s
+2026-06-04 18:52:08.249 | INFO | OCRPipeline | Summary stage Registry: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage Statement Governance: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage Scale Governance: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage Entity Governance: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage Selection: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage Workbook: 0.000043s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary stage MSIL Export: 0.000000s
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary candidate count: 0
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary canonical count: 0
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary workbook rows: 0
+2026-06-04 18:52:08.250 | INFO | OCRPipeline | Summary status: completed

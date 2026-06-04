@@ -5,11 +5,17 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 from ocr_engine.pipeline.exceptions import PipelineLayerPartialFailure
 from ocr_engine.pipeline.interfaces.ocr_pipeline import IOCRPipeline
 from ocr_engine.pipeline.models.layer_execution_result import LayerExecutionResult
+from ocr_engine.pipeline.ocr_logging import (
+    DEFAULT_OCR_LOG_DIR,
+    OCRRunLogger,
+    stage_timings_from_context,
+)
 from ocr_engine.pipeline.models.pipeline_error import PipelineError
 from ocr_engine.pipeline.models.pipeline_status import PipelineStatus
 from shared.models.company_context import CompanyContext
@@ -47,6 +53,8 @@ class OCRPipeline(IOCRPipeline):
         query_engine_bundle_service: Any | None = None,
         *,
         log: logging.Logger | None = None,
+        log_dir: str | Path = DEFAULT_OCR_LOG_DIR,
+        log_level: str | int | None = None,
     ) -> None:
         """Initialize the pipeline with injected OCR workflow dependencies."""
 
@@ -95,39 +103,59 @@ class OCRPipeline(IOCRPipeline):
 
         self._layers = tuple(layers)
         self._logger = log or logger
+        self._log_dir = Path(log_dir)
+        self._log_level = log_level
 
     def process(self, context: CompanyContext) -> CompanyContext:
         """Run the OCR workflow and return the populated company context."""
 
-        context.pipeline_status = PipelineStatus.RUNNING
-        context.pipeline_errors = []
-        context.execution_results = []
+        with OCRRunLogger(
+            context,
+            component="OCRPipeline",
+            log_dir=self._log_dir,
+            level=self._log_level,
+        ) as run_log:
+            start_time = time.perf_counter()
+            context.pipeline_status = PipelineStatus.RUNNING
+            context.pipeline_errors = []
+            context.execution_results = []
 
-        self._logger.info(
-            "Pipeline Started",
-            extra={
-                "company_name": context.company_name,
-                "report_years": [report.year for report in context.reports],
-            },
-        )
+            self._logger.info(
+                "Pipeline Started",
+                extra={
+                    "component": "OCRPipeline",
+                    "company_name": context.company_name,
+                    "report_years": [report.year for report in context.reports],
+                },
+            )
 
-        for layer in self._layers:
-            context = self._execute_layer(layer, context)
+            for layer in self._layers:
+                context = self._execute_layer(layer, context)
 
-        context.pipeline_status = (
-            PipelineStatus.FAILED
-            if context.pipeline_errors
-            else PipelineStatus.COMPLETED
-        )
-        self._logger.info(
-            "Pipeline Completed",
-            extra={
-                "company_name": context.company_name,
-                "pipeline_status": context.pipeline_status.value,
-                "error_count": len(context.pipeline_errors),
-            },
-        )
-        return context
+            context.pipeline_status = (
+                PipelineStatus.FAILED
+                if context.pipeline_errors
+                else PipelineStatus.COMPLETED
+            )
+            self._logger.info(
+                "Pipeline Completed",
+                extra={
+                    "component": "OCRPipeline",
+                    "company_name": context.company_name,
+                    "pipeline_status": context.pipeline_status.value,
+                    "error_count": len(context.pipeline_errors),
+                },
+            )
+            run_log.write_summary(
+                document=run_log.document_id,
+                runtime_seconds=time.perf_counter() - start_time,
+                stage_timings=stage_timings_from_context(context),
+                candidate_count=len(context.metric_values),
+                canonical_count=len(context.metric_values),
+                workbook_rows=_workbook_rows(context),
+                status=context.pipeline_status.value,
+            )
+            return context
 
     def _execute_layer(
         self,
@@ -138,7 +166,7 @@ class OCRPipeline(IOCRPipeline):
         self._logger.info(
             "%s Started",
             layer.name,
-            extra={"layer_name": layer.name},
+            extra={"component": "OCRPipeline", "layer_name": layer.name},
         )
 
         try:
@@ -156,6 +184,7 @@ class OCRPipeline(IOCRPipeline):
                 "%s Completed",
                 layer.name,
                 extra={
+                    "component": "OCRPipeline",
                     "layer_name": layer.name,
                     "execution_time_seconds": execution_time_seconds,
                 },
@@ -179,6 +208,7 @@ class OCRPipeline(IOCRPipeline):
                 "Layer Partially Failed: %s",
                 layer.name,
                 extra={
+                    "component": "OCRPipeline",
                     "layer_name": layer.name,
                     "execution_time_seconds": execution_time_seconds,
                     "error_count": len(exc.error_messages),
@@ -204,6 +234,7 @@ class OCRPipeline(IOCRPipeline):
                 "Layer Failed: %s",
                 layer.name,
                 extra={
+                    "component": "OCRPipeline",
                     "layer_name": layer.name,
                     "execution_time_seconds": execution_time_seconds,
                 },
@@ -235,3 +266,9 @@ class OCRPipeline(IOCRPipeline):
             layer_name=layer_name,
             error_message=error_message or "Unknown pipeline error.",
         )
+
+
+def _workbook_rows(context: CompanyContext) -> int:
+    if context.generated_workbook is None:
+        return 0
+    return int(context.generated_workbook.metrics_written or 0)

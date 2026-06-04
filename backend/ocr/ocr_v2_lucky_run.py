@@ -24,6 +24,10 @@ from .ocr_v2_canonical_selection import (
     CanonicalSelectionStatus,
 )
 from .ocr_v2_entity_governance import EntityGovernance, EntityGovernanceResult
+from .ocr_v2_preselection import (
+    CandidatePreselectionResult,
+    prepare_candidates_for_canonical_selection,
+)
 from .ocr_v2_scale_governance import ScaleGovernance, ScaleGovernanceResult
 from .ocr_v2_statement_governance import StatementGovernance, StatementGovernanceResult
 from .ocr_v2_table_adapter import DEFAULT_BBOX_TABLES_DIR
@@ -105,6 +109,7 @@ class OCRV2LuckyRunResult(BaseModel):
     statement_result: StatementGovernanceResult
     scale_result: ScaleGovernanceResult
     entity_result: EntityGovernanceResult
+    preselection_result: CandidatePreselectionResult
     selection_results: tuple[CanonicalSelectionResult, ...]
     workbook_output: OCRV2WorkbookOutput
     audit: OCRV2LuckyRunAudit
@@ -142,8 +147,11 @@ class OCRV2LuckyRun:
         statement_result = StatementGovernance().govern(registry_snapshot.candidates)
         scale_result = ScaleGovernance().govern(statement_result.governed_candidates)
         entity_result = EntityGovernance().govern(scale_result.governed_candidates)
-        selection_results = _select_metric_year_groups(
+        preselection_result = prepare_candidates_for_canonical_selection(
             entity_result.entity_governed_candidates
+        )
+        selection_results = _select_metric_year_groups(
+            preselection_result.candidates
         )
 
         workbook_output = OCRV2WorkbookGenerator().write_xlsx(
@@ -169,6 +177,7 @@ class OCRV2LuckyRun:
             statement_result=statement_result,
             scale_result=scale_result,
             entity_result=entity_result,
+            preselection_result=preselection_result,
             selection_results=selection_results,
             workbook_output=workbook_output,
             audit=audit,
@@ -408,6 +417,7 @@ def _candidate_artifact(result: OCRV2LuckyRunResult) -> dict[str, Any]:
             row.model_dump(mode="json") for row in result.bridge_stream.candidate_inputs
         ],
         "capture_result": result.capture_result.model_dump(mode="json"),
+        "preselection_result": result.preselection_result.model_dump(mode="json"),
     }
 
 
@@ -417,6 +427,7 @@ def _registry_artifact(result: OCRV2LuckyRunResult) -> dict[str, Any]:
         "real_extraction_run": True,
         "oracle_injected_values": False,
         "registry_append_result": result.registry_append_result.model_dump(mode="json"),
+        "preselection_result": result.preselection_result.model_dump(mode="json"),
         "candidates": [
             candidate.model_dump(mode="json")
             for candidate in result.capture_result.candidates

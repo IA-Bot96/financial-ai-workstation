@@ -72,8 +72,10 @@ class OCRV2BridgeConfig(BaseModel):
     ) -> str:
         if section_label:
             normalized = normalize_bridge_label(section_label)
+            compact_normalized = normalized.replace(" ", "")
             for marker, statement_type in self.section_statement_type_overrides.items():
-                if marker in normalized:
+                compact_marker = normalize_bridge_label(marker).replace(" ", "")
+                if marker in normalized or compact_marker in compact_normalized:
                     return statement_type
         return _first_matching_value(
             self.statement_type_page_ranges,
@@ -280,6 +282,8 @@ def _default_label_aliases() -> dict[str, str]:
         "net profit": "profit_after_tax",
         "net profit (100%)": "profit_after_tax",
         "earnings per share": "eps",
+        "earnings_per_share": "eps",
+        "earning_per_share": "eps",
         "earning per share": "eps",
         "earning per share (rupees)": "eps",
         "earning per sha re (rupees)": "eps",

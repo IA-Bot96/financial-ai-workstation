@@ -1,0 +1,379 @@
+{
+ "artifact": "ocr_v2_selection_path_audit",
+ "real_extraction_run": true,
+ "pipeline": [
+  "capture",
+  "registry",
+  "statement_governance",
+  "scale_governance",
+  "entity_governance",
+  "canonical_selection",
+  "workbook"
+ ],
+ "grouping_key": "(raw_label, value_year)",
+ "metrics": {
+  "revenue": {
+   "2020": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "(7.23)",
+     "100.00",
+     "41,870,796",
+     "50.32"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2021": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "28.84",
+     "39.45",
+     "62,940,805"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2022": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "18.17",
+     "77.50",
+     "81,093,525"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2023": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "101.57",
+     "20.34",
+     "95,832,147"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2024": {
+    "candidates_entering_governance": 15,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 7,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 15,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "115,324,942",
+     "140.15",
+     "7.97"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2025": {
+    "candidates_entering_governance": 14,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 7,
+     "ELIGIBLE": 4,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 14,
+    "eligible_after_filter": 4,
+    "distinct_eligible_values": [
+     "100.00",
+     "124,511,744",
+     "197.37"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   }
+  },
+  "gross_profit": {
+   "2020": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "(72.06)",
+     "14.51",
+     "211.94",
+     "6,076,765"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2021": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "(12.83)",
+     "18,955,932",
+     "18.97",
+     "30.12"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2022": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "15.56",
+     "22,551,841",
+     "27.81",
+     "5.89"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2023": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "26,060,678",
+     "27.19",
+     "48.90",
+     "53.73"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2024": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "10.00",
+     "177.50",
+     "33.65",
+     "38,804,572"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2025": {
+    "candidates_entering_governance": 9,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 4,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 9,
+    "eligible_after_filter": 4,
+    "distinct_eligible_values": [
+     "34.28",
+     "42,684,684",
+     "602.42"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   }
+  },
+  "total_assets": {
+   "2020": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "135,868,474",
+     "15.09",
+     "58.15"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2021": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "156,368,062",
+     "18.29",
+     "82.02"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2022": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "15.20",
+     "184,962,368",
+     "90.02"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2023": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "213,079,067",
+     "9.83",
+     "95.49"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2024": {
+    "candidates_entering_governance": 10,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 5,
+     "INELIGIBLE": 3
+    },
+    "candidates_entering_selection": 10,
+    "eligible_after_filter": 5,
+    "distinct_eligible_values": [
+     "100.00",
+     "13.99",
+     "234,018,090",
+     "87.08"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   },
+   "2025": {
+    "candidates_entering_governance": 8,
+    "governance_outcomes": {
+     "REVIEW_REQUIRED": 2,
+     "ELIGIBLE": 4,
+     "INELIGIBLE": 2
+    },
+    "candidates_entering_selection": 8,
+    "eligible_after_filter": 4,
+    "distinct_eligible_values": [
+     "100.00",
+     "266,748,030",
+     "96.33"
+    ],
+    "selection_status": "ambiguity",
+    "selection_reason": "ambiguous_multiple_equivalent_candidates",
+    "selection_winner": null,
+    "workbook_row_emitted": false
+   }
+  }
+ }
+}

@@ -196,6 +196,8 @@ def _scale_from_row(
     text = " ".join(cell for cell in row if cell).lower()
     if not text:
         return None, None
+    if _label_percentage_not_scale(row, year_columns):
+        return None, None
     if _looks_like_value_row(row, year_columns) and not _has_explicit_scale_marker(text):
         return None, None
     if "%" in text or "percent" in text:
@@ -264,6 +266,20 @@ def _looks_like_value_row(
     return any(_is_numeric_value(cell) for cell in observation_cells)
 
 
+def _label_percentage_not_scale(
+    row: tuple[str, ...],
+    year_columns: dict[int, int],
+) -> bool:
+    if not year_columns:
+        return False
+    first_year_column = min(year_columns)
+    leading_text = " ".join(cell for cell in row[:first_year_column] if cell).lower()
+    value_text = " ".join(cell for cell in row[first_year_column:] if cell).lower()
+    return "%" in leading_text and "%" not in value_text and any(
+        _is_numeric_value(cell) for cell in row[first_year_column:]
+    )
+
+
 def _section_label_from_row(
     row: tuple[str, ...],
     year_columns: dict[int, int],
@@ -277,7 +293,14 @@ def _section_label_from_row(
 
 def _section_is_percentage_analysis(section_label: str) -> bool:
     normalized = section_label.lower()
-    return "analysis" in normalized or "%" in normalized or "year on year" in normalized
+    compact = re.sub(r"\s+", "", normalized)
+    return (
+        "analysis" in normalized
+        or "analysis" in compact
+        or "%" in normalized
+        or "year on year" in normalized
+        or "yearonyear" in compact
+    )
 
 
 def _label_from_row(row: tuple[str, ...], first_year_column: int) -> str | None:

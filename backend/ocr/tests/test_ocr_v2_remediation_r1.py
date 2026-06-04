@@ -16,6 +16,7 @@ from ocr import (  # noqa: E402
     OCRV2StatementType,
     OCRV2TableAdapter,
     default_ocr_v2_bridge_config,
+    prepare_candidates_for_canonical_selection,
     write_ocr_v2_remediation_r1_artifacts,
 )
 
@@ -119,29 +120,96 @@ def test_r1_duplicate_pdfplumber_value_rows_are_retained_as_losing_evidence() ->
     assert stream.governance_invocations == 0
 
 
+def test_r1_preselection_collapses_exact_duplicates_before_selection() -> None:
+    from ocr import CandidateCapture, EntityGovernance, ScaleGovernance, StatementGovernance
+
+    rows = [
+        {
+            "raw_value": "41,870,796",
+            "raw_label": "revenue",
+            "value_year": 2020,
+            "page_number": 164,
+            "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+            "document_fingerprint": "fixture",
+            "locator": "camelot:row:2:col:2",
+            "statement_type": OCRV2StatementType.SUPPORTING_SCHEDULE.value,
+            "basis": "unconsolidated",
+            "entity_scope": "ISSUER",
+            "source_scale": "source_header:PKR thousands",
+            "source_unit": "PKR",
+        },
+        {
+            "raw_value": "41,870,796",
+            "raw_label": "revenue",
+            "value_year": 2020,
+            "page_number": 164,
+            "table_reference": "page_0164_bbox_00_bbox_pdfplumber_text_table_00",
+            "document_fingerprint": "fixture",
+            "locator": "pdfplumber:row:3:col:4",
+            "statement_type": OCRV2StatementType.ANALYSIS_TABLE.value,
+            "basis": "unconsolidated",
+            "entity_scope": "ISSUER",
+            "source_scale": "source_header:PKR thousands",
+            "source_unit": "PKR",
+        },
+    ]
+    candidates = CandidateCapture().capture(rows).candidates
+    statement_governed = StatementGovernance().govern(candidates).governed_candidates
+    scale_governed = ScaleGovernance().govern(statement_governed).governed_candidates
+    entity_governed = EntityGovernance().govern(scale_governed).entity_governed_candidates
+
+    result = prepare_candidates_for_canonical_selection(entity_governed)
+
+    assert result.duplicates_detected == 2
+    assert result.duplicates_collapsed == 1
+    assert result.provenance_preserved is True
+    assert result.output_candidates == 1
+    assert result.duplicate_groups[0].duplicate_count == 2
+
+
 def test_r1_artifact_writer_generates_expected_66_cell_audit() -> None:
     tmp_path = _workspace_tmp("r1_artifacts")
     workbook_path = tmp_path / "ocr_v2_lucky_workbook_r1.xlsx"
     metric_resolution_path = tmp_path / "metric_resolution_audit.json"
+    analysis_path = tmp_path / "analysis_table_classification_audit.json"
+    dedup_path = tmp_path / "candidate_dedup_audit.json"
+    eps_path = tmp_path / "eps_alias_audit.json"
     source_precedence_path = tmp_path / "source_precedence_audit.json"
     source_insufficient_path = tmp_path / "source_insufficient_audit.json"
     scale_capture_path = tmp_path / "scale_capture_audit.json"
     r1_audit_path = tmp_path / "ocr_v2_r1_audit.json"
+    run_audit_path = tmp_path / "ocr_v2_r1_run_audit.json"
+    report_path = tmp_path / "ocr_v2_r1_report.json"
+    candidates_path = tmp_path / "ocr_v2_lucky_candidates_r1.json"
+    registry_path = tmp_path / "ocr_v2_lucky_registry_r1.json"
 
     write_ocr_v2_remediation_r1_artifacts(
         workbook_path=workbook_path,
+        candidates_path=candidates_path,
+        registry_path=registry_path,
+        analysis_table_classification_audit_path=analysis_path,
+        candidate_dedup_audit_path=dedup_path,
+        eps_alias_audit_path=eps_path,
         metric_resolution_audit_path=metric_resolution_path,
         source_precedence_audit_path=source_precedence_path,
         source_insufficient_audit_path=source_insufficient_path,
         scale_capture_audit_path=scale_capture_path,
         r1_audit_path=r1_audit_path,
+        run_audit_path=run_audit_path,
+        report_path=report_path,
     )
     r1_payload = json.loads(r1_audit_path.read_text(encoding="utf-8"))
     metric_payload = json.loads(metric_resolution_path.read_text(encoding="utf-8"))
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    dedup_payload = json.loads(dedup_path.read_text(encoding="utf-8"))
+    eps_payload = json.loads(eps_path.read_text(encoding="utf-8"))
     source_payload = json.loads(source_precedence_path.read_text(encoding="utf-8"))
     scale_payload = json.loads(scale_capture_path.read_text(encoding="utf-8"))
+    report_payload = json.loads(report_path.read_text(encoding="utf-8"))
 
     assert workbook_path.exists()
+    assert candidates_path.exists()
+    assert registry_path.exists()
     assert r1_payload["truth_set_cells"] == 66
     assert r1_payload["coverage"]["exact_matches"] == 46
     assert r1_payload["coverage"]["missing_cells"] == 6
@@ -158,5 +226,14 @@ def test_r1_artifact_writer_generates_expected_66_cell_audit() -> None:
         "revenue": True,
         "total_assets": True,
     }
+    assert analysis_payload["analysis_like_rows_misclassified"] == 0
+    assert dedup_payload["duplicates_detected"] > 0
+    assert dedup_payload["duplicates_collapsed"] > 0
+    assert dedup_payload["provenance_preserved"] is True
+    assert eps_payload["legacy_eps_metric_candidates_remaining"] == 0
+    assert eps_payload["eps_candidates_resolved"] > 0
     assert source_payload["source_precedence_issue_corrected"] is True
+    assert source_payload["conflicts_resolved"] == source_payload["precedence_conflicts"]
     assert scale_payload["operating_cash_flow_millions_captured"] is True
+    assert report_payload["coverage_improves_beyond_previous_audit"] is True
+    assert report_payload["candidate_ambiguity"]["materially_reduced"] is True

@@ -1,0 +1,13 @@
+{
+ "total_rows": 66,
+ "unique_metrics": 11,
+ "unique_years": 6,
+ "valued_cells": 52,
+ "source_insufficient_cells": 14,
+ "missing_combinations": [],
+ "duplicate_combinations": [],
+ "integrity_violations": [],
+ "source_artifact": "output/PDF_TRUTH_SET_lucky_cv1_phase1.md",
+ "truth_set_version": "1.0.0",
+ "bundle_fingerprint": "97c3123"
+}

@@ -1,0 +1,67 @@
+cell_id,issuer,metric,value_year,truth_value,truth_scale,truth_unit,truth_status,page_number,source_location,source_type,basis,entity_scope,truth_set_version,bundle_fingerprint
+revenue_2020,lucky_cement,revenue,2020,"41,870,796",thousands,PKR,VALUE,164,Net Revenue / Turnover,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+revenue_2021,lucky_cement,revenue,2021,"62,940,805",thousands,PKR,VALUE,164,Net Revenue / Turnover,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+revenue_2022,lucky_cement,revenue,2022,"81,093,525",thousands,PKR,VALUE,164,Net Revenue / Turnover,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+revenue_2023,lucky_cement,revenue,2023,"95,832,147",thousands,PKR,VALUE,164,Net Revenue / Turnover,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+revenue_2024,lucky_cement,revenue,2024,"115,324,942",thousands,PKR,VALUE,241,Net Revenue / Turnover,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+revenue_2025,lucky_cement,revenue,2025,"124,511,744",thousands,PKR,VALUE,241,Net Revenue / Turnover,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2020,lucky_cement,gross_profit,2020,"6,076,765",thousands,PKR,VALUE,164,Gross profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2021,lucky_cement,gross_profit,2021,"18,955,932",thousands,PKR,VALUE,164,Gross profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2022,lucky_cement,gross_profit,2022,"22,551,841",thousands,PKR,VALUE,164,Gross profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2023,lucky_cement,gross_profit,2023,"26,060,678",thousands,PKR,VALUE,164,Gross profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2024,lucky_cement,gross_profit,2024,"38,804,572",thousands,PKR,VALUE,241,Gross profit,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+gross_profit_2025,lucky_cement,gross_profit,2025,"42,684,684",thousands,PKR,VALUE,241,Gross profit,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2020,lucky_cement,operating_profit,2020,"1,187,973",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2021,lucky_cement,operating_profit,2021,"12,839,762",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2022,lucky_cement,operating_profit,2022,"16,274,988",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2023,lucky_cement,operating_profit,2023,"18,908,206",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2024,lucky_cement,operating_profit,2024,"28,870,005",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_profit_2025,lucky_cement,operating_profit,2025,"31,284,620",thousands,PKR,VALUE,164,Analysis of P&L — Operating Profit,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2020,lucky_cement,profit_after_tax,2020,"3,343,933",thousands,PKR,VALUE,164,Profit after taxation,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2021,lucky_cement,profit_after_tax,2021,"14,070,189",thousands,PKR,VALUE,164,Profit after taxation,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2022,lucky_cement,profit_after_tax,2022,"15,298,618",thousands,PKR,VALUE,164,Profit after taxation,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2023,lucky_cement,profit_after_tax,2023,"13,725,814",thousands,PKR,VALUE,164,Profit after taxation,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2024,lucky_cement,profit_after_tax,2024,"28,106,539",thousands,PKR,VALUE,241,Profit after taxation,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+profit_after_tax_2025,lucky_cement,profit_after_tax,2025,"33,092,162",thousands,PKR,VALUE,241,Profit after taxation,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2020,lucky_cement,eps,2020,2.07,full,PKR_per_share,VALUE,164,Earnings per share (restated 5:1),summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2021,lucky_cement,eps,2021,8.70,full,PKR_per_share,VALUE,162,Earnings per share (restated 5:1),summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2022,lucky_cement,eps,2022,9.46,full,PKR_per_share,VALUE,162,Earnings per share (restated 5:1),summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2023,lucky_cement,eps,2023,8.61,full,PKR_per_share,VALUE,162,Earnings per share (restated 5:1),summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2024,lucky_cement,eps,2024,18.91,full,PKR_per_share,VALUE,241,Earnings per share (restated 5:1),primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+eps_2025,lucky_cement,eps,2025,22.59,full,PKR_per_share,VALUE,241,Earnings per share (restated 5:1),primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2020,lucky_cement,total_assets,2020,"135,868,474",thousands,PKR,VALUE,163,TOTAL ASSETS,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2021,lucky_cement,total_assets,2021,"156,368,062",thousands,PKR,VALUE,163,TOTAL ASSETS,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2022,lucky_cement,total_assets,2022,"184,962,368",thousands,PKR,VALUE,163,TOTAL ASSETS,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2023,lucky_cement,total_assets,2023,"213,079,067",thousands,PKR,VALUE,163,TOTAL ASSETS,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2024,lucky_cement,total_assets,2024,"234,018,090",thousands,PKR,VALUE,240,TOTAL ASSETS,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_assets_2025,lucky_cement,total_assets,2025,"266,748,030",thousands,PKR,VALUE,240,TOTAL ASSETS,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2020,lucky_cement,total_liabilities,2020,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,163,components only (not summed),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2021,lucky_cement,total_liabilities,2021,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,163,components only (not summed),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2022,lucky_cement,total_liabilities,2022,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,163,components only (not summed),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2023,lucky_cement,total_liabilities,2023,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,163,components only (not summed),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2024,lucky_cement,total_liabilities,2024,"86,256,813",thousands,PKR,VALUE,240,unlabeled liabilities subtotal,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_liabilities_2025,lucky_cement,total_liabilities,2025,"90,837,630",thousands,PKR,VALUE,240,unlabeled liabilities subtotal,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2020,lucky_cement,operating_cash_flow,2020,"5,047",millions,PKR,VALUE,162,Net Cash from Operating Activities,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2021,lucky_cement,operating_cash_flow,2021,"12,493",millions,PKR,VALUE,162,Net Cash from Operating Activities,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2022,lucky_cement,operating_cash_flow,2022,"15,469",millions,PKR,VALUE,162,Net Cash from Operating Activities,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2023,lucky_cement,operating_cash_flow,2023,"23,243",millions,PKR,VALUE,162,Net Cash from Operating Activities,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2024,lucky_cement,operating_cash_flow,2024,"27,580,741",thousands,PKR,VALUE,243,Net cash generated from operating activities,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+operating_cash_flow_2025,lucky_cement,operating_cash_flow,2025,"27,572,567",thousands,PKR,VALUE,243,Net cash generated from operating activities,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2020,lucky_cement,total_debt,2020,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2021,lucky_cement,total_debt,2021,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2022,lucky_cement,total_debt,2022,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2023,lucky_cement,total_debt,2023,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2024,lucky_cement,total_debt,2024,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+total_debt_2025,lucky_cement,total_debt,2025,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,,no explicit Total Debt line (components only),n/a,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2020,lucky_cement,long_term_debt,2020,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,162,summary 'Long term finance' contaminated by deferred grant,n/a,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2021,lucky_cement,long_term_debt,2021,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,162,summary 'Long term finance' contaminated by deferred grant,n/a,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2022,lucky_cement,long_term_debt,2022,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,162,summary 'Long term finance' contaminated by deferred grant,n/a,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2023,lucky_cement,long_term_debt,2023,SOURCE_INSUFFICIENT,n/a,PKR,SOURCE_INSUFFICIENT,162,summary 'Long term finance' contaminated by deferred grant,n/a,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2024,lucky_cement,long_term_debt,2024,"12,760,637",thousands,PKR,VALUE,240,Long-term financing,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+long_term_debt_2025,lucky_cement,long_term_debt,2025,"9,184,522",thousands,PKR,VALUE,240,Long-term financing,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2020,lucky_cement,total_equity,2020,"99,183,861",thousands,PKR,VALUE,163,Share Capital and Reserves,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2021,lucky_cement,total_equity,2021,"113,200,258",thousands,PKR,VALUE,163,Share Capital and Reserves,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2022,lucky_cement,total_equity,2022,"128,540,324",thousands,PKR,VALUE,163,Share Capital and Reserves,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2023,lucky_cement,total_equity,2023,"137,366,326",thousands,PKR,VALUE,163,Share Capital and Reserves,summary_table,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2024,lucky_cement,total_equity,2024,"147,761,277",thousands,PKR,VALUE,240,Share Capital and Reserves,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123
+total_equity_2025,lucky_cement,total_equity,2025,"175,910,400",thousands,PKR,VALUE,240,Share Capital and Reserves,primary_statement,unconsolidated,ISSUER,1.0.0,97c3123

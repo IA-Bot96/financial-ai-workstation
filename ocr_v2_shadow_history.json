@@ -1,0 +1,80 @@
+{
+  "artifact": "ocr_v2_shadow_history",
+  "latest_records": [
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+      "engine_version": "v1",
+      "error_count": 0,
+      "metric_count": 0,
+      "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+      "runtime": 4e-05,
+      "source_insufficient_count": 0,
+      "timestamp": "2026-06-04T13:36:37.597209+00:00",
+      "workbook_rows": 3
+    },
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+      "engine_version": "v2",
+      "error_count": 0,
+      "metric_count": 0,
+      "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+      "runtime": 9e-06,
+      "source_insufficient_count": 1,
+      "timestamp": "2026-06-04T13:36:37.597209+00:00",
+      "workbook_rows": 1
+    }
+  ],
+  "records": [
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke A:2025:shadow_smoke_a.pdf",
+      "engine_version": "v1",
+      "error_count": 0,
+      "metric_count": 0,
+      "run_id": "shadow_aggregate_smoke_a_2025_20260604T133637Z",
+      "runtime": 7.5e-05,
+      "source_insufficient_count": 0,
+      "timestamp": "2026-06-04T13:36:37.589161+00:00",
+      "workbook_rows": 2
+    },
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke A:2025:shadow_smoke_a.pdf",
+      "engine_version": "v2",
+      "error_count": 0,
+      "metric_count": 2,
+      "run_id": "shadow_aggregate_smoke_a_2025_20260604T133637Z",
+      "runtime": 1.1e-05,
+      "source_insufficient_count": 0,
+      "timestamp": "2026-06-04T13:36:37.589161+00:00",
+      "workbook_rows": 2
+    },
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+      "engine_version": "v1",
+      "error_count": 0,
+      "metric_count": 0,
+      "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+      "runtime": 4e-05,
+      "source_insufficient_count": 0,
+      "timestamp": "2026-06-04T13:36:37.597209+00:00",
+      "workbook_rows": 3
+    },
+    {
+      "comparison_status": "diverged_counts",
+      "document_id": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+      "engine_version": "v2",
+      "error_count": 0,
+      "metric_count": 0,
+      "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+      "runtime": 9e-06,
+      "source_insufficient_count": 1,
+      "timestamp": "2026-06-04T13:36:37.597209+00:00",
+      "workbook_rows": 1
+    }
+  ],
+  "schema_version": "1.0.0"
+}

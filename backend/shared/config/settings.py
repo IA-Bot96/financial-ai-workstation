@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     )
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     output_directory: Path = Field(default=Path("output"), alias="OUTPUT_DIRECTORY")
+    ocr_engine_version: str = Field(default="v1", alias="OCR_ENGINE_VERSION")
+    ocr_v2_tables_dir: Path = Field(
+        default=Path("output/ocr_v2_final_validation_tables"),
+        alias="OCR_V2_TABLES_DIR",
+    )
+    ocr_v2_shadow_output_dir: Path = Field(
+        default=Path("output/ocr_v2_shadow"),
+        alias="OCR_V2_SHADOW_OUTPUT_DIR",
+    )
     openai_classification_max_retries: int = Field(
         default=3,
         ge=1,
@@ -83,6 +92,15 @@ class Settings(BaseSettings):
         if not stripped:
             raise ValueError("configuration value cannot be empty")
         return stripped
+
+    @field_validator("ocr_engine_version")
+    @classmethod
+    def _valid_ocr_engine_version(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        allowed = {"v1", "v2", "shadow"}
+        if normalized not in allowed:
+            raise ValueError("OCR_ENGINE_VERSION must be one of: v1, v2, shadow")
+        return normalized
 
 
 class ConfigurationValidator:

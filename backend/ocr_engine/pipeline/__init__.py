@@ -9,10 +9,16 @@ from typing import Any
 __all__ = [
     "IOCRPipeline",
     "LayerExecutionResult",
+    "OCREngineVersion",
     "OCRPipeline",
+    "OCRV2Pipeline",
     "PipelineLayerPartialFailure",
     "PipelineError",
     "PipelineStatus",
+    "ShadowOCRPipeline",
+    "build_ocr_pipeline",
+    "build_v1_pipeline",
+    "build_v2_pipeline",
 ]
 
 
@@ -31,6 +37,33 @@ def __getattr__(name: str) -> Any:
         from .ocr_pipeline import OCRPipeline
 
         return OCRPipeline
+    if name == "OCRV2Pipeline":
+        from .ocr_v2_pipeline import OCRV2Pipeline
+
+        return OCRV2Pipeline
+    if name == "ShadowOCRPipeline":
+        from .shadow_ocr_pipeline import ShadowOCRPipeline
+
+        return ShadowOCRPipeline
+    if name in {
+        "OCREngineVersion",
+        "build_ocr_pipeline",
+        "build_v1_pipeline",
+        "build_v2_pipeline",
+    }:
+        from .factory import (
+            OCREngineVersion,
+            build_ocr_pipeline,
+            build_v1_pipeline,
+            build_v2_pipeline,
+        )
+
+        return {
+            "OCREngineVersion": OCREngineVersion,
+            "build_ocr_pipeline": build_ocr_pipeline,
+            "build_v1_pipeline": build_v1_pipeline,
+            "build_v2_pipeline": build_v2_pipeline,
+        }[name]
     if name == "PipelineLayerPartialFailure":
         from .exceptions import PipelineLayerPartialFailure
 

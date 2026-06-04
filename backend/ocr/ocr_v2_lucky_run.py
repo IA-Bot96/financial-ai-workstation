@@ -9,6 +9,7 @@ scoring, or LLM behavior.
 from __future__ import annotations
 
 import json
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -98,6 +99,20 @@ class OCRV2B3Report(BaseModel):
     integrity_violations: tuple[dict[str, Any], ...] = Field(default_factory=tuple)
 
 
+class OCRV2TimingBreakdown(BaseModel):
+    """Timing breakdown for OCR V2 shadow observability."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    extraction_time_seconds: float = Field(..., ge=0)
+    capture_time_seconds: float = Field(..., ge=0)
+    registry_time_seconds: float = Field(..., ge=0)
+    governance_time_seconds: float = Field(..., ge=0)
+    selection_time_seconds: float = Field(..., ge=0)
+    workbook_time_seconds: float = Field(..., ge=0)
+    export_time_seconds: float = Field(..., ge=0)
+
+
 class OCRV2LuckyRunResult(BaseModel):
     """In-memory result for the real Lucky OCR V2 B3 run."""
 
@@ -113,6 +128,7 @@ class OCRV2LuckyRunResult(BaseModel):
     selection_results: tuple[CanonicalSelectionResult, ...]
     workbook_output: OCRV2WorkbookOutput
     audit: OCRV2LuckyRunAudit
+    timing_breakdown: OCRV2TimingBreakdown
 
     @model_validator(mode="after")
     def _validate_run_result(self) -> "OCRV2LuckyRunResult":
@@ -137,27 +153,50 @@ class OCRV2LuckyRun:
     ) -> OCRV2LuckyRunResult:
         """Run raw tables through bridge, capture, registry, governance, selection, workbook."""
 
+        phase_start = time.perf_counter()
         bridge_stream = self._candidate_adapter.build_stream(tables_dir)
-        capture_result = CandidateCapture().capture(bridge_stream.candidate_inputs)
+        extraction_time_seconds = time.perf_counter() - phase_start
 
+        phase_start = time.perf_counter()
+        capture_result = CandidateCapture().capture(bridge_stream.candidate_inputs)
+        capture_time_seconds = time.perf_counter() - phase_start
+
+        phase_start = time.perf_counter()
         registry = CandidateRegistry()
         registry_append_result = registry.append(capture_result.candidates)
         registry_snapshot = registry.snapshot()
+        registry_time_seconds = time.perf_counter() - phase_start
 
+        phase_start = time.perf_counter()
         statement_result = StatementGovernance().govern(registry_snapshot.candidates)
         scale_result = ScaleGovernance().govern(statement_result.governed_candidates)
         entity_result = EntityGovernance().govern(scale_result.governed_candidates)
         preselection_result = prepare_candidates_for_canonical_selection(
             entity_result.entity_governed_candidates
         )
+        governance_time_seconds = time.perf_counter() - phase_start
+
+        phase_start = time.perf_counter()
         selection_results = _select_metric_year_groups(
             preselection_result.candidates
         )
+        selection_time_seconds = time.perf_counter() - phase_start
 
+        phase_start = time.perf_counter()
         workbook_output = OCRV2WorkbookGenerator().write_xlsx(
             selection_results,
             workbook_path,
             entity_ref=DEFAULT_LUCKY_ENTITY_REF,
+        )
+        workbook_time_seconds = time.perf_counter() - phase_start
+        timing_breakdown = OCRV2TimingBreakdown(
+            extraction_time_seconds=extraction_time_seconds,
+            capture_time_seconds=capture_time_seconds,
+            registry_time_seconds=registry_time_seconds,
+            governance_time_seconds=governance_time_seconds,
+            selection_time_seconds=selection_time_seconds,
+            workbook_time_seconds=workbook_time_seconds,
+            export_time_seconds=0.0,
         )
         audit = _build_lucky_run_audit(
             bridge_stream=bridge_stream,
@@ -181,6 +220,7 @@ class OCRV2LuckyRun:
             selection_results=selection_results,
             workbook_output=workbook_output,
             audit=audit,
+            timing_breakdown=timing_breakdown,
         )
 
     def write_artifacts(
@@ -418,6 +458,7 @@ def _candidate_artifact(result: OCRV2LuckyRunResult) -> dict[str, Any]:
         ],
         "capture_result": result.capture_result.model_dump(mode="json"),
         "preselection_result": result.preselection_result.model_dump(mode="json"),
+        "timing_breakdown": result.timing_breakdown.model_dump(mode="json"),
     }
 
 
@@ -428,6 +469,7 @@ def _registry_artifact(result: OCRV2LuckyRunResult) -> dict[str, Any]:
         "oracle_injected_values": False,
         "registry_append_result": result.registry_append_result.model_dump(mode="json"),
         "preselection_result": result.preselection_result.model_dump(mode="json"),
+        "timing_breakdown": result.timing_breakdown.model_dump(mode="json"),
         "candidates": [
             candidate.model_dump(mode="json")
             for candidate in result.capture_result.candidates
@@ -464,5 +506,6 @@ __all__ = [
     "OCRV2LuckyRun",
     "OCRV2LuckyRunAudit",
     "OCRV2LuckyRunResult",
+    "OCRV2TimingBreakdown",
     "write_ocr_v2_b3_report",
 ]

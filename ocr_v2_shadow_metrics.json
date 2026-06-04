@@ -1,0 +1,131 @@
+{
+  "artifact": "ocr_v2_shadow_metrics",
+  "latest_run": {
+    "captured_at_utc": "2026-06-04T13:36:37.597209+00:00",
+    "comparison_status": "diverged_counts",
+    "document_identifier": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+    "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+    "v1_errors": [],
+    "v1_metrics_count": 0,
+    "v1_runtime_seconds": 4e-05,
+    "v1_source_insufficient_count": 0,
+    "v1_workbook_rows": 3,
+    "v2_errors": [],
+    "v2_metrics_count": 0,
+    "v2_runtime_seconds": 9e-06,
+    "v2_source_insufficient_count": 1,
+    "v2_timing_breakdown": {
+      "capture_time_seconds": 0.001,
+      "export_time_seconds": 0.0,
+      "extraction_time_seconds": 0.001,
+      "governance_time_seconds": 0.001,
+      "registry_time_seconds": 0.0,
+      "selection_time_seconds": 0.001,
+      "workbook_time_seconds": 0.001
+    },
+    "v2_workbook_rows": 1
+  },
+  "runs": [
+    {
+      "captured_at_utc": "2026-06-04T13:25:10.556360+00:00",
+      "comparison_status": "matched_counts",
+      "document_identifier": "Shadow Observability Smoke:2025:shadow_smoke.pdf",
+      "run_id": "shadow_observability_smoke_2025_20260604T132510Z",
+      "v1_errors": [],
+      "v1_metrics_count": 0,
+      "v1_runtime_seconds": 3.9e-05,
+      "v1_source_insufficient_count": 0,
+      "v1_workbook_rows": 2,
+      "v2_errors": [],
+      "v2_metrics_count": 0,
+      "v2_runtime_seconds": 5e-06,
+      "v2_source_insufficient_count": 0,
+      "v2_timing_breakdown": {
+        "capture_time_seconds": 0.001,
+        "export_time_seconds": 0.0,
+        "extraction_time_seconds": 0.001,
+        "governance_time_seconds": 0.001,
+        "registry_time_seconds": 0.0,
+        "selection_time_seconds": 0.001,
+        "workbook_time_seconds": 0.001
+      },
+      "v2_workbook_rows": 2
+    },
+    {
+      "captured_at_utc": "2026-06-04T13:26:41.903880+00:00",
+      "comparison_status": "diverged_counts",
+      "document_identifier": "Shadow Observability Smoke:2025:shadow_smoke.pdf",
+      "run_id": "shadow_observability_smoke_2025_20260604T132641Z",
+      "v1_errors": [],
+      "v1_metrics_count": 0,
+      "v1_runtime_seconds": 3.9e-05,
+      "v1_source_insufficient_count": 0,
+      "v1_workbook_rows": 2,
+      "v2_errors": [],
+      "v2_metrics_count": 2,
+      "v2_runtime_seconds": 6e-06,
+      "v2_source_insufficient_count": 0,
+      "v2_timing_breakdown": {
+        "capture_time_seconds": 0.001,
+        "export_time_seconds": 0.0,
+        "extraction_time_seconds": 0.001,
+        "governance_time_seconds": 0.001,
+        "registry_time_seconds": 0.0,
+        "selection_time_seconds": 0.001,
+        "workbook_time_seconds": 0.001
+      },
+      "v2_workbook_rows": 2
+    },
+    {
+      "captured_at_utc": "2026-06-04T13:36:37.589161+00:00",
+      "comparison_status": "diverged_counts",
+      "document_identifier": "Shadow Aggregate Smoke A:2025:shadow_smoke_a.pdf",
+      "run_id": "shadow_aggregate_smoke_a_2025_20260604T133637Z",
+      "v1_errors": [],
+      "v1_metrics_count": 0,
+      "v1_runtime_seconds": 7.5e-05,
+      "v1_source_insufficient_count": 0,
+      "v1_workbook_rows": 2,
+      "v2_errors": [],
+      "v2_metrics_count": 2,
+      "v2_runtime_seconds": 1.1e-05,
+      "v2_source_insufficient_count": 0,
+      "v2_timing_breakdown": {
+        "capture_time_seconds": 0.001,
+        "export_time_seconds": 0.0,
+        "extraction_time_seconds": 0.001,
+        "governance_time_seconds": 0.001,
+        "registry_time_seconds": 0.0,
+        "selection_time_seconds": 0.001,
+        "workbook_time_seconds": 0.001
+      },
+      "v2_workbook_rows": 2
+    },
+    {
+      "captured_at_utc": "2026-06-04T13:36:37.597209+00:00",
+      "comparison_status": "diverged_counts",
+      "document_identifier": "Shadow Aggregate Smoke B:2024:shadow_smoke_b.pdf",
+      "run_id": "shadow_aggregate_smoke_b_2024_20260604T133637Z",
+      "v1_errors": [],
+      "v1_metrics_count": 0,
+      "v1_runtime_seconds": 4e-05,
+      "v1_source_insufficient_count": 0,
+      "v1_workbook_rows": 3,
+      "v2_errors": [],
+      "v2_metrics_count": 0,
+      "v2_runtime_seconds": 9e-06,
+      "v2_source_insufficient_count": 1,
+      "v2_timing_breakdown": {
+        "capture_time_seconds": 0.001,
+        "export_time_seconds": 0.0,
+        "extraction_time_seconds": 0.001,
+        "governance_time_seconds": 0.001,
+        "registry_time_seconds": 0.0,
+        "selection_time_seconds": 0.001,
+        "workbook_time_seconds": 0.001
+      },
+      "v2_workbook_rows": 1
+    }
+  ],
+  "schema_version": "1.0.0"
+}

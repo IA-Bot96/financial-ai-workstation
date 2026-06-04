@@ -1,0 +1,73 @@
+{
+  "audit": "ocr_v2_integration_audit",
+  "components": {
+    "composition_roots": {
+      "api": "backend/api/routes/ocr.py::get_ocr_pipeline",
+      "cli": "backend/run_pipeline.py::build_default_pipeline"
+    },
+    "factory": {
+      "lazy_v2_import": true,
+      "path": "backend/ocr_engine/pipeline/factory.py",
+      "shadow": "ShadowOCRPipeline(primary=v1, shadow=v2)",
+      "v1": "OCR V1 production pipeline",
+      "v2": "OCRV2Pipeline"
+    },
+    "ocr_v2_pipeline": {
+      "behavior": "runs validated OCR V2 path and projects generated workbook metadata onto CompanyContext",
+      "contract": "process(context: CompanyContext) -> CompanyContext",
+      "implements": "IOCRPipeline",
+      "path": "backend/ocr_engine/pipeline/ocr_v2_pipeline.py"
+    },
+    "shadow_pipeline": {
+      "comparison_artifact": true,
+      "path": "backend/ocr_engine/pipeline/shadow_ocr_pipeline.py",
+      "served_output": "v1",
+      "shadow_output": "v2 persisted only"
+    }
+  },
+  "feature_flag": {
+    "allowed_values": [
+      "v1",
+      "v2",
+      "shadow"
+    ],
+    "default": "v1",
+    "name": "OCR_ENGINE_VERSION",
+    "rollback": "set OCR_ENGINE_VERSION=v1"
+  },
+  "governance_changes": false,
+  "integrity_violations": [],
+  "msil_changes": false,
+  "ocr_logic_changes": false,
+  "production_cutover": false,
+  "scope": "P-I0 through P-I3 integration scaffolding only",
+  "selection_changes": false,
+  "success_criteria": {
+    "no_api_contract_changes": true,
+    "no_caller_changes": true,
+    "no_production_behavior_changes": true,
+    "ocr_v2_executable_through_production_interface": true,
+    "rollback_one_configuration_change": true,
+    "shadow_mode_operational": true,
+    "v1_remains_default": true
+  },
+  "verification": {
+    "combined_v1_integration_scaffold_tests": {
+      "command": "python -B -m pytest -q -p no:cacheprovider backend/ocr_engine/tests/test_ocr_v2_integration.py backend/ocr_engine/tests/test_ocr_pipeline.py",
+      "result": "11 passed"
+    },
+    "new_integration_tests": {
+      "command": "python -B -m pytest -q -p no:cacheprovider backend/ocr_engine/tests/test_ocr_v2_integration.py",
+      "result": "5 passed"
+    },
+    "ocr_v2_tests": {
+      "command": "python -B -m pytest -q -p no:cacheprovider backend/ocr/tests",
+      "result": "91 passed"
+    },
+    "v1_orchestrator_tests": {
+      "command": "python -B -m pytest -q -p no:cacheprovider backend/ocr_engine/tests/test_ocr_pipeline.py",
+      "result": "6 passed"
+    }
+  },
+  "workbook_contract_changes": false
+}

@@ -1,0 +1,115 @@
+{
+  "inventory_id": "millat_validation_artifact_inventory",
+  "version": "1.0.0",
+  "date": "2026-06-04",
+  "status": "planning_only",
+  "issuer": "millat_tractors",
+  "purpose": "Establish multi-issuer confidence; retire the Lucky over-fit risk that is the sole remaining OCR V2 freeze blocker.",
+  "recommended_program": "MINIMUM_ACCEPTABLE_MILLAT_VALIDATION",
+  "disposition_target": "CONDITIONAL",
+  "issuer_structure": {
+    "source_pdfs": ["data/millat-2022.pdf", "data/millat-2023.pdf", "data/millat-2024.pdf", "data/millat-2025.pdf"],
+    "report_type": "four_separate_per_year_reports_current_plus_one_comparative",
+    "has_six_year_summary": false,
+    "has_analysis_table_block": false,
+    "value_source": "each_report_primary_statements",
+    "clean_year_span_report_years": [2022, 2023, 2024, 2025],
+    "extendable_via_comparatives": [2021],
+    "natural_full_census_cells": "44_to_55 (11 metrics x 4-5 years)",
+    "contrast_with_lucky": "Lucky = single 2025 report with six-year summary (p162) + analysis tables (p163/164) -> 66 cells; Millat values come from primary statements across 4 reports."
+  },
+  "artifacts": [
+    {
+      "artifact": "millat_truth_set_v1_0_0.csv",
+      "status": "MISSING_MUST_CREATE",
+      "input": ["data/millat-2022.pdf", "data/millat-2023.pdf", "data/millat-2024.pdf", "data/millat-2025.pdf"],
+      "output": "schema-conformant truth set (15 fields), 11 metrics x 4 report-years (minimum)",
+      "reuses_from_lucky": "truth-set schema (cv1_truth_set_lucky_v1_0_0)",
+      "scope_minimum": "11 metrics x report-years 2022-2025; heuristic-bearing metrics (total_liabilities, operating_cash_flow, long_term_debt) mandatory; SOURCE_INSUFFICIENT honestly marked",
+      "scope_full": "add 2021 comparatives + cross-report consistency (~55 cells)",
+      "effort_minimum": "medium (1-2 analyst-days)",
+      "effort_full": "high (3-4 days)",
+      "required_signoff": "analyst + adjudicator"
+    },
+    {
+      "artifact": "ocr_v2_millat_regression_cases.json",
+      "status": "MISSING_MUST_CREATE",
+      "input": ["millat_truth_set_v1_0_0", "millat V2 capture run candidates"],
+      "output": "failure-class-tagged candidate pairs + expected_governance_result, mirroring the Lucky oracle",
+      "reuses_from_lucky": "oracle structure/schema, failure_class enum, expected_governance_result vocabulary, regression-fixture harness",
+      "scope_minimum": "~10-15 cases covering failure classes Millat presents; MANDATORY >=1 total_liabilities_subtotal case and >=1 operating_cash_flow alias case",
+      "scope_full": "exhaustive class coverage; poolable with Lucky oracle",
+      "effort_minimum": "low_medium (0.5-1 day)",
+      "effort_full": "medium (1.5 days)",
+      "required_signoff": "analyst"
+    },
+    {
+      "artifact": "millat_bbox_extraction_tables",
+      "status": "MISSING_MUST_CREATE",
+      "input": ["4 Millat PDFs - metric-bearing primary-statement pages"],
+      "output": "staged bbox CSVs (camelot + pdfplumber) per page, like output/bbox_extraction_poc/tables",
+      "reuses_from_lucky": "bbox extraction method + table adapter",
+      "scope_minimum": "income statement, balance sheet, cash flow pages of each of the 4 reports",
+      "scope_full": "all metric + note + related-party pages",
+      "effort_minimum": "included in validation execution (~1 day)",
+      "effort_full": "higher",
+      "required_signoff": "validation lead"
+    },
+    {
+      "artifact": "millat_bridge_config",
+      "status": "MISSING_MUST_CREATE",
+      "input": ["Millat report structure / page map"],
+      "output": "page-range -> (basis, statement_type, entity_scope) map + label/alias confirmations for Millat",
+      "reuses_from_lucky": "bridge-config METHOD (ocr_v2_bridge_config pattern); NOT the Lucky values",
+      "scope_minimum": "primary-statement page ranges per report; basis=unconsolidated unless Millat presents consolidated; entity_scope=ISSUER unless investees disclosed",
+      "scope_full": "include consolidated/investee page ranges if present",
+      "effort_minimum": "included in validation execution",
+      "effort_full": "higher",
+      "required_signoff": "validation lead"
+    },
+    {
+      "artifact": "millat_validation_run_and_comparison_audit",
+      "status": "MISSING_MUST_CREATE",
+      "input": ["millat_bbox_extraction_tables", "millat_bridge_config", "millat_truth_set_v1_0_0", "UNCHANGED OCR V2 pipeline"],
+      "output": "Millat V2 workbook + comparison matrix vs truth set + coverage audit",
+      "reuses_from_lucky": "lucky_run harness pattern, comparison workbook spec, numeric_scale_aware comparator, UNCHANGED pipeline (capture/registry/governance/selection/workbook/export)",
+      "scope_minimum": "automated coverage comparison + blind CV1 on a calibration subset -> CONDITIONAL",
+      "scope_full": "full blind CV1 across all cells + Wilson pooling toward CERTIFIED",
+      "effort_minimum": "low (1 day) + 0.5 day blind calibration",
+      "effort_full": "medium (2 days)",
+      "required_signoff": "validation lead + adjudicator"
+    }
+  ],
+  "reusable_without_recreation": [
+    "truth_set_schema (15 fields)",
+    "regression_oracle_structure_and_harness",
+    "comparison_workbook_spec + numeric_scale_aware comparator",
+    "CV1_protocol (blind Section-A lock, adjudication, S1 second-review)",
+    "thresholds_version_1.0.0",
+    "OCR_V2_pipeline (capture, registry, statement/scale/entity governance, canonical selection, workbook, MSIL export) - MUST NOT CHANGE",
+    "bbox_extraction_method + table_adapter + lucky_run harness pattern"
+  ],
+  "full_66_cell_truth_set_required": false,
+  "reduced_validation_sufficient_for_freeze": true,
+  "oracle_mirrors_lucky": true,
+  "over_fit_risks_under_test": [
+    "total_liabilities positional unlabeled-subtotal labeling (highest priority)",
+    "operating_cash_flow 'Net cash generated from operating activities' alias disambiguation",
+    "summary-vs-primary source precedence (structurally different on Millat)"
+  ],
+  "lucky_failure_classes_possibly_untestable_on_millat": [
+    "statement_basis (consolidated-vs-unconsolidated) - only if Millat presents consolidated statements",
+    "investee_contamination - only if Millat discloses JV/associate figures"
+  ],
+  "residual_after_minimum": "Failure classes Millat cannot exercise remain Lucky-only-validated; a third issuer would eventually close them. Documented, not blocking for freeze.",
+  "effort_summary": {
+    "minimum_total_effort_days": "3 to 4.5",
+    "full_total_effort_days": "8 to 10",
+    "pipeline_change_cost": "zero (pipeline must not change)"
+  },
+  "final_determination": {
+    "recommended": "MINIMUM_ACCEPTABLE_MILLAT_VALIDATION",
+    "clears": "freeze blocker (multi-issuer confidence / over-fit retirement) at CONDITIONAL",
+    "deferred": "FULL_MILLAT_VALIDATION (full census + full blind CV1 + Wilson pooling toward CERTIFIED) to the pre-production/certification stage"
+  }
+}

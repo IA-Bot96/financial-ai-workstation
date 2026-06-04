@@ -102,14 +102,14 @@ class OCRV2TableAdapter:
         page_number = _page_number_from_filename(path.name)
         table_reference = path.stem
         rows = _read_csv_rows(path)
+        normalized_rows = tuple(tuple(_clean_cell(cell) for cell in row) for row in rows)
         cells: list[ExtractedTableCell] = []
         active_year_columns: dict[int, int] = {}
         active_section_label: str | None = None
         active_scale = "source_header:unspecified"
         active_unit = "unknown"
 
-        for row_index, row in enumerate(rows, start=1):
-            normalized_row = tuple(_clean_cell(cell) for cell in row)
+        for row_index, normalized_row in enumerate(normalized_rows, start=1):
             year_columns = _year_columns(normalized_row)
             scale, unit = _scale_from_row(normalized_row, year_columns)
             section_label = _section_label_from_row(normalized_row, year_columns)
@@ -127,10 +127,27 @@ class OCRV2TableAdapter:
                 continue
             if not active_year_columns:
                 continue
+            section_heading = _section_heading_from_row(
+                normalized_row,
+                active_year_columns,
+            )
+            if section_heading:
+                active_section_label = section_heading
+                if _section_is_percentage_analysis(section_heading):
+                    active_scale = "source_header:percentage"
+                    active_unit = "%"
+                continue
 
             label = _label_from_row(normalized_row, min(active_year_columns))
             if not label:
-                continue
+                label = _label_from_unlabeled_balance_sheet_subtotal(
+                    normalized_rows,
+                    row_index - 1,
+                    active_year_columns,
+                    active_section_label,
+                )
+                if not label:
+                    continue
             candidate_scale, candidate_unit = _scale_for_label(
                 label,
                 active_scale,
@@ -303,6 +320,28 @@ def _section_is_percentage_analysis(section_label: str) -> bool:
     )
 
 
+def _section_heading_from_row(
+    row: tuple[str, ...],
+    active_year_columns: dict[int, int],
+) -> str | None:
+    if not active_year_columns:
+        return None
+    first_year_column = min(active_year_columns)
+    values = [
+        row[column_index]
+        for column_index in active_year_columns
+        if column_index < len(row)
+    ]
+    if any(_is_numeric_value(value) for value in values):
+        return None
+    label = _label_from_row(row, first_year_column)
+    if not label:
+        return None
+    if _has_explicit_scale_marker(label.lower()):
+        return None
+    return label
+
+
 def _label_from_row(row: tuple[str, ...], first_year_column: int) -> str | None:
     label_cells = []
     for cell in row[:first_year_column]:
@@ -314,6 +353,80 @@ def _label_from_row(row: tuple[str, ...], first_year_column: int) -> str | None:
     label = " ".join(label_cells)
     label = re.sub(r"\s+", " ", label).strip(" ,")
     return label or None
+
+
+def _label_from_unlabeled_balance_sheet_subtotal(
+    rows: tuple[tuple[str, ...], ...],
+    row_index: int,
+    active_year_columns: dict[int, int],
+    active_section_label: str | None,
+) -> str | None:
+    if not active_year_columns:
+        return None
+    if not _is_current_liabilities_section(active_section_label):
+        return None
+
+    row = rows[row_index]
+    first_year_column = min(active_year_columns)
+    if _label_from_row(row, first_year_column):
+        return None
+    year_values = [
+        row[column_index] if column_index < len(row) else ""
+        for column_index in active_year_columns
+    ]
+    if not year_values or not all(_is_numeric_value(value) for value in year_values):
+        return None
+    if not _next_label_is_total_equity_and_liabilities(
+        rows,
+        row_index,
+        active_year_columns,
+    ):
+        return None
+    return "total_liabilities"
+
+
+def _is_current_liabilities_section(section_label: str | None) -> bool:
+    if not section_label:
+        return False
+    compact = _compact_alpha(section_label)
+    if "liabilit" not in compact:
+        return False
+    if compact.startswith("noncurrent") or compact.startswith("oncurrent"):
+        return False
+    return compact.startswith("current") or compact.startswith("urrent")
+
+
+def _next_label_is_total_equity_and_liabilities(
+    rows: tuple[tuple[str, ...], ...],
+    row_index: int,
+    active_year_columns: dict[int, int],
+) -> bool:
+    first_year_column = min(active_year_columns)
+    for next_row in rows[row_index + 1 : row_index + 4]:
+        label = _label_from_row(next_row, first_year_column)
+        if not label:
+            if _has_numeric_year_values(next_row, active_year_columns):
+                return False
+            continue
+        compact = _compact_alpha(label)
+        return compact.startswith("totalequityandliabilities") or compact.startswith(
+            "otalequityandliabilities"
+        )
+    return False
+
+
+def _has_numeric_year_values(
+    row: tuple[str, ...],
+    active_year_columns: dict[int, int],
+) -> bool:
+    return any(
+        column_index < len(row) and _is_numeric_value(row[column_index])
+        for column_index in active_year_columns
+    )
+
+
+def _compact_alpha(value: str) -> str:
+    return re.sub(r"[^a-z]+", "", value.lower())
 
 
 def _is_note_reference(value: str) -> bool:

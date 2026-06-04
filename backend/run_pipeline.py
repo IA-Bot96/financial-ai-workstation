@@ -9,56 +9,21 @@ import os
 import re
 from pathlib import Path
 
-from ocr_engine.pipeline.ocr_pipeline import OCRPipeline
-from ocr_engine.services.camelot_table_extractor import CamelotTableExtractor
-from ocr_engine.services.openai_insights_extractor import OpenAIInsightsExtractor
-from ocr_engine.services.openai_table_classifier import OpenAITableClassifier
-from ocr_engine.services.table_metric_normalizer import TableMetricNormalizer
-from ocr_engine.services.table_transformer_detector import TableTransformerDetector
-from ocr_engine.validation.financial_validation_service import (
-    FinancialValidationService,
-)
-from query_engine.services.bundle_generation_service import (
-    QueryEngineBundleGenerationService,
-)
+from ocr_engine.pipeline.factory import build_ocr_pipeline
+from ocr_engine.pipeline.interfaces.ocr_pipeline import IOCRPipeline
 from shared.config.settings import ConfigurationValidator, Settings, get_settings
 from shared.models.company_context import CompanyContext
 from shared.models.report import Report
-from shared.services.financial_year_consolidator import FinancialYearConsolidator
-from workbook_population.services.workbook_population_service import (
-    OpenPyXLWorkbookPopulationService,
-)
 
 
 def build_default_pipeline(
     settings: Settings | None = None,
     *,
     output_xlsx: str | Path | None = None,
-) -> OCRPipeline:
+) -> IOCRPipeline:
     """Build the production OCR pipeline using the default service implementations."""
 
-    settings = settings or get_settings()
-    workbook_population_service = _build_workbook_population_service(output_xlsx)
-    query_engine_bundle_service = QueryEngineBundleGenerationService(
-        cell_mapping_provider=workbook_population_service,
-    )
-    return OCRPipeline(
-        table_detector=TableTransformerDetector(),
-        table_classifier=OpenAITableClassifier(
-            api_key=settings.openai_api_key,
-            model=settings.openai_model,
-        ),
-        table_extractor=CamelotTableExtractor(),
-        validator=FinancialValidationService(),
-        metric_normalizer=TableMetricNormalizer(),
-        insights_extractor=OpenAIInsightsExtractor(
-            api_key=settings.openai_api_key,
-            model=settings.openai_model,
-        ),
-        financial_year_consolidator=FinancialYearConsolidator(),
-        workbook_population_service=workbook_population_service,
-        query_engine_bundle_service=query_engine_bundle_service,
-    )
+    return build_ocr_pipeline(settings or get_settings(), output_xlsx=output_xlsx)
 
 
 def build_context_from_pdf(
@@ -191,22 +156,6 @@ def main() -> None:
         if result.generated_workbook is None:
             raise SystemExit("Pipeline did not generate a workbook.")
         print(result.generated_workbook.output_file_path)
-
-
-def _build_workbook_population_service(
-    output_xlsx: str | Path | None,
-) -> OpenPyXLWorkbookPopulationService:
-    """Create the workbook service, optionally targeting an exact .xlsx path."""
-
-    if output_xlsx is None:
-        return OpenPyXLWorkbookPopulationService()
-
-    output_path = Path(output_xlsx).expanduser()
-    output_dir = output_path.parent if output_path.parent != Path("") else Path(".")
-    return OpenPyXLWorkbookPopulationService(
-        output_dir=output_dir,
-        output_file_name=output_path.name,
-    )
 
 
 def _infer_report_year(pdf_path: Path) -> int:

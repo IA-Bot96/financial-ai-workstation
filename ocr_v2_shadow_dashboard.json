@@ -1,0 +1,20 @@
+{
+  "artifact": "ocr_v2_shadow_dashboard",
+  "average_v1_runtime": 5.8e-05,
+  "average_v2_runtime": 1e-05,
+  "comparison_status_breakdown": {
+    "diverged_counts": 2
+  },
+  "error_counts": {
+    "runs_with_errors": 0,
+    "v1": 0,
+    "v2": 0
+  },
+  "generated_at_utc": "2026-06-04T13:36:37.630159+00:00",
+  "runtime_ratio": 0.172414,
+  "schema_version": "1.0.0",
+  "total_documents_processed": 2,
+  "total_shadow_runs": 2,
+  "v2_less_complete_count": 1,
+  "v2_more_complete_count": 1
+}

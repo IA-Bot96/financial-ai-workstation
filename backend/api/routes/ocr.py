@@ -13,6 +13,7 @@ except ImportError:  # pragma: no cover - FastAPI is provided by the API runtime
         return dependency
 
 from ocr_engine.pipeline.interfaces.ocr_pipeline import IOCRPipeline
+from ocr_engine.pipeline.factory import build_ocr_pipeline
 from shared.models.company_context import CompanyContext
 
 
@@ -33,14 +34,9 @@ router = APIRouter(tags=["OCR"]) if APIRouter is not None else _UnavailableRoute
 
 
 def get_ocr_pipeline() -> IOCRPipeline:
-    """Return the configured OCR pipeline dependency.
+    """Return the configured OCR pipeline dependency."""
 
-    The application composition root should override this dependency with a
-    fully wired ``OCRPipeline`` instance. OCR workflow logic belongs inside the
-    pipeline service, not inside this route.
-    """
-
-    raise RuntimeError("OCRPipeline dependency has not been configured.")
+    return build_ocr_pipeline()
 
 
 @router.post("/ocr/process", response_model=CompanyContext)

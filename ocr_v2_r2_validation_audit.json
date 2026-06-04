@@ -1,0 +1,1773 @@
+{
+  "audit": "ocr_v2_r2_validation_audit",
+  "candidates_path": "output\\ocr_v2_r2_candidates.json",
+  "cell_results": [
+    {
+      "cell_id": "revenue_2020",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "41,870,796",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "41,870,796",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "revenue_2021",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "62,940,805",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "62,940,805",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "revenue_2022",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "81,093,525",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "81,093,525",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "revenue_2023",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "95,832,147",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "95,832,147",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "revenue_2024",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "115,324,942",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:6",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "115,324,942",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "revenue_2025",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "124,511,744",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:7",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "124,511,744",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "gross_profit_2020",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "6,076,765",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "6,076,765",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "gross_profit_2021",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18,955,932",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "18,955,932",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "gross_profit_2022",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "22,551,841",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "22,551,841",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "gross_profit_2023",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "26,060,678",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "26,060,678",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "gross_profit_2024",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "38,804,572",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:6",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "38,804,572",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "gross_profit_2025",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "42,684,684",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:7",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "42,684,684",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_profit_2020",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "1,187,973",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "1,187,973",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "operating_profit_2021",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,839,762",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "12,839,762",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "operating_profit_2022",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "16,274,988",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "16,274,988",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "operating_profit_2023",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18,908,206",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "18,908,206",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "operating_profit_2024",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "28,870,005",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:6",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "28,870,005",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_profit_2025",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "31,284,620",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:7",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "31,284,620",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "profit_after_tax_2020",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "3,343,933",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "3,343,933",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "profit_after_tax_2021",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "14,070,189",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "14,070,189",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "profit_after_tax_2022",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "15,298,618",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "15,298,618",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "profit_after_tax_2023",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "13,725,814",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "13,725,814",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "profit_after_tax_2024",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "28,106,539",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:6",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "28,106,539",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "profit_after_tax_2025",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "33,092,162",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:7",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "33,092,162",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "eps_2020",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "2.07",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:2",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "2.07",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "eps_2021",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "8.70",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:3",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "8.70",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "eps_2022",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "9.46",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:4",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "9.46",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "eps_2023",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "8.61",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:5",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "8.61",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "eps_2024",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18.91",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:6",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "18.91",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "eps_2025",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "22.59",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:7",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "22.59",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_assets_2020",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "135,868,474",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "135,868,474",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_assets_2021",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "156,368,062",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "156,368,062",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_assets_2022",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "184,962,368",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "184,962,368",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_assets_2023",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "213,079,067",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "213,079,067",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_assets_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "234,018,090",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "234,018,090",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_assets_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "266,748,030",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "266,748,030",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_liabilities_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_liabilities_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_liabilities_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_liabilities_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_liabilities_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_liabilities",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "86,256,813",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_liabilities",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "86,256,813",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_liabilities_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_liabilities",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "90,837,630",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_liabilities",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "90,837,630",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_cash_flow_2020",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "5,047",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:2",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "5,047",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "operating_cash_flow_2021",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,493",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:3",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "12,493",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "operating_cash_flow_2022",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "15,469",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:4",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "15,469",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "operating_cash_flow_2023",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "23,243",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:5",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "23,243",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "operating_cash_flow_2024",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "27,580,741",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 243,
+          "provenance_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,580,741",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_cash_flow_2025",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "27,572,567",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 243,
+          "provenance_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,572,567",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_debt_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_debt_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_debt_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_debt_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_debt_2024",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_debt_2025",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "long_term_debt_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "long_term_debt_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "long_term_debt_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "long_term_debt_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "long_term_debt_2024",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,760,637",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "12,760,637",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "long_term_debt_2025",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "9,184,522",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "9,184,522",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_equity_2020",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "99,183,861",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:2",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "99,183,861",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_equity_2021",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "113,200,258",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "113,200,258",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_equity_2022",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "128,540,324",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "128,540,324",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_equity_2023",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "137,366,326",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:5",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "137,366,326",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_equity_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "147,761,277",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:6",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "147,761,277",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_equity_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "175,910,400",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:7",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "175,910,400",
+      "value_year": 2025
+    }
+  ],
+  "coverage_percent": 100.0,
+  "covered_cells": 66,
+  "determination": "READY_FOR_PRODUCTION_INTEGRATION",
+  "exact_matches": 52,
+  "governance_violations": 0,
+  "integrity_violations": [],
+  "missing_cell_details": [],
+  "missing_cells": 0,
+  "ocf_disambiguation": {
+    "distinguishing_metadata": "source row label from extracted table: Cash generated from operations vs Net cash generated from operating activities",
+    "operating_cash_flow_candidates_2024_2025": [
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0162_bbox_00_bbox_pdfplumber_text_table_00.csv:row:57:col:8",
+        "page_number": 162,
+        "raw_label": "operating_cash_flow",
+        "raw_value": "27,581",
+        "source_scale": "source_header:PKR millions",
+        "source_unit": "PKR",
+        "statement_type": "ANALYSIS_TABLE",
+        "table_reference": "page_0162_bbox_00_bbox_pdfplumber_text_table_00",
+        "value_year": 2024
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0162_bbox_00_bbox_pdfplumber_text_table_00.csv:row:57:col:9",
+        "page_number": 162,
+        "raw_label": "operating_cash_flow",
+        "raw_value": "27,573",
+        "source_scale": "source_header:PKR millions",
+        "source_unit": "PKR",
+        "statement_type": "ANALYSIS_TABLE",
+        "table_reference": "page_0162_bbox_00_bbox_pdfplumber_text_table_00",
+        "value_year": 2025
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:3",
+        "page_number": 243,
+        "raw_label": "cash_generated_from_operations",
+        "raw_value": "33,808,781",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2025
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:4",
+        "page_number": 243,
+        "raw_label": "cash_generated_from_operations",
+        "raw_value": "30,937,432",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2024
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:3",
+        "page_number": 243,
+        "raw_label": "operating_cash_flow",
+        "raw_value": "27,572,567",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2025
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:4",
+        "page_number": 243,
+        "raw_label": "operating_cash_flow",
+        "raw_value": "27,580,741",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2024
+      }
+    ],
+    "selected_status": {
+      "operating_cash_flow_2024": {
+        "ambiguity_candidate_ids": [],
+        "losing_candidate_ids": [],
+        "losing_candidate_reasons": {},
+        "selected_candidate_id": "ocr_v2_candidate_50aa32583c8b26cc56b3aa2f",
+        "selection_reason": "single_candidate_after_filtering",
+        "status": "selected"
+      },
+      "operating_cash_flow_2025": {
+        "ambiguity_candidate_ids": [],
+        "losing_candidate_ids": [],
+        "losing_candidate_reasons": {},
+        "selected_candidate_id": "ocr_v2_candidate_994c553f00167363110682ab",
+        "selection_reason": "single_candidate_after_filtering",
+        "status": "selected"
+      }
+    }
+  },
+  "oracle_injected_values": false,
+  "per_metric": {
+    "eps": {
+      "exact_match": 6
+    },
+    "gross_profit": {
+      "exact_match": 6
+    },
+    "long_term_debt": {
+      "exact_match": 2,
+      "source_insufficient_match": 4
+    },
+    "operating_cash_flow": {
+      "exact_match": 6
+    },
+    "operating_profit": {
+      "exact_match": 6
+    },
+    "profit_after_tax": {
+      "exact_match": 6
+    },
+    "revenue": {
+      "exact_match": 6
+    },
+    "total_assets": {
+      "exact_match": 6
+    },
+    "total_debt": {
+      "source_insufficient_match": 6
+    },
+    "total_equity": {
+      "exact_match": 6
+    },
+    "total_liabilities": {
+      "exact_match": 2,
+      "source_insufficient_match": 4
+    }
+  },
+  "real_extraction_run": true,
+  "registry_path": "output\\ocr_v2_r2_registry.json",
+  "run_audit": {
+    "ambiguous_groups": 41,
+    "candidate_rows_generated": 2113,
+    "canonical_values_selected": 582,
+    "governance_executed": true,
+    "integrity_violations": [],
+    "metric_year_groups": 889,
+    "multi_candidate_metric_year_groups": 190,
+    "no_selection_groups": 266,
+    "oracle_injected_values": false,
+    "provenance_preserved": true,
+    "real_extraction_run": true,
+    "registry_candidates": 2113,
+    "selection_executed": true,
+    "source_insufficient_groups": 266,
+    "tables_processed": 33,
+    "workbook_generated": true
+  },
+  "scale_mismatch_details": [],
+  "scale_mismatches": 0,
+  "scope": "OCR V2 R2 targeted remediation validation",
+  "source_insufficient_matches": 14,
+  "success_criteria": {
+    "expected_66_of_66": true,
+    "no_regression_in_previously_validated_cells": true,
+    "zero_governance_violations": true,
+    "zero_scale_mismatches": true,
+    "zero_value_mismatches": true
+  },
+  "tables_dir": "output\\ocr_v2_final_validation_tables",
+  "target_cells": [
+    {
+      "cell_id": "total_liabilities_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_liabilities",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "86,256,813",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_liabilities",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "86,256,813",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_liabilities_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_liabilities",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "90,837,630",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_liabilities",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "90,837,630",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_cash_flow_2024",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "27,580,741",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 243,
+          "provenance_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:4",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,580,741",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_cash_flow_2025",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "27,572,567",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 243,
+          "provenance_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:3",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0243_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,572,567",
+      "value_year": 2025
+    }
+  ],
+  "total_cells": 66,
+  "total_liabilities_recovery": {
+    "arithmetic_derivation_used": false,
+    "candidate_rows": [
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:3",
+        "page_number": 240,
+        "raw_label": "total_liabilities",
+        "raw_value": "90,837,630",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2025
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:42:col:4",
+        "page_number": 240,
+        "raw_label": "total_liabilities",
+        "raw_value": "86,256,813",
+        "source_scale": "source_header:PKR thousands",
+        "source_unit": "PKR",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+        "value_year": 2024
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0240_bbox_00_bbox_pdfplumber_text_table_00.csv:row:45:col:4",
+        "page_number": 240,
+        "raw_label": "total_liabilities",
+        "raw_value": "90,837,630",
+        "source_scale": "source_header:unspecified",
+        "source_unit": "unknown",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0240_bbox_00_bbox_pdfplumber_text_table_00",
+        "value_year": 2025
+      },
+      {
+        "basis": "unconsolidated",
+        "document_fingerprint": "97c3123a7a0121d7231b20bfc20badc8c9f1e2a8f0efebefc0565ad768eb1269",
+        "entity_scope": "ISSUER",
+        "locator": "page_0240_bbox_00_bbox_pdfplumber_text_table_00.csv:row:45:col:5",
+        "page_number": 240,
+        "raw_label": "total_liabilities",
+        "raw_value": "86,256,813",
+        "source_scale": "source_header:unspecified",
+        "source_unit": "unknown",
+        "statement_type": "PRIMARY_STATEMENT",
+        "table_reference": "page_0240_bbox_00_bbox_pdfplumber_text_table_00",
+        "value_year": 2024
+      }
+    ],
+    "evidence_basis": "unlabeled extracted numeric subtotal row under current liabilities immediately before total equity and liabilities",
+    "selected_status": {
+      "total_liabilities_2024": {
+        "ambiguity_candidate_ids": [],
+        "losing_candidate_ids": [
+          "ocr_v2_candidate_eef4112c5d8755089e288a59"
+        ],
+        "losing_candidate_reasons": {
+          "ocr_v2_candidate_eef4112c5d8755089e288a59": [
+            "lower_scale_governance:declared_scale_missing"
+          ]
+        },
+        "selected_candidate_id": "ocr_v2_candidate_34dd8a94f2e991f0c385acd7",
+        "selection_reason": "single_candidate_after_filtering",
+        "status": "selected"
+      },
+      "total_liabilities_2025": {
+        "ambiguity_candidate_ids": [],
+        "losing_candidate_ids": [
+          "ocr_v2_candidate_517da16a27baf15af0f34993"
+        ],
+        "losing_candidate_reasons": {
+          "ocr_v2_candidate_517da16a27baf15af0f34993": [
+            "lower_scale_governance:declared_scale_missing"
+          ]
+        },
+        "selected_candidate_id": "ocr_v2_candidate_aec63c4ba4368d8de8c26501",
+        "selection_reason": "single_candidate_after_filtering",
+        "status": "selected"
+      }
+    }
+  },
+  "value_mismatch_details": [],
+  "value_mismatches": 0,
+  "workbook_path": "output\\ocr_v2_r2_workbook.xlsx"
+}

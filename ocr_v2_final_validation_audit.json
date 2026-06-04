@@ -1,0 +1,1965 @@
+{
+  "ambiguous_cells": 0,
+  "audit": "ocr_v2_final_validation_audit",
+  "cell_results": [
+    {
+      "cell_id": "revenue_2020",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "41,870,796",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_48757e5b8f1081113a48b126",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "41,870,796",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "revenue_2021",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "62,940,805",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_49c20af92dd64d0590c4ee5f",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "62,940,805",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "revenue_2022",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "81,093,525",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_ec4414ad7941b7f14918bed2",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "81,093,525",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "revenue_2023",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "95,832,147",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_e507030408a24e9e4d5ac9ea",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "95,832,147",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "revenue_2024",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "115,324,942",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_98573271891477a8353382f1",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "115,324,942",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "revenue_2025",
+      "comparison_status": "exact_match",
+      "metric": "revenue",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "124,511,744",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "revenue",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_83cbe7311792cfec6da67425",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "124,511,744",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "gross_profit_2020",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "6,076,765",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_b8c9d2f499dd0924454c07e2",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "6,076,765",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "gross_profit_2021",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18,955,932",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_1f9bf4715c28cd3d3d7d3d82",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "18,955,932",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "gross_profit_2022",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "22,551,841",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_22d696027120ddc80b439e55",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "22,551,841",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "gross_profit_2023",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "26,060,678",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_010b82e8e0be2370e7b93a31",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "26,060,678",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "gross_profit_2024",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "38,804,572",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_e7512ecc16de147c3dee6c1e",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "38,804,572",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "gross_profit_2025",
+      "comparison_status": "exact_match",
+      "metric": "gross_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "42,684,684",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "gross_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_46d09fc5419224683f992fae",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "42,684,684",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_profit_2020",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "1,187,973",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_e6cd631050818860dd85ac79",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "1,187,973",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "operating_profit_2021",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,839,762",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_09b79b0e3cc8daad412febdc",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "12,839,762",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "operating_profit_2022",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "16,274,988",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_cc4648fc6aa65317c91e21ab",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "16,274,988",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "operating_profit_2023",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18,908,206",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_0f56bc3694b16caf2fe76141",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "18,908,206",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "operating_profit_2024",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "28,870,005",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_b1f2b3b94b766df02d96b53f",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "28,870,005",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_profit_2025",
+      "comparison_status": "exact_match",
+      "metric": "operating_profit",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "31,284,620",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_profit",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:7:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_78b8c60205831c1754ee09bd",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "31,284,620",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "profit_after_tax_2020",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "3,343,933",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_e2a1282ab2a0908db976704b",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "3,343,933",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "profit_after_tax_2021",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "14,070,189",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_20a74aa5f5eb63137ae0eba1",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "14,070,189",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "profit_after_tax_2022",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "15,298,618",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_d6a7d011a39d9713c3946d55",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "15,298,618",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "profit_after_tax_2023",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "13,725,814",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_00ab80b307b77f95d95c153a",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "13,725,814",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "profit_after_tax_2024",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "28,106,539",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_4646c13e3fda39fdfc097d10",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "28,106,539",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "profit_after_tax_2025",
+      "comparison_status": "exact_match",
+      "metric": "profit_after_tax",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "33,092,162",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "profit_after_tax",
+          "page_number": 164,
+          "provenance_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00.csv:row:12:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_0f237179a7bae9f4714d85d1",
+          "source_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0164_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "33,092,162",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "eps_2020",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "2.07",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_342220798cbc2b989d31856a",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 164,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "2.07",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "eps_2021",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "8.70",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_4f52103d16209a5897fcc8a7",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "8.70",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "eps_2022",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "9.46",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_413a84bc5df4bf7f6ccccdf0",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "9.46",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "eps_2023",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "8.61",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_ce47d8e43dfd2d3ca55d7e4d",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "8.61",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "eps_2024",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "18.91",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_c354c643080bf98e9243f0f0",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "18.91",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "eps_2025",
+      "comparison_status": "exact_match",
+      "metric": "eps",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "22.59",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "eps",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:27:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_a8a8cf524fbd1038000dcd87",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:full",
+          "source_unit": "PKR_per_share",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 241,
+      "truth_scale": "full",
+      "truth_status": "VALUE",
+      "truth_value": "22.59",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_assets_2020",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "135,868,474",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_f00f7b19cb3776e9525801e3",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "135,868,474",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_assets_2021",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "156,368,062",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_cd01b98f11a3e5ea707c8e64",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "156,368,062",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_assets_2022",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "184,962,368",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_45447302e59fafd35a672381",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "184,962,368",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_assets_2023",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "213,079,067",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_5922666d04536554354e2f41",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "213,079,067",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_assets_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "234,018,090",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_984145bfece669785f42ee47",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "234,018,090",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_assets_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_assets",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "266,748,030",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_assets",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_0a4d68a971a3f808eba1d87b",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "266,748,030",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_liabilities_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 163,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_liabilities_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 163,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_liabilities_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 163,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_liabilities_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 163,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_liabilities_2024",
+      "comparison_status": "missing",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "86,256,813",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_liabilities_2025",
+      "comparison_status": "missing",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "90,837,630",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_cash_flow_2020",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "5,047",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_3dcf2d7e7be3a8f996c84bd7",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "5,047",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "operating_cash_flow_2021",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,493",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_24f64403f7bae3fae683eff5",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "12,493",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "operating_cash_flow_2022",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "15,469",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_6f7366ec183b53d104009425",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "15,469",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "operating_cash_flow_2023",
+      "comparison_status": "exact_match",
+      "metric": "operating_cash_flow",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "23,243",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "operating_cash_flow",
+          "page_number": 162,
+          "provenance_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00.csv:row:29:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_df3e4aca6067f554befd73b5",
+          "source_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR millions",
+          "source_unit": "PKR",
+          "statement_type": "SUMMARY_TABLE",
+          "table_reference": "page_0162_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 162,
+      "truth_scale": "millions",
+      "truth_status": "VALUE",
+      "truth_value": "23,243",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "operating_cash_flow_2024",
+      "comparison_status": "missing",
+      "metric": "operating_cash_flow",
+      "selected_rows": [],
+      "truth_page_number": 243,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,580,741",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_cash_flow_2025",
+      "comparison_status": "missing",
+      "metric": "operating_cash_flow",
+      "selected_rows": [],
+      "truth_page_number": 243,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,572,567",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_debt_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_debt_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_debt_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_debt_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_debt_2024",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_debt_2025",
+      "comparison_status": "source_insufficient_match",
+      "metric": "total_debt",
+      "selected_rows": [],
+      "truth_page_number": null,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "long_term_debt_2020",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_page_number": 162,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "long_term_debt_2021",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_page_number": 162,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "long_term_debt_2022",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_page_number": 162,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "long_term_debt_2023",
+      "comparison_status": "source_insufficient_match",
+      "metric": "long_term_debt",
+      "selected_rows": [],
+      "truth_page_number": 162,
+      "truth_scale": "n/a",
+      "truth_status": "SOURCE_INSUFFICIENT",
+      "truth_value": "SOURCE_INSUFFICIENT",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "long_term_debt_2024",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,760,637",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_731559b6b742f1d8c52dbdf0",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "12,760,637",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "long_term_debt_2025",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "9,184,522",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_a95c22bb4b4efd6b4d8393bd",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "9,184,522",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "total_equity_2020",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "99,183,861",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:2",
+          "selected_candidate_id": "ocr_v2_candidate_47c889cbd86b8297b072b720",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2020
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "99,183,861",
+      "value_year": 2020
+    },
+    {
+      "cell_id": "total_equity_2021",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "113,200,258",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_a30b264df2040bd7e1755b22",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2021
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "113,200,258",
+      "value_year": 2021
+    },
+    {
+      "cell_id": "total_equity_2022",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "128,540,324",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_77321a48eb5ada7e8e60bb06",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2022
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "128,540,324",
+      "value_year": 2022
+    },
+    {
+      "cell_id": "total_equity_2023",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "137,366,326",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:5",
+          "selected_candidate_id": "ocr_v2_candidate_745ca586f0709c52fcbf1ee3",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2023
+        }
+      ],
+      "truth_page_number": 163,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "137,366,326",
+      "value_year": 2023
+    },
+    {
+      "cell_id": "total_equity_2024",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "147,761,277",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:6",
+          "selected_candidate_id": "ocr_v2_candidate_7b774aaebe27e73acfa280fb",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "147,761,277",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_equity_2025",
+      "comparison_status": "exact_match",
+      "metric": "total_equity",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "175,910,400",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "total_equity",
+          "page_number": 163,
+          "provenance_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00.csv:row:2:col:7",
+          "selected_candidate_id": "ocr_v2_candidate_8233ef8500d9e3bb99d6f017",
+          "source_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "SUPPORTING_SCHEDULE",
+          "table_reference": "page_0163_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "175,910,400",
+      "value_year": 2025
+    }
+  ],
+  "code_changes_made": false,
+  "coverage_percent": 93.94,
+  "covered_cells": 62,
+  "determination": "NOT_READY_FOR_PRODUCTION_INTEGRATION",
+  "exact_matches": 48,
+  "focus_cells": [
+    {
+      "cell_id": "total_liabilities_2024",
+      "comparison_status": "missing",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "86,256,813",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "total_liabilities_2025",
+      "comparison_status": "missing",
+      "metric": "total_liabilities",
+      "selected_rows": [],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "90,837,630",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "operating_cash_flow_2024",
+      "comparison_status": "missing",
+      "metric": "operating_cash_flow",
+      "selected_rows": [],
+      "truth_page_number": 243,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,580,741",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "operating_cash_flow_2025",
+      "comparison_status": "missing",
+      "metric": "operating_cash_flow",
+      "selected_rows": [],
+      "truth_page_number": 243,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "27,572,567",
+      "value_year": 2025
+    },
+    {
+      "cell_id": "long_term_debt_2024",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "12,760,637",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:4",
+          "selected_candidate_id": "ocr_v2_candidate_731559b6b742f1d8c52dbdf0",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2024
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "12,760,637",
+      "value_year": 2024
+    },
+    {
+      "cell_id": "long_term_debt_2025",
+      "comparison_status": "exact_match",
+      "metric": "long_term_debt",
+      "selected_rows": [
+        {
+          "basis": "unconsolidated",
+          "canonical_value": "9,184,522",
+          "entity_ref": "lucky_cement",
+          "entity_scope": "ISSUER",
+          "metric_id": "long_term_debt",
+          "page_number": 240,
+          "provenance_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:30:col:3",
+          "selected_candidate_id": "ocr_v2_candidate_a95c22bb4b4efd6b4d8393bd",
+          "source_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "source_scale": "source_header:PKR thousands",
+          "source_unit": "PKR",
+          "statement_type": "PRIMARY_STATEMENT",
+          "table_reference": "page_0240_bbox_00_bbox_camelot_stream_table_00",
+          "value_year": 2025
+        }
+      ],
+      "truth_page_number": 240,
+      "truth_scale": "thousands",
+      "truth_status": "VALUE",
+      "truth_value": "9,184,522",
+      "value_year": 2025
+    }
+  ],
+  "governance_changes": false,
+  "inputs": {
+    "new_page_0240_csvs": [
+      "output\\ocr_v2_final_validation_tables\\page_0240_bbox_00_bbox_camelot_lattice_table_00.csv",
+      "output\\ocr_v2_final_validation_tables\\page_0240_bbox_00_bbox_camelot_stream_table_00.csv",
+      "output\\ocr_v2_final_validation_tables\\page_0240_bbox_00_bbox_pdfplumber_text_table_00.csv"
+    ],
+    "new_page_0243_csvs": [
+      "output\\ocr_v2_final_validation_tables\\page_0243_bbox_00_bbox_camelot_lattice_table_00.csv",
+      "output\\ocr_v2_final_validation_tables\\page_0243_bbox_00_bbox_camelot_stream_table_00.csv",
+      "output\\ocr_v2_final_validation_tables\\page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv"
+    ],
+    "page_file_counts": {
+      "162": 2,
+      "163": 2,
+      "164": 2,
+      "240": 3,
+      "243": 3,
+      "271": 2,
+      "321": 2,
+      "322": 2,
+      "324": 4,
+      "328": 4,
+      "353": 5,
+      "356": 2
+    },
+    "pages_available": [
+      162,
+      163,
+      164,
+      240,
+      243,
+      271,
+      321,
+      322,
+      324,
+      328,
+      353,
+      356
+    ],
+    "tables_dir": "output\\ocr_v2_final_validation_tables",
+    "truth_set": "cv1_truth_set_lucky_v1_0_0.csv",
+    "workbook_output": "output\\ocr_v2_final_validation_workbook.xlsx"
+  },
+  "integrity_violations": [
+    {
+      "ambiguous_cells": 0,
+      "missing_cells": 4,
+      "reason": "truth_set_not_fully_covered",
+      "scale_mismatches": 0,
+      "value_mismatches": 0
+    }
+  ],
+  "missing_cells": 4,
+  "msil_changes": false,
+  "ocr_logic_changes": false,
+  "production_integration_readiness_reason": "OCR V2 did not reach 66/66 truth-set coverage. The complete extraction set recovers long_term_debt 2024-2025, but operating_cash_flow 2024-2025 remains unselected due to deterministic ambiguity and total_liabilities 2024-2025 remains uncaptured because the subtotal row is unlabeled.",
+  "remaining_failure_count": 4,
+  "remaining_failures": [
+    {
+      "candidate_examples": [
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:4",
+          "page_number": 240,
+          "raw_label": "total_assets",
+          "raw_value": "234,018,090",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:32:col:4",
+          "page_number": 240,
+          "raw_label": "deferred liabilities",
+          "raw_value": "17,286,561",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:43:col:4",
+          "page_number": 240,
+          "raw_label": "total equity and liabilities",
+          "raw_value": "234,018,090",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_pdfplumber_text_table_00.csv:row:35:col:5",
+          "page_number": 240,
+          "raw_label": "deferred liabilities",
+          "raw_value": "17,286,561",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:4",
+          "page_number": 243,
+          "raw_label": "(decrease) / increase in long-term deposits (liabilities)",
+          "raw_value": "2,250",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:14:col:9",
+          "page_number": 243,
+          "raw_label": "(decrea se) / increase in long-term d eposits (liabilities)",
+          "raw_value": "2,250",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        }
+      ],
+      "cell_id": "total_liabilities_2024",
+      "comparison_status": "missing",
+      "explanation": "Page 240 now supplies the explicit subtotal value, but the row has no label. The current bridge captures labeled numeric rows only, so no total_liabilities candidate is created. Component rows are present but no derivation/summation is performed.",
+      "metric": "total_liabilities",
+      "root_cause": "unlabeled_subtotal_not_captured_as_candidate",
+      "truth_value": "86,256,813",
+      "value_year": 2024
+    },
+    {
+      "candidate_examples": [
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:22:col:3",
+          "page_number": 240,
+          "raw_label": "total_assets",
+          "raw_value": "266,748,030",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:32:col:3",
+          "page_number": 240,
+          "raw_label": "deferred liabilities",
+          "raw_value": "21,514,874",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_camelot_stream_table_00.csv:row:43:col:3",
+          "page_number": 240,
+          "raw_label": "total equity and liabilities",
+          "raw_value": "266,748,030",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0240_bbox_00_bbox_pdfplumber_text_table_00.csv:row:35:col:4",
+          "page_number": 240,
+          "raw_label": "deferred liabilities",
+          "raw_value": "21,514,874",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:8:col:3",
+          "page_number": 243,
+          "raw_label": "(decrease) / increase in long-term deposits (liabilities)",
+          "raw_value": "(140,887)",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:14:col:8",
+          "page_number": 243,
+          "raw_label": "(decrea se) / increase in long-term d eposits (liabilities)",
+          "raw_value": "(140,887)",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        }
+      ],
+      "cell_id": "total_liabilities_2025",
+      "comparison_status": "missing",
+      "explanation": "Page 240 now supplies the explicit subtotal value, but the row has no label. The current bridge captures labeled numeric rows only, so no total_liabilities candidate is created. Component rows are present but no derivation/summation is performed.",
+      "metric": "total_liabilities",
+      "root_cause": "unlabeled_subtotal_not_captured_as_candidate",
+      "truth_value": "90,837,630",
+      "value_year": 2025
+    },
+    {
+      "candidate_examples": [
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:4",
+          "page_number": 243,
+          "raw_label": "operating_cash_flow",
+          "raw_value": "30,937,432",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:4",
+          "page_number": 243,
+          "raw_label": "operating_cash_flow",
+          "raw_value": "27,580,741",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:21:col:4",
+          "page_number": 243,
+          "raw_label": "net cash generated from / (used in) investing activities",
+          "raw_value": "(2,580,021)",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:19:col:9",
+          "page_number": 243,
+          "raw_label": "et cash gen erated from operatin g a ctivities",
+          "raw_value": "27,580,741",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:38:col:9",
+          "page_number": 243,
+          "raw_label": "et cash gen erated from / (used in ) investing activities",
+          "raw_value": "(2,580,021)",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        }
+      ],
+      "cell_id": "operating_cash_flow_2024",
+      "comparison_status": "missing",
+      "explanation": "Page 243 now supplies the truth row, but the bridge maps both cash generated from operations and net cash generated from operating activities to operating_cash_flow. Canonical selection receives multiple eligible PRIMARY_STATEMENT candidates and correctly emits no winner under current no-guessing rules.",
+      "metric": "operating_cash_flow",
+      "root_cause": "selection_ambiguity_after_source_recovery",
+      "truth_value": "27,580,741",
+      "value_year": 2024
+    },
+    {
+      "candidate_examples": [
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:4:col:3",
+          "page_number": 243,
+          "raw_label": "operating_cash_flow",
+          "raw_value": "33,808,781",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:11:col:3",
+          "page_number": 243,
+          "raw_label": "operating_cash_flow",
+          "raw_value": "27,572,567",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_camelot_stream_table_00.csv:row:21:col:3",
+          "page_number": 243,
+          "raw_label": "net cash generated from / (used in) investing activities",
+          "raw_value": "11,714,661",
+          "source_scale": "source_header:PKR thousands",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:19:col:8",
+          "page_number": 243,
+          "raw_label": "et cash gen erated from operatin g a ctivities",
+          "raw_value": "27,572,567",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        },
+        {
+          "locator": "page_0243_bbox_00_bbox_pdfplumber_text_table_00.csv:row:38:col:8",
+          "page_number": 243,
+          "raw_label": "et cash gen erated from / (used in ) investing activities",
+          "raw_value": "11,714,661",
+          "source_scale": "source_header:unspecified",
+          "statement_type": "PRIMARY_STATEMENT"
+        }
+      ],
+      "cell_id": "operating_cash_flow_2025",
+      "comparison_status": "missing",
+      "explanation": "Page 243 now supplies the truth row, but the bridge maps both cash generated from operations and net cash generated from operating activities to operating_cash_flow. Canonical selection receives multiple eligible PRIMARY_STATEMENT candidates and correctly emits no winner under current no-guessing rules.",
+      "metric": "operating_cash_flow",
+      "root_cause": "selection_ambiguity_after_source_recovery",
+      "truth_value": "27,572,567",
+      "value_year": 2025
+    }
+  ],
+  "run_audit": {
+    "ambiguous_groups": 43,
+    "candidate_rows_generated": 2109,
+    "canonical_values_selected": 576,
+    "governance_executed": true,
+    "integrity_violations": [],
+    "metric_year_groups": 885,
+    "multi_candidate_metric_year_groups": 192,
+    "no_selection_groups": 266,
+    "oracle_injected_values": false,
+    "provenance_preserved": true,
+    "real_extraction_run": true,
+    "registry_candidates": 2109,
+    "selection_executed": true,
+    "source_insufficient_groups": 266,
+    "tables_processed": 33,
+    "workbook_generated": true
+  },
+  "scale_mismatches": 0,
+  "selection_changes": false,
+  "source_insufficient_matches": 14,
+  "status": "validation_only",
+  "status_breakdown": {
+    "exact_match": 48,
+    "missing": 4,
+    "source_insufficient_match": 14
+  },
+  "total_cells": 66,
+  "value_mismatches": 0,
+  "workbook_changes": false
+}

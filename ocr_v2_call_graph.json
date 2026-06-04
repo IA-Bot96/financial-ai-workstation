@@ -1,0 +1,378 @@
+{
+  "artifact": "ocr_v2_call_graph",
+  "code_changes_made": false,
+  "cutover_readiness": {
+    "can_replace_ocr_v1_through_configuration_only": false,
+    "integration_work_required": true,
+    "reason": "Production composition imports concrete ocr_engine services in run_pipeline.py, API route expects ocr_engine IOCRPipeline, and OCR V2 lacks a production IOCRPipeline-compatible orchestrator hooked into entrypoints."
+  },
+  "graphs": [
+    {
+      "edges": [
+        [
+          "cli_main",
+          "build_default_pipeline"
+        ],
+        [
+          "build_default_pipeline",
+          "ocr_pipeline"
+        ],
+        [
+          "ocr_pipeline",
+          "detector"
+        ],
+        [
+          "ocr_pipeline",
+          "classifier"
+        ],
+        [
+          "ocr_pipeline",
+          "extractor"
+        ],
+        [
+          "ocr_pipeline",
+          "validator"
+        ],
+        [
+          "ocr_pipeline",
+          "normalizer"
+        ],
+        [
+          "ocr_pipeline",
+          "insights"
+        ],
+        [
+          "ocr_pipeline",
+          "consolidator"
+        ],
+        [
+          "ocr_pipeline",
+          "workbook"
+        ],
+        [
+          "ocr_pipeline",
+          "query_bundle"
+        ]
+      ],
+      "entrypoint": "backend/run_pipeline.py::main",
+      "msil_reachable_from_entrypoint": false,
+      "name": "CLI production OCR path",
+      "nodes": [
+        {
+          "id": "cli_main",
+          "label": "run_pipeline.py main()",
+          "package": null,
+          "role": "entrypoint"
+        },
+        {
+          "id": "build_default_pipeline",
+          "label": "build_default_pipeline()",
+          "package": null,
+          "role": "composition"
+        },
+        {
+          "id": "ocr_pipeline",
+          "label": "ocr_engine.pipeline.ocr_pipeline.OCRPipeline",
+          "package": "ocr_engine",
+          "role": "orchestrator"
+        },
+        {
+          "id": "detector",
+          "label": "TableTransformerDetector",
+          "package": "ocr_engine",
+          "role": "table detection"
+        },
+        {
+          "id": "classifier",
+          "label": "OpenAITableClassifier",
+          "package": "ocr_engine",
+          "role": "table classification"
+        },
+        {
+          "id": "extractor",
+          "label": "CamelotTableExtractor",
+          "package": "ocr_engine",
+          "role": "table extraction"
+        },
+        {
+          "id": "validator",
+          "label": "FinancialValidationService",
+          "package": "ocr_engine",
+          "role": "validation"
+        },
+        {
+          "id": "normalizer",
+          "label": "TableMetricNormalizer",
+          "package": "ocr_engine",
+          "role": "metric normalization"
+        },
+        {
+          "id": "insights",
+          "label": "OpenAIInsightsExtractor",
+          "package": "ocr_engine",
+          "role": "insights extraction"
+        },
+        {
+          "id": "consolidator",
+          "label": "FinancialYearConsolidator",
+          "package": "shared",
+          "role": "consolidation"
+        },
+        {
+          "id": "workbook",
+          "label": "OpenPyXLWorkbookPopulationService",
+          "package": "workbook_population",
+          "role": "workbook generation"
+        },
+        {
+          "id": "query_bundle",
+          "label": "QueryEngineBundleGenerationService",
+          "package": "query_engine",
+          "role": "query sidecar generation"
+        },
+        {
+          "id": "msil",
+          "label": "MSIL adapters",
+          "package": "multi_source_intelligence",
+          "role": "not invoked by run_pipeline"
+        }
+      ],
+      "not_edges": [
+        [
+          "workbook",
+          "msil"
+        ],
+        [
+          "ocr_pipeline",
+          "backend/ocr OCR V2"
+        ]
+      ],
+      "ocr_v2_reachable": false
+    },
+    {
+      "edges": [
+        [
+          "api_route",
+          "dependency"
+        ],
+        [
+          "dependency",
+          "interface"
+        ],
+        [
+          "interface",
+          "process"
+        ]
+      ],
+      "entrypoint": "backend/api/routes/ocr.py::process_ocr",
+      "name": "API OCR route path",
+      "nodes": [
+        {
+          "id": "api_route",
+          "label": "POST /ocr/process",
+          "package": "api",
+          "role": "entrypoint"
+        },
+        {
+          "id": "dependency",
+          "label": "Depends(get_ocr_pipeline)",
+          "package": "api",
+          "role": "dependency injection"
+        },
+        {
+          "id": "interface",
+          "label": "ocr_engine.pipeline.interfaces.ocr_pipeline.IOCRPipeline",
+          "package": "ocr_engine",
+          "role": "interface"
+        },
+        {
+          "id": "process",
+          "label": "IOCRPipeline.process(context)",
+          "package": "ocr_engine",
+          "role": "orchestration call"
+        }
+      ],
+      "not_edges": [
+        [
+          "dependency",
+          "backend/ocr OCR V2"
+        ]
+      ],
+      "notes": "The route is injectable, but the declared dependency contract is IOCRPipeline from ocr_engine. No production composition root was found that binds this to OCR V2.",
+      "ocr_v2_reachable": false
+    },
+    {
+      "classification": "validation_only",
+      "edges": [
+        [
+          "tables",
+          "adapter"
+        ],
+        [
+          "adapter",
+          "capture"
+        ],
+        [
+          "capture",
+          "registry"
+        ],
+        [
+          "registry",
+          "statement"
+        ],
+        [
+          "statement",
+          "scale"
+        ],
+        [
+          "scale",
+          "entity"
+        ],
+        [
+          "entity",
+          "preselection"
+        ],
+        [
+          "preselection",
+          "selection"
+        ],
+        [
+          "selection",
+          "workbook"
+        ],
+        [
+          "workbook",
+          "msil_export"
+        ]
+      ],
+      "entrypoint": "manual/tests only",
+      "name": "OCR V2 validation path",
+      "nodes": [
+        {
+          "id": "tables",
+          "label": "output/bbox_extraction_poc/tables/*.csv",
+          "package": null,
+          "role": "raw table CSV inputs"
+        },
+        {
+          "id": "adapter",
+          "label": "OCRV2CandidateAdapter",
+          "package": "ocr",
+          "role": "candidate stream adapter"
+        },
+        {
+          "id": "capture",
+          "label": "CandidateCapture",
+          "package": "ocr",
+          "role": "candidate capture"
+        },
+        {
+          "id": "registry",
+          "label": "CandidateRegistry",
+          "package": "ocr",
+          "role": "candidate registry"
+        },
+        {
+          "id": "statement",
+          "label": "StatementGovernance",
+          "package": "ocr",
+          "role": "statement governance"
+        },
+        {
+          "id": "scale",
+          "label": "ScaleGovernance",
+          "package": "ocr",
+          "role": "scale governance"
+        },
+        {
+          "id": "entity",
+          "label": "EntityGovernance",
+          "package": "ocr",
+          "role": "entity governance"
+        },
+        {
+          "id": "preselection",
+          "label": "prepare_candidates_for_canonical_selection",
+          "package": "ocr",
+          "role": "preselection remediation"
+        },
+        {
+          "id": "selection",
+          "label": "CanonicalSelection",
+          "package": "ocr",
+          "role": "canonical selection"
+        },
+        {
+          "id": "workbook",
+          "label": "OCRV2WorkbookGenerator",
+          "package": "ocr",
+          "role": "V2 workbook projection"
+        },
+        {
+          "id": "msil_export",
+          "label": "OCRV2MSILExporter",
+          "package": "ocr",
+          "role": "V2 export adapter"
+        }
+      ],
+      "not_edges": [
+        [
+          "backend/run_pipeline.py",
+          "adapter"
+        ],
+        [
+          "backend/api/routes/ocr.py",
+          "adapter"
+        ]
+      ],
+      "production_entrypoint": false
+    },
+    {
+      "edges": [
+        [
+          "ocr_insight",
+          "annual_report_adapter"
+        ],
+        [
+          "annual_report_adapter",
+          "signal"
+        ]
+      ],
+      "entrypoint": "manual/tests only",
+      "name": "MSIL annual report adapter path",
+      "nodes": [
+        {
+          "id": "ocr_insight",
+          "label": "ocr_engine.models.insights_extraction.Insight",
+          "package": "ocr_engine",
+          "role": "input model"
+        },
+        {
+          "id": "annual_report_adapter",
+          "label": "AnnualReportAdapter",
+          "package": "multi_source_intelligence",
+          "role": "Insight -> IntelligenceSignal adapter"
+        },
+        {
+          "id": "signal",
+          "label": "IntelligenceSignal",
+          "package": "multi_source_intelligence",
+          "role": "MSIL evidence output"
+        }
+      ],
+      "not_edges": [
+        [
+          "OCRPipeline",
+          "annual_report_adapter"
+        ],
+        [
+          "QueryEngineBundleGenerationService",
+          "annual_report_adapter"
+        ]
+      ],
+      "notes": "Adapter consumes OCR V1 insight model but is not called by run_pipeline or API route.",
+      "production_entrypoint": false
+    }
+  ],
+  "status": "audit_only"
+}
